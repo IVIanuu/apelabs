@@ -15,6 +15,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
@@ -62,6 +63,7 @@ import kotlinx.coroutines.withContext
       lights
         .sortedBy { it.id }
     }
+    .distinctUntilChanged()
     .flowOn(context)
     .shareIn(scope, SharingStarted.WhileSubscribed(), 1)
 

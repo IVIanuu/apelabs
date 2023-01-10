@@ -31,8 +31,11 @@ import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
+import com.ivianuu.apelabs.data.ProgramConfig
 import com.ivianuu.apelabs.data.merge
+import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.LightRepository
+import com.ivianuu.essentials.cast
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.resource.Resource
@@ -55,6 +58,7 @@ import com.ivianuu.essentials.ui.navigation.RootKey
 import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.popup.PopupMenu
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
+import com.ivianuu.essentials.ui.prefs.ColorListItem
 import com.ivianuu.essentials.ui.prefs.ScaledPercentageUnitText
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
@@ -64,11 +68,7 @@ import com.ivianuu.injekt.Provide
 
 @Provide val homeUi = ModelKeyUi<HomeKey, HomeModel> {
   Scaffold(
-    topBar = {
-      TopAppBar(
-        title = { Text("ApeLabs") }
-      )
-    }
+    topBar = { TopAppBar(title = { Text("ApeLabs") }) }
   ) {
     VerticalList {
       item {
@@ -103,6 +103,16 @@ import com.ivianuu.injekt.Provide
           Text("Select a group to edit")
         }
       } else {
+        item {
+          ColorListItem(
+            value = groupConfig.program.cast<ProgramConfig.SingleColor>()
+              .color
+              .toColor(),
+            onValueChangeRequest = updateColor,
+            title = { Text("Color") }
+          )
+        }
+
         item {
           SliderListItem(
             value = groupConfig.brightness,
@@ -201,6 +211,7 @@ data class HomeModel(
   val toggleGroupSelection: (Int, Boolean) -> Unit,
   val toggleAllGroupSelections: () -> Unit,
   val groupConfig: GroupConfig,
+  val updateColor: () -> Unit,
   val updateBrightness: (Float) -> Unit,
   val updateSpeed: (Float) -> Unit,
   val updateMusicMode: (Boolean) -> Unit,
@@ -257,6 +268,10 @@ data class HomeModel(
       }
     },
     groupConfig = groupConfig,
+    updateColor = action {
+      navigator.push(ColorPickerKey(groupConfig.program.cast<ProgramConfig.SingleColor>().color))
+        ?.let { updateConfig { copy(program = ProgramConfig.SingleColor(it)) } }
+    },
     updateBrightness = action { value ->
       updateConfig { copy(brightness = value) }
     },
