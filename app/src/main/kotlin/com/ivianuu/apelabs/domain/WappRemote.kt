@@ -112,17 +112,19 @@ class WappServer(
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
           super.onServicesDiscovered(gatt, status)
           log { "${device.debugName()} services discovered" }
-          serviceChanges.tryEmit(Unit)
 
           scope.launch {
             val readCharacteristic = gatt
               .getService(APE_LABS_SERVICE_ID)
               .getCharacteristic(APE_LABS_READ_ID)
+            writeLimiter.acquire()
             gatt.setCharacteristicNotification(readCharacteristic, true)
             val cccDescriptor = readCharacteristic.getDescriptor(CCCD_ID)
             cccDescriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+            writeLimiter.acquire()
             gatt.writeDescriptor(cccDescriptor)
             onCharacteristicChanged(gatt, readCharacteristic)
+            serviceChanges.tryEmit(Unit)
           }
         }
 

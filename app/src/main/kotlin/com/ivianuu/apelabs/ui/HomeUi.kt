@@ -251,7 +251,7 @@ data class HomeModel(
         groupConfigs = buildMap {
           putAll(groupConfigs)
           selectedGroups.forEach {
-            put(it, block(prefs.groupConfigs[it] ?: GroupConfig()))
+            put(it, block(this[it] ?: GroupConfig()))
           }
         }
       )
