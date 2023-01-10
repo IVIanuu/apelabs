@@ -25,21 +25,23 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
+import com.ivianuu.apelabs.data.LightColor
 import com.ivianuu.apelabs.data.ProgramConfig
 import com.ivianuu.apelabs.data.merge
 import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.LightRepository
-import com.ivianuu.essentials.cast
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
+import com.ivianuu.essentials.safeAs
 import com.ivianuu.essentials.state.action
 import com.ivianuu.essentials.state.bind
 import com.ivianuu.essentials.state.bindResource
@@ -105,11 +107,20 @@ import com.ivianuu.injekt.Provide
       } else {
         item {
           ColorListItem(
-            value = groupConfig.program.cast<ProgramConfig.SingleColor>()
-              .color
-              .toColor(),
-            onValueChangeRequest = updateColor,
+            value = groupConfig.program.safeAs<ProgramConfig.SingleColor>()
+              ?.color
+              ?.toColor()
+              ?: Color.Black,
+            onValueChangeRequest = updateProgramColor,
             title = { Text("Color") }
+          )
+        }
+
+        item {
+          SwitchListItem(
+            value = rainbowProgram,
+            onValueChange = updateRainbowProgram,
+            title = { Text("Rainbow program") }
           )
         }
 
@@ -211,7 +222,9 @@ data class HomeModel(
   val toggleGroupSelection: (Int, Boolean) -> Unit,
   val toggleAllGroupSelections: () -> Unit,
   val groupConfig: GroupConfig,
-  val updateColor: () -> Unit,
+  val rainbowProgram: Boolean,
+  val updateRainbowProgram: (Boolean) -> Unit,
+  val updateProgramColor: () -> Unit,
   val updateBrightness: (Float) -> Unit,
   val updateSpeed: (Float) -> Unit,
   val updateMusicMode: (Boolean) -> Unit,
@@ -268,8 +281,17 @@ data class HomeModel(
       }
     },
     groupConfig = groupConfig,
-    updateColor = action {
-      navigator.push(ColorPickerKey(groupConfig.program.cast<ProgramConfig.SingleColor>().color))
+    rainbowProgram = groupConfig.program is ProgramConfig.Rainbow,
+    updateRainbowProgram = action { value ->
+      if (value) updateConfig { copy(program = ProgramConfig.Rainbow) }
+      else updateConfig { copy(program = ProgramConfig.SingleColor(LightColor())) }
+    },
+    updateProgramColor = action {
+      navigator.push(
+        ColorPickerKey(
+          groupConfig.program.safeAs<ProgramConfig.SingleColor>()?.color ?: LightColor()
+        )
+      )
         ?.let { updateConfig { copy(program = ProgramConfig.SingleColor(it)) } }
     },
     updateBrightness = action { value ->
