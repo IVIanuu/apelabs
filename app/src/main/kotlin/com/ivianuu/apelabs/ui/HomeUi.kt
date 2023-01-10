@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ContentAlpha
 import androidx.compose.material.LocalContentColor
@@ -29,19 +30,31 @@ import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
+import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.merge
+import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.logging.Logger
+import com.ivianuu.essentials.resource.Resource
+import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.state.action
 import com.ivianuu.essentials.state.bind
+import com.ivianuu.essentials.state.bindResource
 import com.ivianuu.essentials.ui.common.VerticalList
+import com.ivianuu.essentials.ui.dialog.ListKey
+import com.ivianuu.essentials.ui.material.ListItem
 import com.ivianuu.essentials.ui.material.Scaffold
+import com.ivianuu.essentials.ui.material.Subheader
 import com.ivianuu.essentials.ui.material.TopAppBar
 import com.ivianuu.essentials.ui.material.guessingContentColorFor
 import com.ivianuu.essentials.ui.material.incrementingStepPolicy
 import com.ivianuu.essentials.ui.navigation.Model
 import com.ivianuu.essentials.ui.navigation.ModelKeyUi
+import com.ivianuu.essentials.ui.navigation.Navigator
 import com.ivianuu.essentials.ui.navigation.RootKey
+import com.ivianuu.essentials.ui.navigation.push
+import com.ivianuu.essentials.ui.popup.PopupMenu
+import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.prefs.ScaledPercentageUnitText
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
@@ -117,6 +130,25 @@ import com.ivianuu.injekt.Provide
             title = { Text("Music mode") }
           )
         }
+
+        item {
+          Subheader { Text("Lights") }
+        }
+
+        val lights = lights.getOrElse { emptyList() }
+        items(lights) { light ->
+          ListItem(
+            title = { Text("Light ${light.id} group ${light.group}") },
+            trailing = {
+              PopupMenuButton(
+                items = listOf(
+                  PopupMenu.Item(onSelected = { flashLight(light) }) { Text("Flash") },
+                  PopupMenu.Item(onSelected = { regroupLight(light) }) { Text("Regroup") }
+                )
+              )
+            }
+          )
+        }
       }
     }
   }
@@ -166,11 +198,16 @@ data class HomeModel(
   val groupConfig: GroupConfig,
   val updateBrightness: (Float) -> Unit,
   val updateSpeed: (Float) -> Unit,
-  val updateMusicMode: (Boolean) -> Unit
+  val updateMusicMode: (Boolean) -> Unit,
+  val lights: Resource<List<Light>>,
+  val flashLight: (Light) -> Unit,
+  val regroupLight: (Light) -> Unit
 )
 
 @Provide fun homeModel(
+  lightRepository: LightRepository,
   logger: Logger,
+  navigator: Navigator,
   pref: DataStore<ApeLabsPrefs>
 ) = Model {
   val prefs = pref.data.bind(ApeLabsPrefs())
@@ -223,6 +260,18 @@ data class HomeModel(
     },
     updateMusicMode = action { value ->
       updateConfig { copy(musicMode = value) }
+    },
+    lights = lightRepository.lights.bindResource(),
+    regroupLight = action { light ->
+      navigator.push(
+        ListKey(
+          items = GROUPS
+            .map { ListKey.Item(it, it.toString()) }
+        )
+      )?.let { lightRepository.regroupLight(light.id, it) }
+    },
+    flashLight = action { light ->
+      lightRepository.flashLight(light.id)
     }
   )
 }

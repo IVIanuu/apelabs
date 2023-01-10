@@ -4,12 +4,15 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.essentials.AppContext
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.catch
+import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.RateLimiter
 import com.ivianuu.essentials.coroutines.RefCountedResource
 import com.ivianuu.essentials.coroutines.race
@@ -24,9 +27,11 @@ import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -43,7 +48,7 @@ import java.util.*
   private val servers = RefCountedResource<String, WappServer>(
     scope = scope,
     timeout = 5.seconds,
-    create = { WappServer(it, context, logger, appContext, bluetoothManager) },
+    create = { WappServer(it, context, logger, appContext, bluetoothManager, scope) },
     release = { _, server -> server.close() }
   )
 
@@ -73,7 +78,8 @@ class WappServer(
   private val context: IOContext,
   @Provide private val logger: Logger,
   appContext: AppContext,
-  bluetoothManager: BluetoothManager
+  bluetoothManager: BluetoothManager,
+  private val scope: CoroutineScope
 ) {
   val connectionState = MutableSharedFlow<Boolean>(
     replay = 1,
@@ -87,6 +93,8 @@ class WappServer(
   )
 
   val device = bluetoothManager.adapter.getRemoteDevice(address)
+
+  val messages = EventFlow<ByteArray>()
 
   private val gatt = bluetoothManager.adapter
     .getRemoteDevice(address)
@@ -107,6 +115,28 @@ class WappServer(
           super.onServicesDiscovered(gatt, status)
           log { "${device.debugName()} services discovered" }
           serviceChanges.tryEmit(Unit)
+
+          scope.launch {
+            val readCharacteristic = gatt
+              .getService(APE_LABS_SERVICE_ID)
+              .getCharacteristic(APE_LABS_READ_ID)
+            gatt.setCharacteristicNotification(readCharacteristic, true)
+            val cccDescriptor = readCharacteristic.getDescriptor(CCCD_ID)
+            cccDescriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+            gatt.writeDescriptor(cccDescriptor)
+            onCharacteristicChanged(gatt, readCharacteristic)
+          }
+        }
+
+        override fun onCharacteristicChanged(
+          gatt: BluetoothGatt,
+          characteristic: BluetoothGattCharacteristic
+        ) {
+          super.onCharacteristicChanged(gatt, characteristic)
+
+          val message = characteristic.value ?: return
+
+          messages.tryEmit(message)
         }
       },
       BluetoothDevice.TRANSPORT_LE

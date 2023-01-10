@@ -19,9 +19,9 @@ import kotlin.time.Duration
   logger: Logger,
   pref: DataStore<ApeLabsPrefs>,
   remote: WappRemote,
-  repository: WappRepository
+  wappRepository: WappRepository
 ) = ScopeWorker<AppForegroundScope> {
-  repository.wapps.collectLatest { wapps ->
+  wappRepository.wapps.collectLatest { wapps ->
     if (wapps.isEmpty()) return@collectLatest
 
     wapps.parForEach {
@@ -50,9 +50,17 @@ private suspend fun WappServer.applyGroupConfig(
     .forEach { (config, groups) ->
       log { "${device.debugName()} -> apply config $config to $groups" }
       write(singleColorModeBytes(groups, Color.White))
-      write(brightnessBytes(groups, config.brightness))
-      write(speedBytes(groups, config.speed))
-      write(musicModeBytes(groups, config.musicMode))
+      write(
+        byteArrayOf(
+          68,
+          68,
+          groups.toGroupByte(),
+          1,
+          (config.brightness * 100f).toInt().toByte()
+        )
+      )
+      write(byteArrayOf(68, 68, groups.toGroupByte(), 2, (config.speed * 100f).toInt().toByte()))
+      write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (config.musicMode) 1 else 0, 0))
       groups.forEach { lastConfigs[it] = config }
     }
 }
@@ -101,30 +109,7 @@ private fun Duration.toDurationByte(): Byte = 4
 
 private fun Float.toColorByte(): Byte = if (this == 1f) -1 else (this * 255).toInt().toByte()
 
-fun speedBytes(
-  groups: List<Int>,
-  speed: Float
-) = byteArrayOf(68, 68, groups.toGroupByte(), 2, (speed * 100f).toInt().toByte())
-
-fun brightnessBytes(
-  groups: List<Int>,
-  brightness: Float
-) = byteArrayOf(68, 68, groups.toGroupByte(), 1, (brightness * 100f).toInt().toByte())
-
-fun musicModeBytes(
-  groups: List<Int>,
-  enabled: Boolean
-) = byteArrayOf(68, 68, groups.toGroupByte(), 3, if (enabled) 1 else 0, 0)
-
-fun blinkDeviceBytes(id1: Int, id2: Int) =
-  byteArrayOf(72, 10, id1.toByte(), id2.toByte(), 0)
-
-fun regroupDeviceBytes(id1: Int, id2: Int, group: Int) =
-  byteArrayOf(82, 10, id1.toByte(), id2.toByte(), 0, group.toByte(), 1, 0, 2, 13, 10)
-
-val refreshBytes = byteArrayOf(88)
-
-fun List<Int>.toGroupByte(): Byte = when {
+private fun List<Int>.toGroupByte(): Byte = when {
   this == listOf(1) -> 1
   this == listOf(2) -> 2
   this == listOf(3) -> 4
