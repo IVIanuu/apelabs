@@ -26,8 +26,9 @@ import kotlin.time.Duration
 
     wapps.parForEach {
       remote.withWapp(it.address) {
+        val lastConfigs = mutableMapOf<Int, GroupConfig>()
         pref.data.collectLatest {
-          applyGroupConfig(it.groupConfigs)
+          applyGroupConfig(it.groupConfigs, lastConfigs)
         }
       }
     }
@@ -36,18 +37,23 @@ import kotlin.time.Duration
 
 private suspend fun WappServer.applyGroupConfig(
   configs: Map<Int, GroupConfig>,
+  lastConfigs: MutableMap<Int, GroupConfig>,
   @Inject logger: Logger
 ) {
   configs
     .toList()
     .groupBy { it.second }
     .mapValues { it.value.map { it.first } }
+    .filter { (config, groups) ->
+      groups.any { lastConfigs[it] != config }
+    }
     .forEach { (config, groups) ->
       log { "${device.debugName()} -> apply config $config to $groups" }
-      write(groups, singleColorModeBytes(groups, Color.White))
-      write(groups, brightnessBytes(groups, config.brightness))
-      write(groups, speedBytes(groups, config.speed))
-      write(groups, musicModeBytes(groups, config.musicMode))
+      write(singleColorModeBytes(groups, Color.White))
+      write(brightnessBytes(groups, config.brightness))
+      write(speedBytes(groups, config.speed))
+      write(musicModeBytes(groups, config.musicMode))
+      groups.forEach { lastConfigs[it] = config }
     }
 }
 

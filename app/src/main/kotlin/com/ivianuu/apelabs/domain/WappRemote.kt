@@ -19,11 +19,9 @@ import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.util.BroadcastsFactory
-import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.injekt.common.Scoped
-import com.ivianuu.injekt.common.SourceKey
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -121,13 +119,7 @@ class WappServer(
     log { "${device.debugName()} init" }
   }
 
-  private val lastMessages = mutableMapOf<Any, ByteArray>()
-
-  suspend fun write(
-    groups: List<Int>,
-    message: ByteArray,
-    @Inject sourceKey: SourceKey
-  ) = withContext(context) {
+  suspend fun write(message: ByteArray) = withContext(context) {
     val service = gatt.getService(APE_LABS_SERVICE_ID) ?: error(
       "${device.debugName()} service not found ${
         gatt.services.map {
@@ -139,16 +131,10 @@ class WappServer(
       ?: error("${device.debugName()} characteristic not found")
 
     writeLock.withLock {
-      val key = groups to sourceKey
-      if (!message.contentEquals(lastMessages[key])) {
-        lastMessages[key] = message
-        log { "${device.debugName()} write -> ${message.contentToString()}" }
-        characteristic.value = message
-        writeLimiter.acquire()
-        gatt.writeCharacteristic(characteristic)
-      } else {
-        log { "${device.debugName()} skip write ${message.contentToString()}" }
-      }
+      log { "${device.debugName()} write -> ${message.contentToString()}" }
+      characteristic.value = message
+      writeLimiter.acquire()
+      gatt.writeCharacteristic(characteristic)
     }
   }
 

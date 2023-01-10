@@ -46,7 +46,7 @@ import kotlinx.coroutines.sync.withLock
       else bleWapps()
     }
     .flowOn(context)
-    .shareIn(scope, SharingStarted.WhileSubscribed(5000), 1)
+    .shareIn(scope, SharingStarted.WhileSubscribed(1000), 1)
 
   private val foundWapps = mutableSetOf<Wapp>()
   private val wappsLock = Mutex()
