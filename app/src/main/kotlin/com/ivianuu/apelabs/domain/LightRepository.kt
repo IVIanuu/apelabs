@@ -50,7 +50,7 @@ import kotlinx.coroutines.withContext
       val lights = state.toMutableList()
       if ((message.getOrNull(0)?.toInt() == 82 ||
             message.getOrNull(0)?.toInt() == 83) &&
-        // -96 means that it's a light light
+        // -96 means that it's a light
         message.getOrNull(1)?.toInt() == -96
       ) {
         log { "message ${message.contentToString()}" }

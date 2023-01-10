@@ -21,7 +21,6 @@ import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.seconds
-import com.ivianuu.essentials.util.BroadcastsFactory
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.injekt.common.Scoped
@@ -40,7 +39,6 @@ import java.util.*
 @Provide @Scoped<AppScope> class WappRemote(
   private val appContext: AppContext,
   private val bluetoothManager: @SystemService BluetoothManager,
-  private val broadcastsFactory: BroadcastsFactory,
   private val context: IOContext,
   private val logger: Logger,
   scope: NamedCoroutineScope<AppScope>

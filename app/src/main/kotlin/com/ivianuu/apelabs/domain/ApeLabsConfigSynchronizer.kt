@@ -25,11 +25,12 @@ import kotlin.time.Duration
 ) = ScopeWorker<AppForegroundScope> {
   wappRepository.wapps.collectLatest { wapps ->
     if (wapps.isEmpty()) return@collectLatest
+    val lastConfigs = mutableMapOf<Int, GroupConfig>()
 
     wapps.parForEach {
       remote.withWapp(it.address) {
         combine(pref.data, lightRepository.lights).collectLatest { (prefs) ->
-          applyGroupConfig(prefs.groupConfigs)
+          applyGroupConfig(prefs.groupConfigs, lastConfigs)
         }
       }
     }
@@ -38,67 +39,79 @@ import kotlin.time.Duration
 
 private suspend fun WappServer.applyGroupConfig(
   configs: Map<Int, GroupConfig>,
+  lastConfigs: MutableMap<Int, GroupConfig>,
   @Inject logger: Logger
 ) {
   configs
     .toList()
     .groupBy { it.second }
     .mapValues { it.value.map { it.first } }
+    .filter { (config, groups) ->
+      groups.any { lastConfigs[it] != config }
+    }
     .forEach { (config, groups) ->
       log { "${device.debugName()} -> apply config $config to $groups" }
 
-      when (config.program) {
-        is ProgramConfig.SingleColor -> {
-          write(
-            byteArrayOf(
-              68,
-              68,
-              groups.toGroupByte(),
-              4,
-              30,
-              config.program.color.red.toColorByte(),
-              config.program.color.green.toColorByte(),
-              config.program.color.blue.toColorByte(),
-              config.program.color.white.toColorByte()
-            )
-          )
-        }
-        is ProgramConfig.MultiColor -> {
-          config.program.items.forEachIndexed { index, item ->
+      if (groups.any { lastConfigs[it]?.program != config.program })
+        when (config.program) {
+          is ProgramConfig.SingleColor -> {
             write(
               byteArrayOf(
-                81,
-                index.toByte(),
-                config.program.items.size.toByte(),
-                item.color.red.toColorByte(),
-                item.color.green.toColorByte(),
-                item.color.blue.toColorByte(),
-                item.color.white.toColorByte(),
-                0,
-                item.fade.toDurationByte(),
-                0,
-                item.hold.toDurationByte(),
-                groups.toGroupByte()
+                68,
+                68,
+                groups.toGroupByte(),
+                4,
+                30,
+                config.program.color.red.toColorByte(),
+                config.program.color.green.toColorByte(),
+                config.program.color.blue.toColorByte(),
+                config.program.color.white.toColorByte()
               )
             )
           }
+          is ProgramConfig.MultiColor -> {
+            config.program.items.forEachIndexed { index, item ->
+              write(
+                byteArrayOf(
+                  81,
+                  index.toByte(),
+                  config.program.items.size.toByte(),
+                  item.color.red.toColorByte(),
+                  item.color.green.toColorByte(),
+                  item.color.blue.toColorByte(),
+                  item.color.white.toColorByte(),
+                  0,
+                  item.fade.toDurationByte(),
+                  0,
+                  item.hold.toDurationByte(),
+                  groups.toGroupByte()
+                )
+              )
+            }
+          }
+          ProgramConfig.Rainbow -> write(
+            byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0)
+          )
         }
-        ProgramConfig.Rainbow -> write(
-          byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0)
-        )
-      }
 
-      write(
-        byteArrayOf(
-          68,
-          68,
-          groups.toGroupByte(),
-          1,
-          (config.brightness * 100f).toInt().toByte()
+      if (groups.any { lastConfigs[it]?.brightness != config.brightness })
+        write(
+          byteArrayOf(
+            68,
+            68,
+            groups.toGroupByte(),
+            1,
+            (config.brightness * 100f).toInt().toByte()
+          )
         )
-      )
-      write(byteArrayOf(68, 68, groups.toGroupByte(), 2, (config.speed * 100f).toInt().toByte()))
-      write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (config.musicMode) 1 else 0, 0))
+
+      if (groups.any { lastConfigs[it]?.speed != config.speed })
+        write(byteArrayOf(68, 68, groups.toGroupByte(), 2, (config.speed * 100f).toInt().toByte()))
+
+      if (groups.any { lastConfigs[it]?.musicMode != config.musicMode })
+        write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (config.musicMode) 1 else 0, 0))
+
+      groups.forEach { lastConfigs[it] = config }
     }
 }
 
