@@ -130,26 +130,31 @@ import com.ivianuu.injekt.Provide
             title = { Text("Music mode") }
           )
         }
-
-        item {
-          Subheader { Text("Lights") }
-        }
-
-        val lights = lights.getOrElse { emptyList() }
-        items(lights) { light ->
-          ListItem(
-            title = { Text("Light ${light.id} group ${light.group}") },
-            trailing = {
-              PopupMenuButton(
-                items = listOf(
-                  PopupMenu.Item(onSelected = { flashLight(light) }) { Text("Flash") },
-                  PopupMenu.Item(onSelected = { regroupLight(light) }) { Text("Regroup") }
-                )
-              )
-            }
-          )
-        }
       }
+
+      item {
+        Subheader { Text("Lights") }
+      }
+
+      val lights = lights.getOrElse { emptyList() }
+
+      lights
+        .groupBy { it.group }
+        .forEach { (_, groupLights) ->
+          items(groupLights) { light ->
+            ListItem(
+              title = { Text("Light ${light.id} group ${light.group}") },
+              trailing = {
+                PopupMenuButton(
+                  items = listOf(
+                    PopupMenu.Item(onSelected = { flashLight(light) }) { Text("Flash") },
+                    PopupMenu.Item(onSelected = { regroupLight(light) }) { Text("Regroup") }
+                  )
+                )
+              }
+            )
+          }
+        }
     }
   }
 }

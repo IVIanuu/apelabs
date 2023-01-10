@@ -12,7 +12,6 @@ import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
@@ -22,8 +21,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Provide @Scoped<AppScope> class LightRepository(
@@ -36,17 +33,6 @@ import kotlinx.coroutines.withContext
   val lights: Flow<List<Light>> = wappRepository.wapps
     .flatMapLatest { wapps ->
       callbackFlow {
-        launch {
-          wapps.parForEach { wapp ->
-            remote.withWapp(wapp.address) {
-              while (coroutineContext.isActive) {
-                write(byteArrayOf(88))
-                delay(5000)
-              }
-            }
-          }
-        }
-
         wapps.parForEach { wapp ->
           remote.withWapp(wapp.address) {
             messages.collect {
