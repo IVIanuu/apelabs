@@ -71,8 +71,6 @@ private class Cache {
   val lastSpeed = mutableMapOf<Int, Float>()
   val lastMusicMode = mutableMapOf<Int, Boolean>()
   val lastLights = mutableListOf<Light>()
-
-  var run = 0
 }
 
 private suspend fun WappServer.applyGroupConfig(
@@ -81,10 +79,6 @@ private suspend fun WappServer.applyGroupConfig(
   cache: Cache,
   @Inject logger: Logger
 ) {
-  cache.run++
-
-  log { "apply group config $configs $lights" }
-
   // force a reapply of groups with changed lights
   lights
     .filter { it !in cache.lastLights }
