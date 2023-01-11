@@ -2,6 +2,7 @@ package com.ivianuu.apelabs.domain
 
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.GroupConfig
+import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.ProgramConfig
 import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.essentials.app.AppForegroundScope
@@ -26,11 +27,12 @@ import kotlin.time.Duration
   wappRepository.wapps.collectLatest { wapps ->
     if (wapps.isEmpty()) return@collectLatest
     val lastConfigs = mutableMapOf<Int, GroupConfig>()
+    val lastLights = mutableListOf<Light>()
 
-    wapps.parForEach {
-      remote.withWapp(it.address) {
-        combine(pref.data, lightRepository.lights).collectLatest { (prefs) ->
-          applyGroupConfig(prefs.groupConfigs, lastConfigs)
+    wapps.parForEach { wapp ->
+      remote.withWapp(wapp.address) {
+        combine(pref.data, lightRepository.lights).collectLatest { (prefs, lights) ->
+          applyGroupConfig(prefs.groupConfigs, lights, lastConfigs, lastLights)
         }
       }
     }
@@ -39,18 +41,34 @@ import kotlin.time.Duration
 
 private suspend fun WappServer.applyGroupConfig(
   configs: Map<Int, GroupConfig>,
+  lights: List<Light>,
   lastConfigs: MutableMap<Int, GroupConfig>,
+  lastLights: MutableList<Light>,
   @Inject logger: Logger
 ) {
+  // force a rewrite of groups with changed lights
+  lights
+    .filter { it !in lastLights }
+    .mapTo(mutableSetOf()) { it.group }
+    .forEach {
+      log { "force rewrite of $it" }
+      lastConfigs.remove(it)
+    }
+  lastLights.clear()
+  lastLights.addAll(lights)
+
   configs
     .toList()
     .groupBy { it.second }
     .mapValues { it.value.map { it.first } }
     .filter { (config, groups) ->
+      // only apply changes if any group config has changed
       groups.any { lastConfigs[it] != config }
     }
     .forEach { (config, groups) ->
       log { "${device.debugName()} -> apply config $config to $groups" }
+
+      // only apply whats changed
 
       if (groups.any { lastConfigs[it]?.program != config.program })
         when (config.program) {
