@@ -1,0 +1,48 @@
+package com.ivianuu.apelabs.domain
+
+import com.ivianuu.apelabs.data.ApeLabsPrefs
+import com.ivianuu.apelabs.data.LightColor
+import com.ivianuu.essentials.data.DataStore
+import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+
+@Provide class ColorRepository(
+  private val pref: DataStore<ApeLabsPrefs>
+) {
+  val colors: Flow<Map<String, LightColor>>
+    get() = pref.data
+      .map { it.colors }
+      .distinctUntilChanged()
+
+  suspend fun saveColor(name: String, color: LightColor) {
+    pref.updateData {
+      copy(
+        colors = colors.toMutableMap()
+          .apply { this[name] = color }
+      )
+    }
+  }
+
+  suspend fun deleteColor(name: String) {
+    pref.updateData {
+      copy(
+        colors = colors.toMutableMap()
+          .apply { remove(name) }
+      )
+    }
+  }
+}
+
+val BuiltInColors = mapOf(
+  "Red" to LightColor(1f, 0f, 0f, 0f),
+  "Green" to LightColor(0f, 1f, 0f, 0f),
+  "Blue" to LightColor(0f, 0f, 1f, 0f),
+  "Yellow" to LightColor(1f, 1f, 0f, 0f),
+  "Pink" to LightColor(1f, 0f, 1f, 0f),
+  "Cyan" to LightColor(0f, 1f, 1f, 0f),
+  "White" to LightColor(0f, 0f, 0f, 1f),
+  "Rgb white" to LightColor(1f, 1f, 1f, 0f),
+  "Amber" to LightColor(1f, 0.75f, 0f, 0.03f)
+)

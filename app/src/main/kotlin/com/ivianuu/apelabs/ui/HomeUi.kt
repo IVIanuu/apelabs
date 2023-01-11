@@ -286,7 +286,7 @@ data class HomeModel(
     },
     updateProgramColor = action {
       navigator.push(
-        ColorPickerKey(
+        ColorKey(
           groupConfig.program.safeAs<ProgramConfig.SingleColor>()?.color ?: LightColor()
         )
       )
