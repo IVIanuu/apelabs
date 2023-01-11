@@ -32,23 +32,27 @@ fun lightIdOf(id1: Byte, id2: Byte) = "$id1:$id2"
 fun String.toApeLabsId() = split(":").let { it[0].toByte() to it[1].toByte() }
 
 @Serializable data class GroupConfig(
-  val program: ProgramConfig = ProgramConfig.SingleColor(LightColor()),
+  val program: Program = Program.SingleColor(LightColor()),
   val brightness: Float = 1f,
   val speed: Float = 0f,
   val musicMode: Boolean = false
 )
 
-@Serializable sealed interface ProgramConfig {
-  @Serializable data class SingleColor(val color: LightColor) : ProgramConfig
-  @Serializable data class MultiColor(val items: List<Item>) : ProgramConfig {
+@Serializable sealed interface Program {
+  @Serializable data class SingleColor(val color: LightColor = LightColor()) : Program
+  @Serializable data class MultiColor(val items: List<Item> = emptyList()) : Program {
     @Serializable data class Item(
-      val color: LightColor,
+      val color: LightColor = LightColor(),
       val fade: Duration = 1.seconds,
       val hold: Duration = 1.seconds
     )
+
+    companion object {
+      const val MAX_ITEMS = 4
+    }
   }
 
-  @Serializable object Rainbow : ProgramConfig
+  @Serializable object Rainbow : Program
 }
 
 @Serializable data class LightColor(
@@ -78,9 +82,9 @@ fun List<GroupConfig>.merge(): GroupConfig = when {
   size == 1 -> single()
   else -> GroupConfig(
     program = when {
-      all { it.program is ProgramConfig.SingleColor } -> {
-        val colors = map { it.program.cast<ProgramConfig.SingleColor>().color }
-        ProgramConfig.SingleColor(
+      all { it.program is Program.SingleColor } -> {
+        val colors = map { it.program.cast<Program.SingleColor>().color }
+        Program.SingleColor(
           color = LightColor(
             red = colors.map { it.red }.average().toFloat(),
             green = colors.map { it.green }.average().toFloat(),
@@ -90,7 +94,7 @@ fun List<GroupConfig>.merge(): GroupConfig = when {
         )
       }
       all { a -> all { a.program == it.program } } -> first().program
-      else -> ProgramConfig.SingleColor(LightColor())
+      else -> Program.SingleColor(LightColor())
     },
     brightness = map { it.brightness }.average().toFloat(),
     speed = map { it.speed }.average().toFloat(),
@@ -101,7 +105,8 @@ fun List<GroupConfig>.merge(): GroupConfig = when {
 @Serializable data class ApeLabsPrefs(
   val selectedGroups: Set<Int> = emptySet(),
   val groupConfigs: Map<Int, GroupConfig> = emptyMap(),
-  val colors: Map<String, LightColor> = emptyMap()
+  val colors: Map<String, LightColor> = emptyMap(),
+  val programs: Map<String, Program.MultiColor> = emptyMap()
 ) {
   companion object {
     @Provide val prefModule = DataStoreModule("apelabs_prefs") { ApeLabsPrefs() }

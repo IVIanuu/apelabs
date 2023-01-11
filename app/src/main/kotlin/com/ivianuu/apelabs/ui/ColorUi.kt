@@ -15,14 +15,10 @@ import androidx.compose.material.Button
 import androidx.compose.material.Chip
 import androidx.compose.material.ChipDefaults
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Slider
 import androidx.compose.material.SliderDefaults
 import androidx.compose.material.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.data.LightColor
+import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.BuiltInColors
 import com.ivianuu.apelabs.domain.ColorRepository
@@ -53,6 +50,8 @@ import com.ivianuu.essentials.ui.navigation.PopupKey
 import com.ivianuu.essentials.ui.navigation.SimpleKeyUi
 import com.ivianuu.essentials.ui.navigation.pop
 import com.ivianuu.essentials.ui.navigation.push
+import com.ivianuu.essentials.ui.popup.PopupMenu
+import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,7 +63,7 @@ data class ColorKey(
 
 @Provide fun colorUi(
   colorRepository: ColorRepository,
-  preview: MutableStateFlow<@Preview LightColor?>,
+  previewProgram: MutableStateFlow<@Preview Program?>,
   ctx: KeyUiContext<ColorKey>
 ) = SimpleKeyUi<ColorKey> {
   DialogScaffold {
@@ -78,12 +77,12 @@ data class ColorKey(
     LaunchedEffect(red, green, blue, white) {
       // debounce
       delay(100.milliseconds)
-      preview.value = currentColor()
+      previewProgram.value = Program.SingleColor(currentColor())
     }
 
     LaunchedEffect(true) {
       onCancel {
-        preview.value = null
+        previewProgram.value = null
       }
     }
 
@@ -188,15 +187,17 @@ data class ColorKey(
                     if (deletable) {
                       Spacer(Modifier.padding(start = 8.dp))
 
-                      IconButton(
+                      PopupMenuButton(
                         modifier = Modifier
                           .size(18.dp),
-                        onClick = action {
-                          colorRepository.deleteColor(id)
-                        }
-                      ) {
-                        Icon(Icons.Default.Close)
-                      }
+                        items = listOf(
+                          PopupMenu.Item(
+                            onSelected = action {
+                              colorRepository.deleteColor(id)
+                            }
+                          ) { Text("Delete") }
+                        )
+                      )
                     }
                   }
                 }

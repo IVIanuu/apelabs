@@ -6,6 +6,7 @@ package com.ivianuu.apelabs.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -29,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
@@ -38,10 +38,10 @@ import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.LightColor
-import com.ivianuu.apelabs.data.ProgramConfig
+import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.merge
-import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.LightRepository
+import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.resource.Resource
@@ -52,6 +52,8 @@ import com.ivianuu.essentials.state.bind
 import com.ivianuu.essentials.state.bindResource
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.ListKey
+import com.ivianuu.essentials.ui.dialog.TextInputKey
+import com.ivianuu.essentials.ui.material.ListItem
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Subheader
 import com.ivianuu.essentials.ui.material.TopAppBar
@@ -62,7 +64,8 @@ import com.ivianuu.essentials.ui.navigation.ModelKeyUi
 import com.ivianuu.essentials.ui.navigation.Navigator
 import com.ivianuu.essentials.ui.navigation.RootKey
 import com.ivianuu.essentials.ui.navigation.push
-import com.ivianuu.essentials.ui.prefs.ColorListItem
+import com.ivianuu.essentials.ui.popup.PopupMenu
+import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.prefs.ScaledPercentageUnitText
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
@@ -108,25 +111,6 @@ import kotlin.coroutines.coroutineContext
           Text("Select a group to edit")
         }
       } else {
-        item {
-          ColorListItem(
-            value = groupConfig.program.safeAs<ProgramConfig.SingleColor>()
-              ?.color
-              ?.toColor()
-              ?: Color.Black,
-            onValueChangeRequest = updateProgramColor,
-            title = { Text("Color") }
-          )
-        }
-
-        item {
-          SwitchListItem(
-            value = rainbowProgram,
-            onValueChange = updateRainbowProgram,
-            title = { Text("Rainbow program") }
-          )
-        }
-
         item {
           SliderListItem(
             value = groupConfig.brightness,
@@ -197,6 +181,46 @@ import kotlin.coroutines.coroutineContext
           }
         }
       }
+
+      item {
+        Subheader { Text("Programs") }
+      }
+
+      item {
+        ListItem(
+          modifier = Modifier.clickable(onClick = updateColor),
+          title = { Text("Color") }
+        )
+      }
+
+      val programs = programs.getOrElse { emptyMap() }
+      programs.forEach { (id, program) ->
+        item {
+          ListItem(
+            modifier = Modifier.clickable { updateProgram(program) },
+            title = { Text(id) },
+            trailing = {
+              PopupMenuButton(
+                items = listOf(
+                  PopupMenu.Item(onSelected = { openProgram(id) }) { Text("Open") },
+                  PopupMenu.Item(onSelected = { deleteProgram(id) }) { Text("Delete") }
+                )
+              )
+            }
+          )
+        }
+      }
+
+      item {
+        ListItem(
+          modifier = Modifier.clickable(onClick = updateRainbowProgram),
+          title = { Text("Rainbow") }
+        )
+      }
+
+      item {
+        Button(onClick = addProgram) { Text("ADD PROGRAM") }
+      }
     }
   }
 }
@@ -243,9 +267,6 @@ data class HomeModel(
   val toggleGroupSelection: (Int, Boolean) -> Unit,
   val toggleAllGroupSelections: () -> Unit,
   val groupConfig: GroupConfig,
-  val rainbowProgram: Boolean,
-  val updateRainbowProgram: (Boolean) -> Unit,
-  val updateProgramColor: () -> Unit,
   val updateBrightness: (Float) -> Unit,
   val updateSpeed: (Float) -> Unit,
   val updateMusicMode: (Boolean) -> Unit,
@@ -254,12 +275,20 @@ data class HomeModel(
   val toggleLightSelection: (Light) -> Unit,
   val flashLight: suspend (Light) -> Unit,
   val regroupLights: () -> Unit,
+  val programs: Resource<Map<String, Program.MultiColor>>,
+  val updateColor: () -> Unit,
+  val updateProgram: (Program) -> Unit,
+  val updateRainbowProgram: () -> Unit,
+  val openProgram: (String) -> Unit,
+  val addProgram: () -> Unit,
+  val deleteProgram: (String) -> Unit
 )
 
 @Provide fun homeModel(
   lightRepository: LightRepository,
   navigator: Navigator,
-  pref: DataStore<ApeLabsPrefs>
+  pref: DataStore<ApeLabsPrefs>,
+  programRepository: ProgramRepository
 ) = Model {
   val prefs = pref.data.bind(ApeLabsPrefs())
 
@@ -314,19 +343,6 @@ data class HomeModel(
       }
     },
     groupConfig = groupConfig,
-    rainbowProgram = groupConfig.program is ProgramConfig.Rainbow,
-    updateRainbowProgram = action { value ->
-      if (value) updateConfig { copy(program = ProgramConfig.Rainbow) }
-      else updateConfig { copy(program = ProgramConfig.SingleColor(LightColor())) }
-    },
-    updateProgramColor = action {
-      navigator.push(
-        ColorKey(
-          groupConfig.program.safeAs<ProgramConfig.SingleColor>()?.color ?: LightColor()
-        )
-      )
-        ?.let { updateConfig { copy(program = ProgramConfig.SingleColor(it)) } }
-    },
     updateBrightness = action { value ->
       updateConfig { copy(brightness = value) }
     },
@@ -362,6 +378,30 @@ data class HomeModel(
       while (coroutineContext.isActive) {
         lightRepository.flashLight(light.id)
       }
+    },
+    programs = programRepository.programs.bindResource(),
+    updateColor = action {
+      navigator.push(
+        ColorKey(
+          groupConfig.program.safeAs<Program.SingleColor>()?.color ?: LightColor()
+        )
+      )
+        ?.let { updateConfig { copy(program = Program.SingleColor(it)) } }
+    },
+    updateProgram = action { program -> updateConfig { copy(program = program) } },
+    updateRainbowProgram = action { updateConfig { copy(program = Program.Rainbow) } },
+    openProgram = action { program ->
+      navigator.push(ProgramKey(program))
+    },
+    addProgram = action {
+      navigator.push(TextInputKey(label = "Name.."))
+        ?.let {
+          programRepository.updateProgram(it, Program.MultiColor())
+          navigator.push(ProgramKey(it))
+        }
+    },
+    deleteProgram = action { program ->
+      programRepository.deleteProgram(program)
     }
   )
 }

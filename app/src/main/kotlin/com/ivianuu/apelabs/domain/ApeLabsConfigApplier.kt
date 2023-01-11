@@ -3,8 +3,7 @@ package com.ivianuu.apelabs.domain
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
-import com.ivianuu.apelabs.data.LightColor
-import com.ivianuu.apelabs.data.ProgramConfig
+import com.ivianuu.apelabs.data.Program
 import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.combine
@@ -27,7 +26,7 @@ import kotlin.time.Duration
   lightRepository: LightRepository,
   logger: Logger,
   pref: DataStore<ApeLabsPrefs>,
-  previewColor: Flow<@Preview LightColor?>,
+  previewColor: Flow<@Preview Program?>,
   remote: WappRemote,
   wappRepository: WappRepository
 ) = ScopeWorker<AppForegroundScope> {
@@ -39,11 +38,11 @@ import kotlin.time.Duration
       remote.withWapp(wapp.address) {
         combine(
           combine(pref.data, previewColor)
-            .map { (pref, previewColor) ->
-              previewColor?.let {
+            .map { (pref, previewProgram) ->
+              previewProgram?.let {
                 pref.groupConfigs.mapValues {
                   if (it.key in pref.selectedGroups)
-                    it.value.copy(program = ProgramConfig.SingleColor(previewColor))
+                    it.value.copy(program = previewProgram)
                   else it.value
                 }
               } ?: pref.groupConfigs
@@ -61,12 +60,12 @@ import kotlin.time.Duration
 
 @Tag annotation class Preview {
   companion object {
-    @Provide val flow = MutableStateFlow<@Preview LightColor?>(null)
+    @Provide val flow = MutableStateFlow<@Preview Program?>(null)
   }
 }
 
 private class Cache {
-  val lastProgram = mutableMapOf<Int, ProgramConfig>()
+  val lastProgram = mutableMapOf<Int, Program>()
   val lastBrightness = mutableMapOf<Int, Float>()
   val lastSpeed = mutableMapOf<Int, Float>()
   val lastMusicMode = mutableMapOf<Int, Boolean>()
@@ -138,7 +137,7 @@ private suspend fun WappServer.applyGroupConfig(
     cacheField = { lastProgram },
     apply = { value, groups ->
       when (value) {
-        is ProgramConfig.SingleColor -> {
+        is Program.SingleColor -> {
           write(
             byteArrayOf(
               68,
@@ -153,7 +152,7 @@ private suspend fun WappServer.applyGroupConfig(
             )
           )
         }
-        is ProgramConfig.MultiColor -> {
+        is Program.MultiColor -> {
           value.items.forEachIndexed { index, item ->
             write(
               byteArrayOf(
@@ -173,7 +172,7 @@ private suspend fun WappServer.applyGroupConfig(
             )
           }
         }
-        ProgramConfig.Rainbow -> write(
+        Program.Rainbow -> write(
           byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0)
         )
       }
