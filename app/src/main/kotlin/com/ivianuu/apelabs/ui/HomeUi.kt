@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Button
 import androidx.compose.material.ContentAlpha
 import androidx.compose.material.LocalContentColor
 import androidx.compose.material.LocalTextStyle
@@ -22,11 +22,16 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.GROUPS
@@ -37,6 +42,7 @@ import com.ivianuu.apelabs.data.ProgramConfig
 import com.ivianuu.apelabs.data.merge
 import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.LightRepository
+import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
@@ -46,7 +52,6 @@ import com.ivianuu.essentials.state.bind
 import com.ivianuu.essentials.state.bindResource
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.ListKey
-import com.ivianuu.essentials.ui.material.ListItem
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Subheader
 import com.ivianuu.essentials.ui.material.TopAppBar
@@ -57,13 +62,13 @@ import com.ivianuu.essentials.ui.navigation.ModelKeyUi
 import com.ivianuu.essentials.ui.navigation.Navigator
 import com.ivianuu.essentials.ui.navigation.RootKey
 import com.ivianuu.essentials.ui.navigation.push
-import com.ivianuu.essentials.ui.popup.PopupMenu
-import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.prefs.ColorListItem
 import com.ivianuu.essentials.ui.prefs.ScaledPercentageUnitText
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.isActive
+import kotlin.coroutines.coroutineContext
 
 @Provide object HomeKey : RootKey
 
@@ -74,12 +79,11 @@ import com.ivianuu.injekt.Provide
     VerticalList {
       item {
         FlowRow(
-          modifier = Modifier
-            .padding(8.dp),
+          modifier = Modifier.padding(8.dp),
           mainAxisSpacing = 8.dp,
           crossAxisSpacing = 8.dp
         ) {
-          Group(
+          LongClickChip(
             selected = groups.all { it in selectedGroups },
             onClick = toggleAllGroupSelections,
             onLongClick = null
@@ -88,7 +92,7 @@ import com.ivianuu.injekt.Provide
           }
 
           groups.forEach { group ->
-            Group(
+            LongClickChip(
               selected = group in selectedGroups,
               onClick = { toggleGroupSelection(group, false) },
               onLongClick = { toggleGroupSelection(group, true) }
@@ -152,35 +156,53 @@ import com.ivianuu.injekt.Provide
         }
       }
 
-      item {
-        Subheader { Text("Lights") }
-      }
-
       val lights = lights.getOrElse { emptyList() }
 
-      lights
-        .groupBy { it.group }
-        .forEach { (_, groupLights) ->
-          items(groupLights) { light ->
-            ListItem(
-              title = { Text("Light ${light.id} group ${light.group}") },
-              trailing = {
-                PopupMenuButton(
-                  items = listOf(
-                    PopupMenu.Item(onSelected = { flashLight(light) }) { Text("Flash") },
-                    PopupMenu.Item(onSelected = { regroupLight(light) }) { Text("Regroup") }
-                  )
-                )
+      if (lights.isNotEmpty()) {
+        item {
+          Subheader { Text("Lights") }
+        }
+
+        item {
+          FlowRow(
+            modifier = Modifier
+              .padding(16.dp),
+            mainAxisSpacing = 8.dp,
+            crossAxisSpacing = 8.dp,
+            crossAxisAlignment = FlowCrossAxisAlignment.Center
+          ) {
+            lights
+              .groupBy { it.group }
+              .mapValues { it.value.sortedBy { it.id } }
+              .toList()
+              .sortedBy { it.first }
+              .forEach { (group, groupLights) ->
+                Text("#$group")
+                groupLights.forEach { light ->
+                  LongClickChip(
+                    selected = light.id in selectedLights,
+                    onClick = { toggleLightSelection(light) },
+                    onLongClick = { toggleLightSelection(light) }
+                  ) {
+                    Text("Light ${light.id}")
+                  }
+                }
               }
-            )
           }
         }
+
+        if (selectedLights.isNotEmpty()) {
+          item {
+            Button(onClick = regroupLights) { Text("Regroup") }
+          }
+        }
+      }
     }
   }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
-@Composable private fun Group(
+@Composable private fun LongClickChip(
   selected: Boolean,
   onClick: () -> Unit,
   onLongClick: (() -> Unit)?,
@@ -228,8 +250,10 @@ data class HomeModel(
   val updateSpeed: (Float) -> Unit,
   val updateMusicMode: (Boolean) -> Unit,
   val lights: Resource<List<Light>>,
-  val flashLight: (Light) -> Unit,
-  val regroupLight: (Light) -> Unit
+  val selectedLights: Set<String>,
+  val toggleLightSelection: (Light) -> Unit,
+  val flashLight: suspend (Light) -> Unit,
+  val regroupLights: () -> Unit,
 )
 
 @Provide fun homeModel(
@@ -253,6 +277,17 @@ data class HomeModel(
           }
         }
       )
+    }
+  }
+
+  val lights = lightRepository.lights.bindResource()
+  var selectedLights by remember { mutableStateOf(emptySet<String>()) }
+
+  LaunchedEffect(selectedLights) {
+    selectedLights.parForEach { lightId ->
+      while (coroutineContext.isActive) {
+        lightRepository.flashLight(lightId)
+      }
     }
   }
 
@@ -301,17 +336,32 @@ data class HomeModel(
     updateMusicMode = action { value ->
       updateConfig { copy(musicMode = value) }
     },
-    lights = lightRepository.lights.bindResource(),
-    regroupLight = action { light ->
+    lights = lights,
+    selectedLights = selectedLights,
+    toggleLightSelection = action { light ->
+      selectedLights = selectedLights.toMutableSet().apply {
+        if (light.id in this) remove(light.id)
+        else add(light.id)
+      }
+    },
+    regroupLights = action {
       navigator.push(
         ListKey(
           items = GROUPS
             .map { ListKey.Item(it, it.toString()) }
         )
-      )?.let { lightRepository.regroupLight(light.id, it) }
+      )?.let { group ->
+        selectedLights.parForEach {
+          lightRepository.regroupLight(it, group)
+        }
+
+        selectedLights = emptySet()
+      }
     },
-    flashLight = action { light ->
-      lightRepository.flashLight(light.id)
+    flashLight = { light ->
+      while (coroutineContext.isActive) {
+        lightRepository.flashLight(light.id)
+      }
     }
   )
 }
