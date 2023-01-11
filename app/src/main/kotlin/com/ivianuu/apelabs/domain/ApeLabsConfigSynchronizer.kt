@@ -5,7 +5,6 @@ import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.LightColor
 import com.ivianuu.apelabs.data.ProgramConfig
-import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.combine
@@ -20,6 +19,7 @@ import com.ivianuu.injekt.Tag
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
 
@@ -33,8 +33,7 @@ import kotlin.time.Duration
 ) = ScopeWorker<AppForegroundScope> {
   wappRepository.wapps.collectLatest { wapps ->
     if (wapps.isEmpty()) return@collectLatest
-    val lastConfigs = mutableMapOf<Int, GroupConfig>()
-    val lastLights = mutableListOf<Light>()
+    val cache = Cache()
 
     wapps.parForEach { wapp ->
       remote.withWapp(wapp.address) {
@@ -50,9 +49,11 @@ import kotlin.time.Duration
               } ?: pref.groupConfigs
             },
           lightRepository.lights
-        ).collectLatest { (groupConfigs, lights) ->
-          applyGroupConfig(groupConfigs, lights, lastConfigs, lastLights)
-        }
+        )
+          .distinctUntilChanged()
+          .collectLatest { (groupConfigs, lights) ->
+            applyGroupConfig(groupConfigs, lights, cache)
+          }
       }
     }
   }
@@ -64,113 +65,162 @@ import kotlin.time.Duration
   }
 }
 
+private class Cache {
+  val lastProgram = mutableMapOf<Int, ProgramConfig>()
+  val lastBrightness = mutableMapOf<Int, Float>()
+  val lastSpeed = mutableMapOf<Int, Float>()
+  val lastMusicMode = mutableMapOf<Int, Boolean>()
+  val lastLights = mutableListOf<Light>()
+
+  var run = 0
+}
+
 private suspend fun WappServer.applyGroupConfig(
   configs: Map<Int, GroupConfig>,
   lights: List<Light>,
-  lastConfigs: MutableMap<Int, GroupConfig>,
-  lastLights: MutableList<Light>,
+  cache: Cache,
   @Inject logger: Logger
 ) {
-  onCancel(
-    block = {
-      // force a rewrite of groups with changed lights
-      lights
-        .filter { it !in lastLights }
-        .mapTo(mutableSetOf()) { it.group }
-        .forEach {
-          log { "force rewrite of $it" }
-          lastConfigs.remove(it)
+  cache.run++
+
+  log { "apply group config $configs $lights" }
+
+  // force a rewrite of groups with changed lights
+  lights
+    .filter { it !in cache.lastLights }
+    .mapTo(mutableSetOf()) { it.group }
+    .forEach {
+      log { "force rewrite of $it" }
+      cache.lastProgram.remove(it)
+      cache.lastBrightness.remove(it)
+      cache.lastSpeed.remove(it)
+      cache.lastMusicMode.remove(it)
+    }
+  cache.lastLights.clear()
+  cache.lastLights.addAll(lights)
+
+  suspend fun <T> writeIfChanged(
+    tag: String,
+    get: GroupConfig.() -> T,
+    cacheField: Cache.() -> MutableMap<Int, T>,
+    write: suspend (T, List<Int>) -> Unit
+  ) {
+    configs
+      .toList()
+      .groupBy { get(it.second) }
+      .mapValues { (value, config) ->
+        config
+          .map { it.first }
+          .filter { cache.cacheField()[it] != value }
+      }
+      .filterValues { it.isNotEmpty() }
+      .toList()
+      .sortedByDescending { (_, groups) ->
+        groups.sumOf { group -> lights.filter { it.group == group }.size }
+      }
+      .forEach { (value, groups) ->
+        onCancel(
+          block = {
+            log { "write $tag $value for $groups" }
+            write(value, groups)
+            groups.forEach { cache.cacheField()[it] = value }
+          },
+          onCancel = {
+            log { "write cancelled $tag for $groups" }
+            groups.forEach { cache.cacheField()[it] = value }
+          }
+        )
+      }
+  }
+
+  writeIfChanged(
+    tag = "program",
+    get = { program },
+    cacheField = { lastProgram },
+    write = { value, groups ->
+      when (value) {
+        is ProgramConfig.SingleColor -> {
+          write(
+            byteArrayOf(
+              68,
+              68,
+              groups.toGroupByte(),
+              4,
+              30,
+              value.color.red.toColorByte(),
+              value.color.green.toColorByte(),
+              value.color.blue.toColorByte(),
+              value.color.white.toColorByte()
+            )
+          )
         }
-      lastLights.clear()
-      lastLights.addAll(lights)
-
-      configs
-        .toList()
-        .groupBy { it.second }
-        .mapValues { it.value.map { it.first } }
-        .filter { (config, groups) ->
-          // only apply changes if any group config has changed
-          groups.any { lastConfigs[it] != config }
-        }
-        .forEach { (config, groups) ->
-          log { "${device.debugName()} -> apply config $config to $groups" }
-
-          // only apply whats changed
-
-          if (groups.any { lastConfigs[it]?.program != config.program })
-            when (config.program) {
-              is ProgramConfig.SingleColor -> {
-                write(
-                  byteArrayOf(
-                    68,
-                    68,
-                    groups.toGroupByte(),
-                    4,
-                    30,
-                    config.program.color.red.toColorByte(),
-                    config.program.color.green.toColorByte(),
-                    config.program.color.blue.toColorByte(),
-                    config.program.color.white.toColorByte()
-                  )
-                )
-              }
-              is ProgramConfig.MultiColor -> {
-                config.program.items.forEachIndexed { index, item ->
-                  write(
-                    byteArrayOf(
-                      81,
-                      index.toByte(),
-                      config.program.items.size.toByte(),
-                      item.color.red.toColorByte(),
-                      item.color.green.toColorByte(),
-                      item.color.blue.toColorByte(),
-                      item.color.white.toColorByte(),
-                      0,
-                      item.fade.toDurationByte(),
-                      0,
-                      item.hold.toDurationByte(),
-                      groups.toGroupByte()
-                    )
-                  )
-                }
-              }
-              ProgramConfig.Rainbow -> write(
-                byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0)
-              )
-            }
-
-          if (groups.any { lastConfigs[it]?.brightness != config.brightness })
+        is ProgramConfig.MultiColor -> {
+          value.items.forEachIndexed { index, item ->
             write(
               byteArrayOf(
-                68,
-                68,
-                groups.toGroupByte(),
-                1,
-                (config.brightness * 100f).toInt().toByte()
+                81,
+                index.toByte(),
+                value.items.size.toByte(),
+                item.color.red.toColorByte(),
+                item.color.green.toColorByte(),
+                item.color.blue.toColorByte(),
+                item.color.white.toColorByte(),
+                0,
+                item.fade.toDurationByte(),
+                0,
+                item.hold.toDurationByte(),
+                groups.toGroupByte()
               )
             )
-
-          if (groups.any { lastConfigs[it]?.speed != config.speed })
-            write(
-              byteArrayOf(
-                68,
-                68,
-                groups.toGroupByte(),
-                2,
-                (config.speed * 100f).toInt().toByte()
-              )
-            )
-
-          if (groups.any { lastConfigs[it]?.musicMode != config.musicMode })
-            write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (config.musicMode) 1 else 0, 0))
-
-          groups.forEach { lastConfigs[it] = config }
+          }
         }
-    },
-    onCancel = {
-      log { "write cancelled" }
-      lastConfigs.clear()
-      lastLights.clear()
+        ProgramConfig.Rainbow -> write(
+          byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0)
+        )
+      }
+    }
+  )
+
+  writeIfChanged(
+    tag = "brightness",
+    get = { brightness },
+    cacheField = { lastBrightness },
+    write = { value, groups ->
+      write(
+        byteArrayOf(
+          68,
+          68,
+          groups.toGroupByte(),
+          1,
+          (value * 100f).toInt().toByte()
+        )
+      )
+    }
+  )
+
+  writeIfChanged(
+    tag = "speed",
+    get = { speed },
+    cacheField = { lastSpeed },
+    write = { value, groups ->
+      write(
+        byteArrayOf(
+          68,
+          68,
+          groups.toGroupByte(),
+          2,
+          (value * 100f).toInt().toByte()
+        )
+      )
+    }
+  )
+
+  writeIfChanged(
+    tag = "music mode",
+    get = { musicMode },
+    cacheField = { lastMusicMode },
+    write = { value, groups ->
+      write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (value) 1 else 0, 0))
     }
   )
 }
