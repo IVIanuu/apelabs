@@ -24,6 +24,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,8 @@ import com.ivianuu.apelabs.data.LightColor
 import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.BuiltInColors
 import com.ivianuu.apelabs.domain.ColorRepository
+import com.ivianuu.apelabs.domain.Preview
+import com.ivianuu.essentials.coroutines.onCancel
 import com.ivianuu.essentials.state.action
 import com.ivianuu.essentials.state.bind
 import com.ivianuu.essentials.ui.common.VerticalList
@@ -51,6 +54,9 @@ import com.ivianuu.essentials.ui.navigation.SimpleKeyUi
 import com.ivianuu.essentials.ui.navigation.pop
 import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlin.time.Duration.Companion.milliseconds
 
 data class ColorKey(
   val initial: LightColor = LightColor()
@@ -58,6 +64,7 @@ data class ColorKey(
 
 @Provide fun colorUi(
   colorRepository: ColorRepository,
+  preview: MutableStateFlow<@Preview LightColor?>,
   ctx: KeyUiContext<ColorKey>
 ) = SimpleKeyUi<ColorKey> {
   DialogScaffold {
@@ -67,6 +74,18 @@ data class ColorKey(
     var white by remember { mutableStateOf(ctx.key.initial.white) }
 
     fun currentColor() = LightColor(red, green, blue, white)
+
+    LaunchedEffect(red, green, blue, white) {
+      // debounce
+      delay(100.milliseconds)
+      preview.value = currentColor()
+    }
+
+    LaunchedEffect(true) {
+      onCancel {
+        preview.value = null
+      }
+    }
 
     Dialog(
       content = {

@@ -3,6 +3,7 @@ package com.ivianuu.apelabs.domain
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
+import com.ivianuu.apelabs.data.LightColor
 import com.ivianuu.apelabs.data.ProgramConfig
 import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.essentials.app.AppForegroundScope
@@ -14,13 +15,18 @@ import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
+import com.ivianuu.injekt.Tag
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
 
 @Provide fun apeLabsConfigSynchronizer(
   lightRepository: LightRepository,
   logger: Logger,
   pref: DataStore<ApeLabsPrefs>,
+  previewColor: Flow<@Preview LightColor?>,
   remote: WappRemote,
   wappRepository: WappRepository
 ) = ScopeWorker<AppForegroundScope> {
@@ -31,11 +37,31 @@ import kotlin.time.Duration
 
     wapps.parForEach { wapp ->
       remote.withWapp(wapp.address) {
-        combine(pref.data, lightRepository.lights).collectLatest { (prefs, lights) ->
-          applyGroupConfig(prefs.groupConfigs, lights, lastConfigs, lastLights)
+        combine(
+          combine(
+            pref.data,
+            previewColor
+          ).map { (pref, previewColor) ->
+            previewColor?.let {
+              pref.groupConfigs.mapValues {
+                if (it.key in pref.selectedGroups)
+                  it.value.copy(program = ProgramConfig.SingleColor(previewColor))
+                else it.value
+              }
+            } ?: pref.groupConfigs
+          },
+          lightRepository.lights
+        ).collectLatest { (groupConfigs, lights) ->
+          applyGroupConfig(groupConfigs, lights, lastConfigs, lastLights)
         }
       }
     }
+  }
+}
+
+@Tag annotation class Preview {
+  companion object {
+    @Provide val flow = MutableStateFlow<@Preview LightColor?>(null)
   }
 }
 
