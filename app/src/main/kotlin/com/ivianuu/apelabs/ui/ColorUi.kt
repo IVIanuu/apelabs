@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,8 +36,7 @@ import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.BuiltInColors
 import com.ivianuu.apelabs.domain.ColorRepository
-import com.ivianuu.apelabs.domain.Preview
-import com.ivianuu.essentials.coroutines.onCancel
+import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.essentials.state.action
 import com.ivianuu.essentials.state.bind
 import com.ivianuu.essentials.ui.common.VerticalList
@@ -53,9 +53,6 @@ import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.popup.PopupMenu
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlin.time.Duration.Companion.milliseconds
 
 data class ColorKey(
   val initial: LightColor = LightColor()
@@ -63,7 +60,7 @@ data class ColorKey(
 
 @Provide fun colorUi(
   colorRepository: ColorRepository,
-  previewProgram: MutableStateFlow<@Preview Program?>,
+  previewRepository: PreviewRepository,
   ctx: KeyUiContext<ColorKey>
 ) = SimpleKeyUi<ColorKey> {
   DialogScaffold {
@@ -74,15 +71,10 @@ data class ColorKey(
 
     fun currentColor() = LightColor(red, green, blue, white)
 
-    LaunchedEffect(red, green, blue, white) {
-      // debounce
-      delay(100.milliseconds)
-      previewProgram.value = Program.SingleColor(currentColor())
-    }
-
     LaunchedEffect(true) {
-      onCancel {
-        previewProgram.value = null
+      previewRepository.providePreviews { update ->
+        snapshotFlow { currentColor() }
+          .collect { update(Program.SingleColor(it)) }
       }
     }
 
@@ -170,7 +162,7 @@ data class ColorKey(
                 .forEach { (id, color) ->
                   Chip(
                     modifier = Modifier
-                      .padding(start = 8.dp),
+                      .padding(start = 16.dp),
                     onClick = {
                       red = color.red
                       green = color.green

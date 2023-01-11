@@ -14,9 +14,6 @@ import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
-import com.ivianuu.injekt.Tag
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -26,7 +23,7 @@ import kotlin.time.Duration
   lightRepository: LightRepository,
   logger: Logger,
   pref: DataStore<ApeLabsPrefs>,
-  previewColor: Flow<@Preview Program?>,
+  previewRepository: PreviewRepository,
   remote: WappRemote,
   wappRepository: WappRepository
 ) = ScopeWorker<AppForegroundScope> {
@@ -37,7 +34,7 @@ import kotlin.time.Duration
     wapps.parForEach { wapp ->
       remote.withWapp(wapp.address) {
         combine(
-          combine(pref.data, previewColor)
+          combine(pref.data, previewRepository.preview)
             .map { (pref, previewProgram) ->
               previewProgram?.let {
                 pref.groupConfigs.mapValues {
@@ -55,12 +52,6 @@ import kotlin.time.Duration
           }
       }
     }
-  }
-}
-
-@Tag annotation class Preview {
-  companion object {
-    @Provide val flow = MutableStateFlow<@Preview Program?>(null)
   }
 }
 

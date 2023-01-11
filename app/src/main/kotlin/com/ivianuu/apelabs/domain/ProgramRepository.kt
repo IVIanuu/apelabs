@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.map
 
   fun program(id: String) = programs
     .map { it[id] }
+    .distinctUntilChanged()
 
   suspend fun updateProgram(id: String, program: Program.MultiColor) {
     pref.updateData {
