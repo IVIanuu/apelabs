@@ -1,27 +1,34 @@
 package com.ivianuu.apelabs.domain
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.lightIdOf
 import com.ivianuu.apelabs.data.toApeLabsId
+import com.ivianuu.apelabs.stateFlow
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
+import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Provide @Scoped<AppScope> class LightRepository(
@@ -31,40 +38,55 @@ import kotlinx.coroutines.withContext
   scope: NamedCoroutineScope<AppScope>,
   private val wappRepository: WappRepository
 ) {
-  val lights: Flow<List<Light>> = wappRepository.wapps
-    .flatMapLatest { wapps ->
-      callbackFlow {
-        wapps.parForEach { wapp ->
-          remote.withWapp(wapp.address) {
-            messages.collect {
-              trySend(it)
+  val lights: Flow<List<Light>> = stateFlow {
+    var lights by remember { mutableStateOf(emptyList<Light>()) }
+    val lightRemovalJobs = remember { mutableMapOf<String, Job>() }
+
+    LaunchedEffect(true) {
+      wappRepository.wapps
+        .flatMapLatest { wapps ->
+          callbackFlow {
+            wapps.parForEach { wapp ->
+              remote.withWapp(wapp.address) {
+                messages.collect {
+                  trySend(it)
+                }
+              }
             }
+
+            awaitClose()
           }
         }
+        .mapNotNull { message ->
+          if ((message.getOrNull(0)?.toInt() == 82 ||
+                message.getOrNull(0)?.toInt() == 83) &&
+            // -96 means that it's a light
+            message.getOrNull(1)?.toInt() == -96
+          ) {
+            val id = lightIdOf(message[2], message[3])
+            Light(id, message.getOrNull(10)?.toInt()?.inc() ?: 1)
+          } else null
+        }
+        .collect { light ->
+          log { "${light.id} ping" }
 
-        awaitClose()
-      }
-    }
-    .onStart { emit(byteArrayOf()) }
-    .scan(emptyList<Light>()) { state, message ->
-      val lights = state.toMutableList()
-      if ((message.getOrNull(0)?.toInt() == 82 ||
-            message.getOrNull(0)?.toInt() == 83) &&
-        // -96 means that it's a light
-        message.getOrNull(1)?.toInt() == -96
-      ) {
-        log { "message ${message.contentToString()}" }
-        val id = lightIdOf(message[2], message[3])
-        val light = Light(id, message.getOrNull(10)?.toInt()?.inc() ?: 1)
-        lights.removeAll { it.id == id }
-        lights.add(light)
-      }
+          lightRemovalJobs.remove(light.id)?.cancel()
 
-      lights
-        .sortedBy { it.id }
+          lightRemovalJobs[light.id] = scope.launch {
+            delay(20.seconds)
+            log { "${light.id} remove light" }
+            lights = lights
+              .filter { it.id != light.id }
+          }
+
+          lights = lights
+            .filter { it.id != light.id } + light
+        }
     }
-    .distinctUntilChanged()
-    .flowOn(context)
+
+    lights
+      .sortedBy { it.id }
+  }
     .shareIn(scope, SharingStarted.WhileSubscribed(), 1)
 
   suspend fun flashLight(id: String) {
