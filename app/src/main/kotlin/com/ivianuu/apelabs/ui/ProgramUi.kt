@@ -57,7 +57,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 data class ProgramKey(val id: String) : Key<Unit>
 
-@Provide fun programUi() = ModelKeyUi<ProgramKey, ProgramModel> {
+@Provide val programUi = ModelKeyUi<ProgramKey, ProgramModel> {
   Scaffold(
     topBar = {
       TopAppBar(title = { Text(id) })
