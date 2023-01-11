@@ -4,11 +4,13 @@ package com.ivianuu.apelabs.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.Button
 import androidx.compose.material.Chip
 import androidx.compose.material.ChipDefaults
@@ -26,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -78,40 +81,60 @@ data class ColorKey(
                 .background(currentColor().toColor())
             )
 
-            Slider(
+            @Composable fun ColorSlider(
+              value: Float,
+              onValueChange: (Float) -> Unit,
+              title: String,
+              color: Color
+            ) {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title)
+
+                Slider(
+                  modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp),
+                  value = value,
+                  onValueChange = onValueChange,
+                  colors = SliderDefaults.colors(
+                    thumbColor = color,
+                    activeTrackColor = color
+                  )
+                )
+
+                Text(
+                  modifier = Modifier.width(40.dp),
+                  text = (value * 255).toInt().toString()
+                )
+              }
+            }
+
+            ColorSlider(
               value = red,
               onValueChange = { red = it },
-              colors = SliderDefaults.colors(
-                thumbColor = Color.Red,
-                activeTrackColor = Color.Red
-              )
+              title = "R",
+              color = Color.Red
             )
 
-            Slider(
+            ColorSlider(
               value = green,
               onValueChange = { green = it },
-              colors = SliderDefaults.colors(
-                thumbColor = Color.Green,
-                activeTrackColor = Color.Green
-              )
+              title = "G",
+              color = Color.Green
             )
 
-            Slider(
+            ColorSlider(
               value = blue,
               onValueChange = { blue = it },
-              colors = SliderDefaults.colors(
-                thumbColor = Color.Blue,
-                activeTrackColor = Color.Blue
-              )
+              title = "B",
+              color = Color.Blue
             )
 
-            Slider(
+            ColorSlider(
               value = white,
               onValueChange = { white = it },
-              colors = SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = Color.White
-              )
+              title = "W",
+              color = Color.White
             )
           }
 
