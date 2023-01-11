@@ -115,7 +115,7 @@ private suspend fun WappServer.applyGroupConfig(
     }
 }
 
-private fun Duration.toDurationByte(): Byte = 4
+private fun Duration.toDurationByte(): Byte = (inWholeMilliseconds / 1000f * 4).toInt().toByte()
 
 private fun Float.toColorByte(): Byte = if (this == 1f) -1 else (this * 255).toInt().toByte()
 

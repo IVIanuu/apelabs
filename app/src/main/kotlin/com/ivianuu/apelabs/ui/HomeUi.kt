@@ -38,7 +38,6 @@ import com.ivianuu.apelabs.data.merge
 import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.essentials.data.DataStore
-import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.safeAs
@@ -235,7 +234,6 @@ data class HomeModel(
 
 @Provide fun homeModel(
   lightRepository: LightRepository,
-  logger: Logger,
   navigator: Navigator,
   pref: DataStore<ApeLabsPrefs>
 ) = Model {
