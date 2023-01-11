@@ -74,7 +74,7 @@ import kotlin.coroutines.coroutineContext
 
 @Provide val homeUi = ModelKeyUi<HomeKey, HomeModel> {
   Scaffold(
-    topBar = { TopAppBar(title = { Text("ApeLabs") }) }
+    topBar = { TopAppBar(title = { Text("Ape labs") }) }
   ) {
     VerticalList {
       item {
