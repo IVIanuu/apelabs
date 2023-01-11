@@ -119,21 +119,13 @@ private fun Duration.toDurationByte(): Byte = (inWholeMilliseconds / 1000f * 4).
 
 private fun Float.toColorByte(): Byte = if (this == 1f) -1 else (this * 255).toInt().toByte()
 
-private fun List<Int>.toGroupByte(): Byte = when {
-  this == listOf(1) -> 1
-  this == listOf(2) -> 2
-  this == listOf(3) -> 4
-  this == listOf(4) -> 8
-  this == listOf(1, 2) -> 3
-  this == listOf(1, 3) -> 5
-  this == listOf(1, 4) -> 9
-  this == listOf(2, 3) -> 6
-  this == listOf(2, 4) -> 10
-  this == listOf(3, 4) -> 12
-  this == listOf(1, 2, 3) -> 7
-  this == listOf(1, 2, 4) -> 11
-  this == listOf(1, 3, 4) -> 13
-  this == listOf(2, 3, 4) -> 14
-  this == listOf(1, 2, 3, 4) -> 15
-  else -> throw AssertionError("unexpected group combination $this")
+private fun Int.toGroupByte() = when (this) {
+  1 -> 1
+  2 -> 2
+  3 -> 4
+  4 -> 8
+  else -> throw AssertionError("Unexpected group $this")
 }
+
+private fun List<Int>.toGroupByte(): Byte = map { it.toGroupByte() }.sum().toByte()
+
