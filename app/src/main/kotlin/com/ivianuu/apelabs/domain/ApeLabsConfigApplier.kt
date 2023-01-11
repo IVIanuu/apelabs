@@ -85,12 +85,12 @@ private suspend fun WappServer.applyGroupConfig(
 
   log { "apply group config $configs $lights" }
 
-  // force a rewrite of groups with changed lights
+  // force a reapply of groups with changed lights
   lights
     .filter { it !in cache.lastLights }
     .mapTo(mutableSetOf()) { it.group }
     .forEach {
-      log { "force rewrite of $it" }
+      log { "force reapply of $it" }
       cache.lastProgram.remove(it)
       cache.lastBrightness.remove(it)
       cache.lastSpeed.remove(it)
@@ -99,45 +99,50 @@ private suspend fun WappServer.applyGroupConfig(
   cache.lastLights.clear()
   cache.lastLights.addAll(lights)
 
-  suspend fun <T> writeIfChanged(
+  suspend fun <T> applyIfChanged(
     tag: String,
     get: GroupConfig.() -> T,
     cacheField: Cache.() -> MutableMap<Int, T>,
-    write: suspend (T, List<Int>) -> Unit
+    apply: suspend (T, List<Int>) -> Unit
   ) {
     configs
       .toList()
       .groupBy { get(it.second) }
+      // filter out changed groups
       .mapValues { (value, config) ->
         config
           .map { it.first }
           .filter { cache.cacheField()[it] != value }
       }
+      // only apply if there any groups
       .filterValues { it.isNotEmpty() }
       .toList()
+      // apply the group with most lights first
       .sortedByDescending { (_, groups) ->
         groups.sumOf { group -> lights.filter { it.group == group }.size }
       }
       .forEach { (value, groups) ->
         onCancel(
           block = {
-            log { "write $tag $value for $groups" }
-            write(value, groups)
+            // cache and apply output
+            log { "apply $tag $value for $groups" }
+            apply(value, groups)
             groups.forEach { cache.cacheField()[it] = value }
           },
           onCancel = {
-            log { "write cancelled $tag for $groups" }
+            // invalidate cache
+            log { "apply cancelled $tag for $groups" }
             groups.forEach { cache.cacheField()[it] = value }
           }
         )
       }
   }
 
-  writeIfChanged(
+  applyIfChanged(
     tag = "program",
     get = { program },
     cacheField = { lastProgram },
-    write = { value, groups ->
+    apply = { value, groups ->
       when (value) {
         is ProgramConfig.SingleColor -> {
           write(
@@ -181,11 +186,11 @@ private suspend fun WappServer.applyGroupConfig(
     }
   )
 
-  writeIfChanged(
+  applyIfChanged(
     tag = "brightness",
     get = { brightness },
     cacheField = { lastBrightness },
-    write = { value, groups ->
+    apply = { value, groups ->
       write(
         byteArrayOf(
           68,
@@ -198,11 +203,11 @@ private suspend fun WappServer.applyGroupConfig(
     }
   )
 
-  writeIfChanged(
+  applyIfChanged(
     tag = "speed",
     get = { speed },
     cacheField = { lastSpeed },
-    write = { value, groups ->
+    apply = { value, groups ->
       write(
         byteArrayOf(
           68,
@@ -215,11 +220,11 @@ private suspend fun WappServer.applyGroupConfig(
     }
   )
 
-  writeIfChanged(
+  applyIfChanged(
     tag = "music mode",
     get = { musicMode },
     cacheField = { lastMusicMode },
-    write = { value, groups ->
+    apply = { value, groups ->
       write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (value) 1 else 0, 0))
     }
   )
