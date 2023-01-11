@@ -58,6 +58,23 @@ fun String.toApeLabsId() = split(":").let { it[0].toByte() to it[1].toByte() }
   val white: Float = 1f
 )
 
+@Serializable data class NamedColor(
+  val name: String,
+  val color: LightColor = LightColor()
+)
+
+val DefaultColors = listOf(
+  NamedColor("Red", LightColor(1f, 0f, 0f, 0f)),
+  NamedColor("Green", LightColor(0f, 1f, 0f, 0f)),
+  NamedColor("Blue", LightColor(0f, 0f, 1f, 0f)),
+  NamedColor("Yellow", LightColor(1f, 1f, 0f, 0f)),
+  NamedColor("Pink", LightColor(1f, 0f, 1f, 0f)),
+  NamedColor("Cyan", LightColor(0f, 1f, 1f, 0f)),
+  NamedColor("White", LightColor(0f, 0f, 0f, 1f)),
+  NamedColor("Rgb white", LightColor(1f, 1f, 1f, 0f)),
+  NamedColor("Amber", LightColor(1f, 0.75f, 0f, 0.03f))
+)
+
 fun LightColor.toColor() = Color(red, green, blue)
 
 fun Color.toLightColor(white: Float = 0f) = LightColor(red, green, blue, white)
