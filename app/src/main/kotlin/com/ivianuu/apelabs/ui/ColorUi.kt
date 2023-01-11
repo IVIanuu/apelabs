@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.Button
 import androidx.compose.material.Chip
@@ -187,17 +187,17 @@ data class ColorKey(
                     if (deletable) {
                       Spacer(Modifier.padding(start = 8.dp))
 
-                      PopupMenuButton(
-                        modifier = Modifier
-                          .size(18.dp),
-                        items = listOf(
-                          PopupMenu.Item(
-                            onSelected = action {
-                              colorRepository.deleteColor(id)
-                            }
-                          ) { Text("Delete") }
+                      Box(modifier = Modifier.requiredSize(18.dp)) {
+                        PopupMenuButton(
+                          items = listOf(
+                            PopupMenu.Item(
+                              onSelected = action {
+                                colorRepository.deleteColor(id)
+                              }
+                            ) { Text("Delete") }
+                          )
                         )
-                      )
+                      }
                     }
                   }
                 }
