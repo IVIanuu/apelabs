@@ -168,7 +168,7 @@ data class ColorKey(
               colors
                 .toList()
                 .sortedBy { it.first.lowercase() }
-                .forEach { (name, color) ->
+                .forEach { (id, color) ->
                   Chip(
                     modifier = Modifier
                       .padding(start = 8.dp),
@@ -183,7 +183,7 @@ data class ColorKey(
                       contentColor = guessingContentColorFor(color.toColor())
                     )
                   ) {
-                    Text(name)
+                    Text(id)
 
                     if (deletable) {
                       Spacer(Modifier.padding(start = 8.dp))
@@ -192,7 +192,7 @@ data class ColorKey(
                         modifier = Modifier
                           .size(18.dp),
                         onClick = action {
-                          colorRepository.deleteColor(name)
+                          colorRepository.deleteColor(id)
                         }
                       ) {
                         Icon(Icons.Default.Close)

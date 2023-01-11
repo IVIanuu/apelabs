@@ -16,20 +16,20 @@ import kotlinx.coroutines.flow.map
       .map { it.colors }
       .distinctUntilChanged()
 
-  suspend fun saveColor(name: String, color: LightColor) {
+  suspend fun saveColor(id: String, color: LightColor) {
     pref.updateData {
       copy(
         colors = colors.toMutableMap()
-          .apply { this[name] = color }
+          .apply { this[id] = color }
       )
     }
   }
 
-  suspend fun deleteColor(name: String) {
+  suspend fun deleteColor(id: String) {
     pref.updateData {
       copy(
         colors = colors.toMutableMap()
-          .apply { remove(name) }
+          .apply { remove(id) }
       )
     }
   }
