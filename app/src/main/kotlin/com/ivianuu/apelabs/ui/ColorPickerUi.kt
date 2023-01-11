@@ -54,7 +54,7 @@ data class ColorPickerKey(
             modifier = Modifier
               .fillMaxWidth()
               .height(100.dp)
-              .background(Color(red, green, blue))
+              .background(LightColor(red, green, blue, white).toColor())
           )
 
           Slider(

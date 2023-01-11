@@ -76,6 +76,17 @@ val DefaultColors = listOf(
 )
 
 fun LightColor.toColor() = Color(red, green, blue)
+  .overlay(Color.White.copy(alpha = white))
+
+private fun Color.overlay(overlay: Color): Color {
+  val alphaSum = alpha + overlay.alpha
+  return Color(
+    (red * alpha + overlay.red * overlay.alpha) / alphaSum,
+    (green * alpha + overlay.green * overlay.alpha) / alphaSum,
+    (blue * alpha + overlay.blue * overlay.alpha) / alphaSum,
+    alphaSum.coerceIn(0f, 1f),
+  )
+}
 
 fun Color.toLightColor(white: Float = 0f) = LightColor(red, green, blue, white)
 
