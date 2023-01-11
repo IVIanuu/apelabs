@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
 
-@Provide fun apeLabsConfigSynchronizer(
+@Provide fun apeLabsConfigApplier(
   lightRepository: LightRepository,
   logger: Logger,
   pref: DataStore<ApeLabsPrefs>,
