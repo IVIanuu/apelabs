@@ -34,7 +34,7 @@ import kotlinx.coroutines.sync.withLock
 
 @Provide @Scoped<AppScope> class WappRepository(
   private val bluetoothManager: @SystemService BluetoothManager,
-  private val context: IOContext,
+  context: IOContext,
   private val logger: Logger,
   permissionStateFactory: PermissionStateFactory,
   private val remote: WappRemote,
@@ -53,20 +53,24 @@ import kotlinx.coroutines.sync.withLock
 
   @SuppressLint("MissingPermission")
   private fun bleWapps(): Flow<List<Wapp>> = callbackFlow {
-    val wapps = mutableListOf<Wapp>()
+    val wapps = mutableSetOf<Wapp>()
     trySend(emptyList())
 
     fun handleWapp(wapp: Wapp) {
       launch {
         wappsLock.withLock {
           foundWapps += wapp
-          if (wapps.any { it.address == wapp.address })
+          if (wapp in wapps)
             return@launch
         }
 
-        remote.withWapp<Unit>(wapp.address) {
-          log { "${wapp.debugName()} add wapp" }
+        remote.withWapp(wapp.address) {
           wappsLock.withLock {
+            if (wapp in wapps)
+              return@withWapp
+
+            log { "${wapp.debugName()} add wapp" }
+
             wapps += wapp
             trySend(wapps.toList())
           }
@@ -75,7 +79,7 @@ import kotlinx.coroutines.sync.withLock
             if (coroutineContext.isActive) {
               log { "${wapp.debugName()} remove wapp" }
               wappsLock.withLock {
-                wapps.removeAll { it.address == wapp.address }
+                wapps.remove(wapp)
                 trySend(wapps.toList())
               }
             }
