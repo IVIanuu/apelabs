@@ -51,7 +51,7 @@ private class Cache {
   val lastMusicMode = mutableMapOf<Int, Boolean>()
 }
 
-context(Logger) private suspend fun WappServer.applyGroupConfig(
+context(Logger, WappServer) private suspend fun applyGroupConfig(
   configs: Map<Int, GroupConfig>,
   cache: Cache
 ) {

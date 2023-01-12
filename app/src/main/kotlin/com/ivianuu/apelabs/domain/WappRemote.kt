@@ -51,7 +51,7 @@ context(Logger, NamedCoroutineScope<AppScope>)
 
   suspend fun <R> withWapp(
     address: String,
-    block: suspend WappServer.() -> R
+    block: suspend context(WappServer) () -> R
   ): R? = withContext(context) {
     servers.withResource(address) {
       race(
