@@ -1,14 +1,14 @@
 package com.ivianuu.apelabs.domain
 
-import com.ivianuu.apelabs.data.ApeLabsPrefs
+import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.LightColor
-import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
-@Provide class ColorRepository(private val pref: DataStore<ApeLabsPrefs>) {
+context(ApeLabsPrefsContext)
+@Provide class ColorRepository {
   val colors: Flow<Map<String, LightColor>>
     get() = pref.data
       .map { it.colors }

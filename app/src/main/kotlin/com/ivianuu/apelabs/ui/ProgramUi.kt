@@ -178,20 +178,17 @@ data class ProgramModel(
     get() = program.getOrNull()?.items?.size?.let { it < Program.MultiColor.MAX_ITEMS } == true
 }
 
-@Provide fun programModel(
-  programRepository: ProgramRepository,
-  previewRepository: PreviewRepository,
-  ctx: KeyUiContext<ProgramKey>
-) = Model {
-  val id = ctx.key.id
+context(PreviewRepository, ProgramRepository, KeyUiContext<ProgramKey>)
+    @Provide fun programModel() = Model {
+  val id = key.id
 
-  val program by programRepository.program(id)
+  val program by program(id)
     .flowAsResource()
     .map { it.map { it!! } }
     .collectAsState(Idle)
 
   LaunchedEffect(true) {
-    previewRepository.providePreviews {
+    providePreviews {
       snapshotFlow { program }
         .map { it.getOrNull() }
         .collect(it)
@@ -199,7 +196,7 @@ data class ProgramModel(
   }
 
   suspend fun updateProgram(block: Program.MultiColor.() -> Program.MultiColor) {
-    programRepository.updateProgram(id, program.get().block())
+    updateProgram(id, program.get().block())
   }
 
   suspend fun updateItem(
@@ -222,7 +219,7 @@ data class ProgramModel(
       updateProgram { copy(items = items + Program.MultiColor.Item()) }
     },
     updateColor = action { index ->
-      ctx.navigator.push(ColorKey(program.get().items[index].color))
+      navigator.push(ColorKey(program.get().items[index].color))
         ?.let {
           updateItem(index) { copy(color = it) }
         }

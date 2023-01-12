@@ -1,6 +1,6 @@
 package com.ivianuu.apelabs.domain
 
-import com.ivianuu.apelabs.data.ApeLabsPrefs
+import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.essentials.app.AppForegroundScope
@@ -8,7 +8,6 @@ import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.combine
 import com.ivianuu.essentials.coroutines.onCancel
 import com.ivianuu.essentials.coroutines.parForEach
-import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.injekt.Provide
@@ -17,10 +16,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
 
-context(Logger, PreviewRepository, WappRemote, WappRepository)
-@Provide fun apeLabsConfigApplier(
-  pref: DataStore<ApeLabsPrefs>
-) = ScopeWorker<AppForegroundScope> {
+context(ApeLabsPrefsContext, Logger, PreviewRepository, WappRemote, WappRepository)
+    @Provide fun apeLabsConfigApplier() = ScopeWorker<AppForegroundScope> {
   wapps.collectLatest { wapps ->
     if (wapps.isEmpty()) return@collectLatest
     val cache = Cache()

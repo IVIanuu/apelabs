@@ -58,21 +58,18 @@ data class ColorKey(
   val initial: LightColor = LightColor()
 ) : PopupKey<LightColor>
 
-@Provide fun colorUi(
-  colorRepository: ColorRepository,
-  previewRepository: PreviewRepository,
-  ctx: KeyUiContext<ColorKey>
-) = SimpleKeyUi<ColorKey> {
+context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
+    @Provide fun colorUi() = SimpleKeyUi<ColorKey> {
   DialogScaffold {
-    var red by remember { mutableStateOf(ctx.key.initial.red) }
-    var green by remember { mutableStateOf(ctx.key.initial.green) }
-    var blue by remember { mutableStateOf(ctx.key.initial.blue) }
-    var white by remember { mutableStateOf(ctx.key.initial.white) }
+    var red by remember { mutableStateOf(key.initial.red) }
+    var green by remember { mutableStateOf(key.initial.green) }
+    var blue by remember { mutableStateOf(key.initial.blue) }
+    var white by remember { mutableStateOf(key.initial.white) }
 
     fun currentColor() = LightColor(red, green, blue, white)
 
     LaunchedEffect(true) {
-      previewRepository.providePreviews { update ->
+      providePreviews { update ->
         snapshotFlow { currentColor() }
           .collect { update(Program.SingleColor(it)) }
       }
@@ -80,7 +77,7 @@ data class ColorKey(
 
     Dialog(
       content = {
-        val customColors = colorRepository.colors.bind(emptyMap())
+        val customColors = colors.bind(emptyMap())
 
         VerticalList {
           item {
@@ -182,7 +179,7 @@ data class ColorKey(
                       Box(modifier = Modifier.requiredSize(18.dp)) {
                         PopupMenuButton {
                           PopupMenuItem(
-                            onSelected = action { colorRepository.deleteColor(id) }
+                            onSelected = action { deleteColor(id) }
                           ) { Text("Delete") }
                         }
                       }
@@ -214,12 +211,12 @@ data class ColorKey(
       buttons = {
         OutlinedButton(
           onClick = action {
-            ctx.navigator.push(TextInputKey(label = "Name.."))
-              ?.let { colorRepository.saveColor(it, currentColor()) }
+            navigator.push(TextInputKey(label = "Name.."))
+              ?.let { saveColor(it, currentColor()) }
           }
         ) { Text("SAVE") }
 
-        Button(onClick = action { ctx.navigator.pop(ctx.key, currentColor()) }) {
+        Button(onClick = action { navigator.pop(key, currentColor()) }) {
           Text("OK")
         }
       }

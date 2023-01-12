@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.data.ApeLabsPrefs
+import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
@@ -43,7 +44,6 @@ import com.ivianuu.apelabs.data.merge
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.essentials.coroutines.parForEach
-import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.safeAs
@@ -59,9 +59,9 @@ import com.ivianuu.essentials.ui.material.Subheader
 import com.ivianuu.essentials.ui.material.TopAppBar
 import com.ivianuu.essentials.ui.material.guessingContentColorFor
 import com.ivianuu.essentials.ui.material.incrementingStepPolicy
+import com.ivianuu.essentials.ui.navigation.KeyUiContext
 import com.ivianuu.essentials.ui.navigation.Model
 import com.ivianuu.essentials.ui.navigation.ModelKeyUi
-import com.ivianuu.essentials.ui.navigation.Navigator
 import com.ivianuu.essentials.ui.navigation.RootKey
 import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
@@ -71,7 +71,6 @@ import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.isActive
-import kotlin.coroutines.coroutineContext
 
 @Provide object HomeKey : RootKey
 
@@ -282,12 +281,8 @@ data class HomeModel(
   val deleteProgram: (String) -> Unit
 )
 
-@Provide fun homeModel(
-  lightRepository: LightRepository,
-  navigator: Navigator,
-  pref: DataStore<ApeLabsPrefs>,
-  programRepository: ProgramRepository
-) = Model {
+context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepository)
+    @Provide fun homeModel() = Model {
   val prefs = pref.data.bind(ApeLabsPrefs())
 
   val groupConfig = prefs.selectedGroups
@@ -307,13 +302,13 @@ data class HomeModel(
     }
   }
 
-  val lights = lightRepository.lights.bindResource()
+  val lights = lights.bindResource()
   var selectedLights by remember { mutableStateOf(emptySet<String>()) }
 
   LaunchedEffect(selectedLights) {
     selectedLights.parForEach { lightId ->
       while (coroutineContext.isActive) {
-        lightRepository.flashLight(lightId)
+        flashLight(lightId)
       }
     }
   }
@@ -361,19 +356,16 @@ data class HomeModel(
     regroupLights = action {
       navigator.push(ListKey(items = GROUPS) { toString() })
         ?.let { group ->
-          selectedLights.parForEach {
-            lightRepository.regroupLight(it, group)
-          }
-
+          selectedLights.parForEach { regroupLight(it, group) }
           selectedLights = emptySet()
         }
     },
     flashLight = { light ->
       while (coroutineContext.isActive) {
-        lightRepository.flashLight(light.id)
+        flashLight(light.id)
       }
     },
-    programs = programRepository.programs.bindResource(),
+    programs = programs.bindResource(),
     updateColor = action {
       navigator.push(
         ColorKey(
@@ -390,12 +382,10 @@ data class HomeModel(
     addProgram = action {
       navigator.push(TextInputKey(label = "Name.."))
         ?.let {
-          programRepository.updateProgram(it, Program.MultiColor())
+          updateProgram(it, Program.MultiColor())
           navigator.push(ProgramKey(it))
         }
     },
-    deleteProgram = action { program ->
-      programRepository.deleteProgram(program)
-    }
+    deleteProgram = action { program -> deleteProgram(program) }
   )
 }

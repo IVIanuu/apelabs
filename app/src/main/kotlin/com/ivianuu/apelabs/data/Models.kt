@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothDevice
 import androidx.compose.ui.graphics.Color
 import com.ivianuu.essentials.android.prefs.DataStoreModule
 import com.ivianuu.essentials.cast
+import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Provide
 import kotlinx.serialization.Serializable
@@ -110,5 +111,7 @@ fun List<GroupConfig>.merge(): GroupConfig = when {
     @Provide val prefModule = DataStoreModule("apelabs_prefs") { ApeLabsPrefs() }
   }
 }
+
+@Provide @JvmInline value class ApeLabsPrefsContext(val pref: DataStore<ApeLabsPrefs>)
 
 val GROUPS = (1..4).toList()
