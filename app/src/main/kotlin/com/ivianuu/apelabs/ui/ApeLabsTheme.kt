@@ -5,7 +5,6 @@
 package com.ivianuu.apelabs.ui
 
 import androidx.compose.ui.graphics.Color
-import com.ivianuu.essentials.ResourceProvider
 import com.ivianuu.essentials.rubik.Rubik
 import com.ivianuu.essentials.ui.AppTheme
 import com.ivianuu.essentials.ui.material.EsTheme
@@ -19,7 +18,7 @@ object ApeLabsTheme {
   val Secondary = Color(0xFF0BE881)
 }
 
-@Provide fun apeLabsTheme(resourceProvider: ResourceProvider) = AppTheme { content ->
+@Provide val apeLabsTheme = AppTheme { content ->
   EsTheme(
     colors = LightAndDarkColors(
       primary = ApeLabsTheme.Primary,

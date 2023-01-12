@@ -50,8 +50,8 @@ import com.ivianuu.essentials.ui.navigation.PopupKey
 import com.ivianuu.essentials.ui.navigation.SimpleKeyUi
 import com.ivianuu.essentials.ui.navigation.pop
 import com.ivianuu.essentials.ui.navigation.push
-import com.ivianuu.essentials.ui.popup.PopupMenu
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
+import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.injekt.Provide
 
 data class ColorKey(
@@ -180,15 +180,11 @@ data class ColorKey(
                       Spacer(Modifier.padding(start = 8.dp))
 
                       Box(modifier = Modifier.requiredSize(18.dp)) {
-                        PopupMenuButton(
-                          items = listOf(
-                            PopupMenu.Item(
-                              onSelected = action {
-                                colorRepository.deleteColor(id)
-                              }
-                            ) { Text("Delete") }
-                          )
-                        )
+                        PopupMenuButton {
+                          PopupMenuItem(
+                            onSelected = action { colorRepository.deleteColor(id) }
+                          ) { Text("Delete") }
+                        }
                       }
                     }
                   }

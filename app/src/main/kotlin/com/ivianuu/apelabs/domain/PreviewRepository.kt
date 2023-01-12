@@ -20,10 +20,8 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-@Provide @Scoped<AppScope> class PreviewRepository(
-  private val logger: Logger,
-  scope: NamedCoroutineScope<AppScope>
-) {
+context(Logger, NamedCoroutineScope<AppScope>)
+@Provide @Scoped<AppScope> class PreviewRepository {
   private val _previewProviders =
     MutableStateFlow<List<suspend (suspend (Program?) -> Unit) -> Unit>>(emptyList())
   private val lock = Mutex()
@@ -39,7 +37,7 @@ import kotlinx.coroutines.sync.withLock
       }
     }
     .distinctUntilChanged()
-    .shareIn(scope, SharingStarted.WhileSubscribed(), 1)
+    .shareIn(this@NamedCoroutineScope, SharingStarted.WhileSubscribed(), 1)
 
   suspend fun providePreviews(
     block: suspend (suspend (Program?) -> Unit) -> Unit

@@ -64,8 +64,8 @@ import com.ivianuu.essentials.ui.navigation.ModelKeyUi
 import com.ivianuu.essentials.ui.navigation.Navigator
 import com.ivianuu.essentials.ui.navigation.RootKey
 import com.ivianuu.essentials.ui.navigation.push
-import com.ivianuu.essentials.ui.popup.PopupMenu
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
+import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.essentials.ui.prefs.ScaledPercentageUnitText
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
@@ -200,12 +200,10 @@ import kotlin.coroutines.coroutineContext
             modifier = Modifier.clickable { updateProgram(program) },
             title = { Text(id) },
             trailing = {
-              PopupMenuButton(
-                items = listOf(
-                  PopupMenu.Item(onSelected = { openProgram(id) }) { Text("Open") },
-                  PopupMenu.Item(onSelected = { deleteProgram(id) }) { Text("Delete") }
-                )
-              )
+              PopupMenuButton {
+                PopupMenuItem(onSelected = { openProgram(id) }) { Text("Open") }
+                PopupMenuItem(onSelected = { deleteProgram(id) }) { Text("Delete") }
+              }
             }
           )
         }
@@ -361,18 +359,14 @@ data class HomeModel(
       }
     },
     regroupLights = action {
-      navigator.push(
-        ListKey(
-          items = GROUPS
-            .map { ListKey.Item(it, it.toString()) }
-        )
-      )?.let { group ->
-        selectedLights.parForEach {
-          lightRepository.regroupLight(it, group)
-        }
+      navigator.push(ListKey(items = GROUPS) { toString() })
+        ?.let { group ->
+          selectedLights.parForEach {
+            lightRepository.regroupLight(it, group)
+          }
 
-        selectedLights = emptySet()
-      }
+          selectedLights = emptySet()
+        }
     },
     flashLight = { light ->
       while (coroutineContext.isActive) {

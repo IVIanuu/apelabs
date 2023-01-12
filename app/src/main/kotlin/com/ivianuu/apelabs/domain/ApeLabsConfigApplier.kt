@@ -11,27 +11,23 @@ import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
-import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
 
+context(Logger, PreviewRepository, WappRemote, WappRepository)
 @Provide fun apeLabsConfigApplier(
-  logger: Logger,
-  pref: DataStore<ApeLabsPrefs>,
-  previewRepository: PreviewRepository,
-  remote: WappRemote,
-  wappRepository: WappRepository
+  pref: DataStore<ApeLabsPrefs>
 ) = ScopeWorker<AppForegroundScope> {
-  wappRepository.wapps.collectLatest { wapps ->
+  wapps.collectLatest { wapps ->
     if (wapps.isEmpty()) return@collectLatest
     val cache = Cache()
 
     wapps.parForEach { wapp ->
-      remote.withWapp(wapp.address) {
-        combine(pref.data, previewRepository.preview)
+      withWapp(wapp.address) {
+        combine(pref.data, preview)
           .map { (pref, previewProgram) ->
             previewProgram?.let {
               pref.groupConfigs.mapValues {
@@ -58,10 +54,9 @@ private class Cache {
   val lastMusicMode = mutableMapOf<Int, Boolean>()
 }
 
-private suspend fun WappServer.applyGroupConfig(
+context(Logger) private suspend fun WappServer.applyGroupConfig(
   configs: Map<Int, GroupConfig>,
-  cache: Cache,
-  @Inject logger: Logger
+  cache: Cache
 ) {
   suspend fun <T> applyIfChanged(
     tag: String,

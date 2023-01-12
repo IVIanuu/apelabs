@@ -10,9 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
-@Provide @Scoped<AppScope> class ProgramRepository(
-  private val pref: DataStore<ApeLabsPrefs>
-) {
+@Provide @Scoped<AppScope> class ProgramRepository(private val pref: DataStore<ApeLabsPrefs>) {
   val programs: Flow<Map<String, Program.MultiColor>>
     get() = pref.data
       .map { it.programs }

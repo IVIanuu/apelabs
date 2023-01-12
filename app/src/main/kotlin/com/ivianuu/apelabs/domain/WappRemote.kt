@@ -36,17 +36,16 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.*
 
+context(Logger, NamedCoroutineScope<AppScope>)
 @Provide @Scoped<AppScope> class WappRemote(
   private val appContext: AppContext,
   private val bluetoothManager: @SystemService BluetoothManager,
-  private val context: IOContext,
-  private val logger: Logger,
-  scope: NamedCoroutineScope<AppScope>
+  private val context: IOContext
 ) {
   private val servers = RefCountedResource<String, WappServer>(
-    scope = scope,
+    scope = this@NamedCoroutineScope,
     timeout = 5.seconds,
-    create = { WappServer(it, context, logger, appContext, bluetoothManager, scope) },
+    create = { WappServer(it, context, appContext, bluetoothManager) },
     release = { _, server -> server.close() }
   )
 
@@ -70,14 +69,13 @@ import java.util.*
   }
 }
 
+context(CoroutineScope, Logger)
 @SuppressLint("MissingPermission")
 class WappServer(
   address: String,
   private val context: IOContext,
-  @Provide private val logger: Logger,
   appContext: AppContext,
-  bluetoothManager: BluetoothManager,
-  private val scope: CoroutineScope
+  bluetoothManager: BluetoothManager
 ) {
   val connectionState = MutableSharedFlow<Boolean>(
     replay = 1,
@@ -113,7 +111,7 @@ class WappServer(
           super.onServicesDiscovered(gatt, status)
           log { "${device.debugName()} services discovered" }
 
-          scope.launch {
+          launch {
             val readCharacteristic = gatt
               .getService(APE_LABS_SERVICE_ID)
               .getCharacteristic(APE_LABS_READ_ID)

@@ -75,8 +75,6 @@ private fun Color.overlay(overlay: Color): Color {
   )
 }
 
-fun Color.toLightColor(white: Float = 0f) = LightColor(red, green, blue, white)
-
 fun List<GroupConfig>.merge(): GroupConfig = when {
   isEmpty() -> GroupConfig()
   size == 1 -> single()
