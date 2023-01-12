@@ -2,7 +2,6 @@ package com.ivianuu.apelabs.domain
 
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.GroupConfig
-import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
@@ -20,7 +19,6 @@ import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
 
 @Provide fun apeLabsConfigApplier(
-  lightRepository: LightRepository,
   logger: Logger,
   pref: DataStore<ApeLabsPrefs>,
   previewRepository: PreviewRepository,
@@ -33,22 +31,20 @@ import kotlin.time.Duration
 
     wapps.parForEach { wapp ->
       remote.withWapp(wapp.address) {
-        combine(
-          combine(pref.data, previewRepository.preview)
-            .map { (pref, previewProgram) ->
-              previewProgram?.let {
-                pref.groupConfigs.mapValues {
-                  if (it.key in pref.selectedGroups)
-                    it.value.copy(program = previewProgram)
-                  else it.value
-                }
-              } ?: pref.groupConfigs
-            },
-          lightRepository.lights
-        )
+        combine(pref.data, previewRepository.preview)
+          .map { (pref, previewProgram) ->
+            previewProgram?.let {
+              pref.groupConfigs.mapValues {
+                if (it.key in pref.selectedGroups)
+                  it.value.copy(program = previewProgram)
+                else it.value
+              }
+            } ?: pref.groupConfigs
+          }
           .distinctUntilChanged()
-          .collectLatest { (groupConfigs, lights) ->
-            applyGroupConfig(groupConfigs, lights, cache)
+          .collectLatest { groupConfigs ->
+            log { "values $groupConfigs " }
+            applyGroupConfig(groupConfigs, cache)
           }
       }
     }
@@ -60,29 +56,13 @@ private class Cache {
   val lastBrightness = mutableMapOf<Int, Float>()
   val lastSpeed = mutableMapOf<Int, Float>()
   val lastMusicMode = mutableMapOf<Int, Boolean>()
-  val lastLights = mutableListOf<Light>()
 }
 
 private suspend fun WappServer.applyGroupConfig(
   configs: Map<Int, GroupConfig>,
-  lights: List<Light>,
   cache: Cache,
   @Inject logger: Logger
 ) {
-  // force a reapply of groups with changed lights
-  lights
-    .filter { it !in cache.lastLights }
-    .mapTo(mutableSetOf()) { it.group }
-    .forEach {
-      log { "force reapply of $it" }
-      cache.lastProgram.remove(it)
-      cache.lastBrightness.remove(it)
-      cache.lastSpeed.remove(it)
-      cache.lastMusicMode.remove(it)
-    }
-  cache.lastLights.clear()
-  cache.lastLights.addAll(lights)
-
   suspend fun <T> applyIfChanged(
     tag: String,
     get: GroupConfig.() -> T,
@@ -101,10 +81,6 @@ private suspend fun WappServer.applyGroupConfig(
       // only apply if there any groups
       .filterValues { it.isNotEmpty() }
       .toList()
-      // apply the group with most lights first
-      .sortedByDescending { (_, groups) ->
-        groups.sumOf { group -> lights.filter { it.group == group }.size }
-      }
       .forEach { (value, groups) ->
         onCancel(
           block = {
