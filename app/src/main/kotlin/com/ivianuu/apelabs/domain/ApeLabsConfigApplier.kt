@@ -141,7 +141,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
 
   applyIfChanged(
     tag = "brightness",
-    get = { brightness },
+    get = { if (blackout) 0f else brightness },
     cacheField = { lastBrightness },
     apply = { value, groups ->
       write(

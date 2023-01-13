@@ -44,6 +44,7 @@ import com.ivianuu.essentials.ui.dialog.Dialog
 import com.ivianuu.essentials.ui.dialog.DialogScaffold
 import com.ivianuu.essentials.ui.dialog.TextInputKey
 import com.ivianuu.essentials.ui.material.Subheader
+import com.ivianuu.essentials.ui.material.Switch
 import com.ivianuu.essentials.ui.material.guessingContentColorFor
 import com.ivianuu.essentials.ui.navigation.KeyUiContext
 import com.ivianuu.essentials.ui.navigation.PopupKey
@@ -217,6 +218,17 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
         }
       },
       buttons = {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Text("Preview")
+
+          Spacer(Modifier.width(8.dp))
+
+          Switch(
+            checked = previewsEnabled.bind(),
+            onCheckedChange = action { value -> updatePreviewsEnabled(value) },
+          )
+        }
+
         OutlinedButton(
           onClick = action {
             navigator.push(TextInputKey(label = "Name.."))

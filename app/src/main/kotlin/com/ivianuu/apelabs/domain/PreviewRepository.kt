@@ -11,6 +11,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -26,7 +27,14 @@ context(Logger, NamedCoroutineScope<AppScope>)
     MutableStateFlow<List<suspend (suspend (Program?) -> Unit) -> Unit>>(emptyList())
   private val lock = Mutex()
 
-  val preview: Flow<Program?> = _previewProviders
+  private val _previewsEnabled = MutableStateFlow(false)
+  val previewsEnabled: StateFlow<Boolean> get() = _previewsEnabled
+
+  val preview: Flow<Program?> = _previewsEnabled
+    .flatMapLatest {
+      if (it) _previewProviders
+      else flowOf(emptyList())
+    }
     .map { it.lastOrNull() }
     .flatMapLatest { provider ->
       if (provider == null) flowOf(null)
@@ -38,6 +46,10 @@ context(Logger, NamedCoroutineScope<AppScope>)
     }
     .distinctUntilChanged()
     .shareIn(this@NamedCoroutineScope, SharingStarted.WhileSubscribed(), 1)
+
+  suspend fun updatePreviewsEnabled(value: Boolean) {
+    _previewsEnabled.value = value
+  }
 
   suspend fun providePreviews(
     block: suspend (suspend (Program?) -> Unit) -> Unit

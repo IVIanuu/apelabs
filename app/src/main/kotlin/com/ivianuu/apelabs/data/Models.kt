@@ -36,7 +36,8 @@ fun String.toApeLabsId() = split(":").let { it[0].toByte() to it[1].toByte() }
   val program: Program = Program.SingleColor(LightColor()),
   val brightness: Float = 1f,
   val speed: Float = 0f,
-  val musicMode: Boolean = false
+  val musicMode: Boolean = false,
+  val blackout: Boolean = false
 )
 
 @Serializable sealed interface Program {
@@ -97,7 +98,8 @@ fun List<GroupConfig>.merge(): GroupConfig = when {
     },
     brightness = map { it.brightness }.average().toFloat(),
     speed = map { it.speed }.average().toFloat(),
-    musicMode = all { it.musicMode }
+    musicMode = all { it.musicMode },
+    blackout = all { it.blackout }
   )
 }
 

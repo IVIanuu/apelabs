@@ -31,6 +31,7 @@ import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.essentials.compose.action
+import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.flowAsResource
@@ -49,6 +50,7 @@ import com.ivianuu.essentials.ui.navigation.KeyUiContext
 import com.ivianuu.essentials.ui.navigation.Model
 import com.ivianuu.essentials.ui.navigation.ModelKeyUi
 import com.ivianuu.essentials.ui.navigation.push
+import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.map
@@ -140,6 +142,14 @@ data class ProgramKey(val id: String) : Key<Unit>
             }
           }
         }
+
+        item {
+          SwitchListItem(
+            value = previewsEnabled,
+            onValueChange = updatePreviewsEnabled,
+            title = { Text("Preview") }
+          )
+        }
       }
     }
   }
@@ -172,7 +182,9 @@ data class ProgramModel(
   val updateColor: (Int) -> Unit,
   val updateFade: (Int, Duration) -> Unit,
   val updateHold: (Int, Duration) -> Unit,
-  val deleteItem: (Int) -> Unit
+  val deleteItem: (Int) -> Unit,
+  val previewsEnabled: Boolean,
+  val updatePreviewsEnabled: (Boolean) -> Unit
 ) {
   val canAddItem: Boolean
     get() = program.getOrNull()?.items?.size?.let { it < Program.MultiColor.MAX_ITEMS } == true
@@ -234,6 +246,8 @@ context(PreviewRepository, ProgramRepository, KeyUiContext<ProgramKey>)
       updateProgram {
         copy(items = items.toMutableList().apply { removeAt(index) })
       }
-    }
+    },
+    previewsEnabled = previewsEnabled.bind(),
+    updatePreviewsEnabled = action { value -> updatePreviewsEnabled(value) }
   )
 }

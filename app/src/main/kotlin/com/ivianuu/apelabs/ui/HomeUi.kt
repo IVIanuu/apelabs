@@ -137,6 +137,14 @@ import kotlinx.coroutines.isActive
             title = { Text("Music mode") }
           )
         }
+
+        item {
+          SwitchListItem(
+            value = groupConfig.blackout,
+            onValueChange = updateBlackout,
+            title = { Text("Blackout") }
+          )
+        }
       }
 
       val lights = lights.getOrElse { emptyList() }
@@ -270,6 +278,7 @@ data class HomeModel(
   val updateBrightness: (Float) -> Unit,
   val updateSpeed: (Float) -> Unit,
   val updateMusicMode: (Boolean) -> Unit,
+  val updateBlackout: (Boolean) -> Unit,
   val lights: Resource<List<Light>>,
   val selectedLights: Set<String>,
   val toggleLightSelection: (Light) -> Unit,
@@ -347,6 +356,9 @@ context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepo
     },
     updateMusicMode = action { value ->
       updateConfig { copy(musicMode = value) }
+    },
+    updateBlackout = action { value ->
+      updateConfig { copy(blackout = value) }
     },
     lights = lights,
     selectedLights = selectedLights,
