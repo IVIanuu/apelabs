@@ -193,20 +193,23 @@ import kotlinx.coroutines.isActive
       }
 
       val programs = programs.getOrElse { emptyMap() }
-      programs.forEach { (id, program) ->
-        item {
-          ListItem(
-            modifier = Modifier.clickable { updateProgram(program) },
-            title = { Text(id) },
-            trailing = {
-              PopupMenuButton {
-                PopupMenuItem(onSelected = { openProgram(id) }) { Text("Open") }
-                PopupMenuItem(onSelected = { deleteProgram(id) }) { Text("Delete") }
+      programs
+        .toList()
+        .sortedBy { it.first }
+        .forEach { (id, program) ->
+          item {
+            ListItem(
+              modifier = Modifier.clickable { updateProgram(program) },
+              title = { Text(id) },
+              trailing = {
+                PopupMenuButton {
+                  PopupMenuItem(onSelected = { openProgram(id) }) { Text("Open") }
+                  PopupMenuItem(onSelected = { deleteProgram(id) }) { Text("Delete") }
+                }
               }
-            }
-          )
+            )
+          }
         }
-      }
 
       item {
         ListItem(
