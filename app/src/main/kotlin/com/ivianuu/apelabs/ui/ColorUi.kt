@@ -87,56 +87,64 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
                 .height(100.dp)
                 .background(currentColor().toColor())
             )
+          }
 
-            @Composable fun ColorSlider(
-              value: Float,
-              onValueChange: (Float) -> Unit,
-              title: String,
-              color: Color
-            ) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title)
+          @Composable fun ColorSlider(
+            value: Float,
+            onValueChange: (Float) -> Unit,
+            title: String,
+            color: Color
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Text(title)
 
-                Slider(
-                  modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp),
-                  value = value,
-                  onValueChange = onValueChange,
-                  colors = SliderDefaults.colors(
-                    thumbColor = color,
-                    activeTrackColor = color
-                  )
+              Slider(
+                modifier = Modifier
+                  .weight(1f)
+                  .padding(horizontal = 8.dp),
+                value = value,
+                onValueChange = onValueChange,
+                colors = SliderDefaults.colors(
+                  thumbColor = color,
+                  activeTrackColor = color
                 )
+              )
 
-                Text(
-                  modifier = Modifier.width(40.dp),
-                  text = (value * 255).toInt().toString()
-                )
-              }
+              Text(
+                modifier = Modifier.width(40.dp),
+                text = (value * 255).toInt().toString()
+              )
             }
+          }
 
+          item {
             ColorSlider(
               value = red,
               onValueChange = { red = it },
               title = "R",
               color = Color.Red
             )
+          }
 
+          item {
             ColorSlider(
               value = green,
               onValueChange = { green = it },
               title = "G",
               color = Color.Green
             )
+          }
 
+          item {
             ColorSlider(
               value = blue,
               onValueChange = { blue = it },
               title = "B",
               color = Color.Blue
             )
+          }
 
+          item {
             ColorSlider(
               value = white,
               onValueChange = { white = it },
