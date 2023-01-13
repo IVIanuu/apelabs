@@ -11,11 +11,11 @@ import com.ivianuu.apelabs.data.isWapp
 import com.ivianuu.apelabs.data.toWapp
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.onCancel
+import com.ivianuu.essentials.coroutines.share
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
-import com.ivianuu.essentials.permission.PermissionStateFactory
+import com.ivianuu.essentials.permission.PermissionManager
 import com.ivianuu.injekt.Provide
-import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
@@ -26,27 +26,20 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-@Provide @Scoped<AppScope> class WappRepository(
-  private val bluetoothManager: @SystemService BluetoothManager,
-  context: IOContext,
-  private val logger: Logger,
-  permissionStateFactory: PermissionStateFactory,
-  private val remote: WappRemote,
-  scope: NamedCoroutineScope<AppScope>
-) {
-  val wapps: Flow<List<Wapp>> = permissionStateFactory(apeLabsPermissionKeys)
+context(BluetoothManager, Logger, PermissionManager, WappRemote, NamedCoroutineScope<AppScope>)
+@Provide @Scoped<AppScope> class WappRepository(context: IOContext) {
+  val wapps: Flow<List<Wapp>> = permissionState(apeLabsPermissionKeys)
     .flatMapLatest {
       if (!it) flowOf(emptyList())
       else bleWapps()
     }
     .flowOn(context)
-    .shareIn(scope, SharingStarted.WhileSubscribed(2000), 1)
+    .share(SharingStarted.WhileSubscribed(2000), 1)
 
   private val foundWapps = mutableSetOf<Wapp>()
   private val wappsLock = Mutex()
@@ -64,7 +57,7 @@ import kotlinx.coroutines.sync.withLock
             return@launch
         }
 
-        remote.withWapp(wapp.address) {
+        withWapp(wapp.address) {
           wappsLock.withLock {
             if (wapp in wapps)
               return@withWapp
@@ -75,7 +68,7 @@ import kotlinx.coroutines.sync.withLock
             trySend(wapps.toList())
           }
 
-          onCancel {
+          onCancel<Unit> {
             if (coroutineContext.isActive) {
               log { "${wapp.debugName()} remove wapp" }
               wappsLock.withLock {
@@ -88,7 +81,7 @@ import kotlinx.coroutines.sync.withLock
       }
     }
 
-    bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)
+    getConnectedDevices(BluetoothProfile.GATT)
       .filter { it.isWapp() }
       .forEach { handleWapp(it.toWapp()) }
 
@@ -103,10 +96,10 @@ import kotlinx.coroutines.sync.withLock
     }
 
     log { "start scan" }
-    bluetoothManager.adapter.bluetoothLeScanner.startScan(callback)
+    adapter.bluetoothLeScanner.startScan(callback)
     awaitClose {
       log { "stop scan" }
-      bluetoothManager.adapter.bluetoothLeScanner.stopScan(callback)
+      adapter.bluetoothLeScanner.stopScan(callback)
     }
   }
 }

@@ -22,10 +22,10 @@ import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Provide
-import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
+import com.ivianuu.injekt.inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,16 +36,13 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.*
 
-context(Logger, NamedCoroutineScope<AppScope>)
+context(AppContext, BluetoothManager, Logger, NamedCoroutineScope<AppScope>)
 @Provide @Scoped<AppScope> class WappRemote(
-  private val appContext: AppContext,
-  private val bluetoothManager: @SystemService BluetoothManager,
   private val context: IOContext
 ) {
   private val servers = RefCountedResource<String, WappServer>(
-    scope = this@NamedCoroutineScope,
     timeout = 5.seconds,
-    create = { WappServer(it, context, appContext, bluetoothManager) },
+    create = { WappServer(it, context) },
     release = { _, server -> server.close() }
   )
 
@@ -69,13 +66,11 @@ context(Logger, NamedCoroutineScope<AppScope>)
   }
 }
 
-context(CoroutineScope, Logger)
+context(AppContext, BluetoothManager, CoroutineScope, Logger)
 @SuppressLint("MissingPermission")
 class WappServer(
   address: String,
-  private val context: IOContext,
-  appContext: AppContext,
-  bluetoothManager: BluetoothManager
+  private val context: IOContext
 ) {
   val connectionState = MutableSharedFlow<Boolean>(
     replay = 1,
@@ -88,14 +83,14 @@ class WappServer(
     onBufferOverflow = BufferOverflow.SUSPEND
   )
 
-  val device = bluetoothManager.adapter.getRemoteDevice(address)
+  val device = adapter.getRemoteDevice(address)
 
   val messages = EventFlow<ByteArray>()
 
-  private val gatt = bluetoothManager.adapter
+  private val gatt = adapter
     .getRemoteDevice(address)
     .connectGatt(
-      appContext,
+      inject(),
       true,
       object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {

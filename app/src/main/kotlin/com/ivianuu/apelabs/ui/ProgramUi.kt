@@ -30,13 +30,13 @@ import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
+import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.resource.Idle
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.flowAsResource
 import com.ivianuu.essentials.resource.get
 import com.ivianuu.essentials.resource.getOrNull
 import com.ivianuu.essentials.resource.map
-import com.ivianuu.essentials.state.action
 import com.ivianuu.essentials.time.minutes
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.ui.common.VerticalList

@@ -43,13 +43,13 @@ import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.merge
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
+import com.ivianuu.essentials.compose.action
+import com.ivianuu.essentials.compose.bind
+import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.safeAs
-import com.ivianuu.essentials.state.action
-import com.ivianuu.essentials.state.bind
-import com.ivianuu.essentials.state.bindResource
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.ListKey
 import com.ivianuu.essentials.ui.dialog.TextInputKey

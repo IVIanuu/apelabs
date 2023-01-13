@@ -37,8 +37,8 @@ import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.BuiltInColors
 import com.ivianuu.apelabs.domain.ColorRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
-import com.ivianuu.essentials.state.action
-import com.ivianuu.essentials.state.bind
+import com.ivianuu.essentials.compose.action
+import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.Dialog
 import com.ivianuu.essentials.ui.dialog.DialogScaffold

@@ -9,10 +9,10 @@ import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.lightIdOf
 import com.ivianuu.apelabs.data.toApeLabsId
 import com.ivianuu.essentials.AppScope
+import com.ivianuu.essentials.compose.stateFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
-import com.ivianuu.essentials.state.stateFlow
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.common.Scoped

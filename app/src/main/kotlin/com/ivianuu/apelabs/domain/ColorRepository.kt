@@ -7,8 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
-context(ApeLabsPrefsContext)
-@Provide class ColorRepository {
+context(ApeLabsPrefsContext) @Provide class ColorRepository {
   val colors: Flow<Map<String, LightColor>>
     get() = pref.data
       .map { it.colors }
