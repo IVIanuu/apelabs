@@ -11,6 +11,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -184,7 +185,12 @@ import kotlinx.coroutines.isActive
 
         if (selectedLights.isNotEmpty()) {
           item {
-            Button(onClick = regroupLights) { Text("Regroup") }
+            Button(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+              onClick = regroupLights
+            ) { Text("REGROUP") }
           }
         }
       }
@@ -227,7 +233,12 @@ import kotlinx.coroutines.isActive
       }
 
       item {
-        Button(onClick = addProgram) { Text("ADD PROGRAM") }
+        Button(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+          onClick = addProgram
+        ) { Text("ADD PROGRAM") }
       }
     }
   }
