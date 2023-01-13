@@ -2,7 +2,6 @@
 
 package com.ivianuu.apelabs.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -82,11 +81,11 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
 
         VerticalList {
           item {
-            Box(
+            Program(
+              program = Program.SingleColor(currentColor()),
               modifier = Modifier
                 .fillMaxWidth()
                 .height(100.dp)
-                .background(currentColor().toColor())
             )
           }
 

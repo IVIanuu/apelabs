@@ -1,12 +1,9 @@
 package com.ivianuu.apelabs.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.ExtendedFloatingActionButton
 import androidx.compose.material.FabPosition
@@ -27,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ivianuu.apelabs.data.Program
-import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.essentials.compose.action
@@ -84,9 +80,9 @@ data class ProgramKey(val id: String) : Key<Unit>
                 .padding(horizontal = 16.dp),
               verticalAlignment = Alignment.CenterVertically
             ) {
-              Box(
-                modifier = Modifier.size(40.dp)
-                  .background(item.color.toColor())
+              Program(
+                program = Program.SingleColor(item.color),
+                modifier = Modifier
                   .clickable { updateColor(index) }
               )
 

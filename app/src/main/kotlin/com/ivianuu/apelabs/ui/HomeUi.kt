@@ -42,6 +42,7 @@ import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.LightColor
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.merge
+import com.ivianuu.apelabs.domain.BuiltInColors
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.essentials.compose.action
@@ -202,7 +203,12 @@ import kotlinx.coroutines.isActive
       item {
         ListItem(
           modifier = Modifier.clickable(onClick = updateColor),
-          title = { Text("Color") }
+          title = { Text("Color") },
+          leading = {
+            Program(
+              program = remember { Program.SingleColor(BuiltInColors.values.shuffled().first()) }
+            )
+          }
         )
       }
 
@@ -215,6 +221,7 @@ import kotlinx.coroutines.isActive
             ListItem(
               modifier = Modifier.clickable { updateProgram(program) },
               title = { Text(id) },
+              leading = { Program(program) },
               trailing = {
                 PopupMenuButton {
                   PopupMenuItem(onSelected = { openProgram(id) }) { Text("Open") }
@@ -228,7 +235,8 @@ import kotlinx.coroutines.isActive
       item {
         ListItem(
           modifier = Modifier.clickable(onClick = updateRainbowProgram),
-          title = { Text("Rainbow") }
+          title = { Text("Rainbow") },
+          leading = { Program(Program.Rainbow) }
         )
       }
 
