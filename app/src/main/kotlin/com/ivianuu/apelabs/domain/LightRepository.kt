@@ -57,6 +57,7 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
           }
         }
         .mapNotNull { message ->
+          log { "on message ${message.contentToString()}" }
           if ((message.getOrNull(0)?.toInt() == 82 ||
                 message.getOrNull(0)?.toInt() == 83) &&
             // -96 means that it's a light

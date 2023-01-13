@@ -16,6 +16,11 @@ import kotlin.time.Duration
 
 data class Wapp(val address: String, val name: String)
 
+data class WappState(
+  val isConnected: Boolean = false,
+  val battery: Float = 0f
+)
+
 fun BluetoothDevice.toWapp() = Wapp(address, alias ?: name)
 
 fun BluetoothDevice.isWapp() = (alias ?: name).let {

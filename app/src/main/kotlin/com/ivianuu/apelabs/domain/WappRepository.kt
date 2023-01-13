@@ -6,11 +6,13 @@ import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import com.ivianuu.apelabs.data.Wapp
+import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.apelabs.data.isWapp
 import com.ivianuu.apelabs.data.toWapp
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.onCancel
+import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.permission.PermissionManager
@@ -23,9 +25,13 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -50,6 +56,30 @@ import kotlinx.coroutines.sync.withLock
 
   private val foundWapps = mutableSetOf<Wapp>()
   private val wappsLock = Mutex()
+
+  val wappState: Flow<WappState>
+    get() = wapps
+      .flatMapLatest { wapps ->
+        if (wapps.isEmpty()) flowOf(WappState(false, 0f))
+        else callbackFlow<ByteArray> {
+          wapps.parForEach { wapp ->
+            remote.withWapp(wapp.address) {
+              messages.collect {
+                trySend(it)
+              }
+            }
+          }
+
+          awaitClose()
+        }
+          .filter {
+            it.getOrNull(0)?.toInt() == 83 &&
+                it.getOrNull(1)?.toInt() == -112
+          }
+          .map { message -> WappState(true, message[6] / 100f) }
+          .onStart { emit(WappState(true)) }
+      }
+      .distinctUntilChanged()
 
   @SuppressLint("MissingPermission")
   private fun bleWapps(): Flow<List<Wapp>> = callbackFlow {

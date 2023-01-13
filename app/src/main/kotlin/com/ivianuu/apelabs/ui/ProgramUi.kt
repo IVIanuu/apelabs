@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.ExtendedFloatingActionButton
 import androidx.compose.material.FabPosition
@@ -81,9 +82,10 @@ data class ProgramKey(val id: String) : Key<Unit>
               verticalAlignment = Alignment.CenterVertically
             ) {
               Program(
-                program = Program.SingleColor(item.color),
                 modifier = Modifier
-                  .clickable { updateColor(index) }
+                  .size(40.dp)
+                  .clickable { updateColor(index) },
+                program = Program.SingleColor(item.color)
               )
 
               Column(

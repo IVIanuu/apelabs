@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ContentAlpha
@@ -41,10 +42,12 @@ import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.LightColor
 import com.ivianuu.apelabs.data.Program
+import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.merge
 import com.ivianuu.apelabs.domain.BuiltInColors
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
+import com.ivianuu.apelabs.domain.WappRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
@@ -52,6 +55,7 @@ import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.safeAs
+import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.ListKey
 import com.ivianuu.essentials.ui.dialog.TextInputKey
@@ -72,6 +76,7 @@ import com.ivianuu.essentials.ui.prefs.ScaledPercentageUnitText
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 @Provide object HomeKey : RootKey
@@ -149,11 +154,12 @@ import kotlinx.coroutines.isActive
         }
       }
 
+      val wappState = wappState.getOrElse { WappState() }
       val lights = lights.getOrElse { emptyList() }
 
-      if (lights.isNotEmpty()) {
+      if (wappState.isConnected || lights.isNotEmpty()) {
         item {
-          Subheader { Text("Lights") }
+          Subheader { Text("Devices") }
         }
 
         item {
@@ -164,6 +170,14 @@ import kotlinx.coroutines.isActive
             crossAxisSpacing = 8.dp,
             crossAxisAlignment = FlowCrossAxisAlignment.Center
           ) {
+            LongClickChip(
+              selected = false,
+              onClick = {},
+              onLongClick = null
+            ) {
+              Text("Wapp, bat ${(wappState.battery * 100).toInt()}")
+            }
+
             lights
               .groupBy { it.group }
               .mapValues { it.value.sortedBy { it.id } }
@@ -206,6 +220,7 @@ import kotlinx.coroutines.isActive
           title = { Text("Color") },
           leading = {
             Program(
+              modifier = Modifier.size(40.dp),
               program = remember { Program.SingleColor(BuiltInColors.values.shuffled().first()) }
             )
           }
@@ -221,7 +236,7 @@ import kotlinx.coroutines.isActive
             ListItem(
               modifier = Modifier.clickable { updateProgram(program) },
               title = { Text(id) },
-              leading = { Program(program) },
+              leading = { Program(modifier = Modifier.size(40.dp), program = program) },
               trailing = {
                 PopupMenuButton {
                   PopupMenuItem(onSelected = { openProgram(id) }) { Text("Open") }
@@ -236,7 +251,7 @@ import kotlinx.coroutines.isActive
         ListItem(
           modifier = Modifier.clickable(onClick = updateRainbowProgram),
           title = { Text("Rainbow") },
-          leading = { Program(Program.Rainbow) }
+          leading = { Program(modifier = Modifier.size(40.dp), program = Program.Rainbow) }
         )
       }
 
@@ -298,10 +313,10 @@ data class HomeModel(
   val updateSpeed: (Float) -> Unit,
   val updateMusicMode: (Boolean) -> Unit,
   val updateBlackout: (Boolean) -> Unit,
+  val wappState: Resource<WappState>,
   val lights: Resource<List<Light>>,
   val selectedLights: Set<String>,
   val toggleLightSelection: (Light) -> Unit,
-  val flashLight: suspend (Light) -> Unit,
   val regroupLights: () -> Unit,
   val programs: Resource<Map<String, Program.MultiColor>>,
   val updateColor: () -> Unit,
@@ -312,7 +327,7 @@ data class HomeModel(
   val deleteProgram: (String) -> Unit
 )
 
-context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepository)
+context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepository, WappRepository)
     @Provide fun homeModel() = Model {
   val prefs = pref.data.bind(ApeLabsPrefs())
 
@@ -340,6 +355,7 @@ context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepo
     selectedLights.parForEach { lightId ->
       while (coroutineContext.isActive) {
         flashLight(lightId)
+        delay(1.seconds)
       }
     }
   }
@@ -379,6 +395,7 @@ context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepo
     updateBlackout = action { value ->
       updateConfig { copy(blackout = value) }
     },
+    wappState = wappState.bindResource(),
     lights = lights,
     selectedLights = selectedLights,
     toggleLightSelection = action { light ->
@@ -393,11 +410,6 @@ context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepo
           selectedLights.parForEach { regroupLight(it, group) }
           selectedLights = emptySet()
         }
-    },
-    flashLight = { light ->
-      while (coroutineContext.isActive) {
-        flashLight(light.id)
-      }
     },
     programs = programs.bindResource(),
     updateColor = action {
