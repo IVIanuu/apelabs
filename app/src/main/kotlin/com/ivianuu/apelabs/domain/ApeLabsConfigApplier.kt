@@ -8,6 +8,7 @@ import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.combine
 import com.ivianuu.essentials.coroutines.onCancel
 import com.ivianuu.essentials.coroutines.parForEach
+import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.injekt.Provide
@@ -184,7 +185,9 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
 
 private fun Duration.toDurationByte(): Byte = (inWholeMilliseconds / 1000f * 4).toInt().toByte()
 
-private fun Float.toColorByte(): Byte = if (this == 1f) -1 else (this * 255).toInt().toByte()
+private fun Float.toColorByte(): Byte = lerp(0, 255, this)
+  .let { if (it > 127) it - 256 else it }
+  .toByte()
 
 private fun Int.toGroupByte() = when (this) {
   1 -> 1
@@ -195,4 +198,3 @@ private fun Int.toGroupByte() = when (this) {
 }
 
 private fun List<Int>.toGroupByte(): Byte = map { it.toGroupByte() }.sum().toByte()
-
