@@ -14,10 +14,13 @@ import com.ivianuu.essentials.logging.log
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlin.time.Duration
 
-context(ApeLabsPrefsContext, Logger, PreviewRepository, WappRemote, WappRepository)
+context(ApeLabsPrefsContext, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
     @Provide fun apeLabsConfigApplier() = ScopeWorker<AppForegroundScope> {
   wapps.collectLatest { wapps ->
     if (wapps.isEmpty()) return@collectLatest
@@ -36,6 +39,18 @@ context(ApeLabsPrefsContext, Logger, PreviewRepository, WappRemote, WappReposito
             } ?: pref.groupConfigs
           }
           .distinctUntilChanged()
+          .flatMapLatest { groupConfigs ->
+            groupLightsChangedEvents
+              .onEach { changedGroup ->
+                log { "force reapply for $changedGroup" }
+                cache.lastProgram.remove(changedGroup)
+                cache.lastBrightness.remove(changedGroup)
+                cache.lastSpeed.remove(changedGroup)
+                cache.lastMusicMode.remove(changedGroup)
+              }
+              .onStart<Any?> { emit(Unit) }
+              .map { groupConfigs }
+          }
           .collectLatest { groupConfigs ->
             log { "values $groupConfigs " }
             applyGroupConfig(groupConfigs, cache)

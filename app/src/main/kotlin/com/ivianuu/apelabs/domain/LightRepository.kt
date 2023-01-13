@@ -10,6 +10,7 @@ import com.ivianuu.apelabs.data.lightIdOf
 import com.ivianuu.apelabs.data.toApeLabsId
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.compose.stateFlow
+import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
@@ -62,7 +63,15 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
             message.getOrNull(1)?.toInt() == -96
           ) {
             val id = lightIdOf(message[2], message[3])
-            Light(id, message.getOrNull(10)?.toInt()?.inc() ?: 1)
+            val light = Light(id, message.getOrNull(10)?.toInt()?.inc() ?: 1)
+            val oldLight = lights.singleOrNull { it.id == id }
+
+            if ((message[0].toInt() == 82 && oldLight == null) ||
+              (oldLight != null && light.group != oldLight.group)
+            )
+              _groupLightsChangedEvents.tryEmit(light.group)
+
+            light
           } else null
         }
         .collect { light ->
@@ -87,6 +96,9 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
   }
     .distinctUntilChanged()
     .shareIn(this@NamedCoroutineScope, SharingStarted.WhileSubscribed(), 1)
+
+  private val _groupLightsChangedEvents = EventFlow<Int>()
+  val groupLightsChangedEvents get() = _groupLightsChangedEvents
 
   suspend fun flashLight(id: String) {
     wapps.first().parForEach { wapp ->
