@@ -114,7 +114,10 @@ import kotlinx.coroutines.isActive
 
       if (selectedGroups.isEmpty()) {
         item {
-          Text("Select a group to edit")
+          Text(
+            modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
+            text = "Select a group to edit"
+          )
         }
       } else {
         item {

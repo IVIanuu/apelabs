@@ -101,7 +101,7 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
               Slider(
                 modifier = Modifier
                   .weight(1f)
-                  .padding(horizontal = 8.dp),
+                  .padding(horizontal = 4.dp),
                 value = value,
                 onValueChange = onValueChange,
                 colors = SliderDefaults.colors(
@@ -111,7 +111,7 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
               )
 
               Text(
-                modifier = Modifier.width(40.dp),
+                modifier = Modifier.width(32.dp),
                 text = (value * 255).toInt().toString()
               )
             }

@@ -105,7 +105,7 @@ data class ProgramKey(val id: String) : Key<Unit>
 
                     Slider(
                       modifier = Modifier.weight(1f)
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = 4.dp),
                       value = internalValue,
                       onValueChange = { internalValue = it },
                       onValueChangeFinished = {
