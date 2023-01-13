@@ -175,7 +175,14 @@ import kotlinx.coroutines.isActive
               onClick = {},
               onLongClick = null
             ) {
-              Text("Wapp, bat ${(wappState.battery * 100).toInt()}")
+              Text(
+                buildString {
+                  append("Wapp")
+                  if (wappState.battery != null) {
+                    append(", bat ${(wappState.battery * 100).toInt()}%")
+                  }
+                }
+              )
             }
 
             lights

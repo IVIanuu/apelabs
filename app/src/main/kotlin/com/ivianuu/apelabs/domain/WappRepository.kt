@@ -60,7 +60,7 @@ import kotlinx.coroutines.sync.withLock
   val wappState: Flow<WappState>
     get() = wapps
       .flatMapLatest { wapps ->
-        if (wapps.isEmpty()) flowOf(WappState(false, 0f))
+        if (wapps.isEmpty()) flowOf(WappState(false, null))
         else callbackFlow<ByteArray> {
           wapps.parForEach { wapp ->
             remote.withWapp(wapp.address) {
@@ -77,7 +77,7 @@ import kotlinx.coroutines.sync.withLock
                 it.getOrNull(1)?.toInt() == -112
           }
           .map { message -> WappState(true, message[6] / 100f) }
-          .onStart { emit(WappState(true)) }
+          .onStart { emit(WappState(true, null)) }
       }
       .distinctUntilChanged()
 
