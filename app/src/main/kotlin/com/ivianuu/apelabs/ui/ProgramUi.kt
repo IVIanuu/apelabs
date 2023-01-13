@@ -112,8 +112,7 @@ data class ProgramKey(val id: String) : Key<Unit>
                         onValueChange(FloatToDuration[internalValue.toInt().toFloat()]!!)
                       },
                       valueRange = FloatToDuration.keys.toList()
-                        .let { it.first()..it.last() },
-                      stepPolicy = incrementingStepPolicy(1f)
+                        .let { it.first()..it.last() }
                     )
 
                     Text(
