@@ -33,7 +33,6 @@ import com.ivianuu.apelabs.data.toColor
   ) {
     val itemSize = Size(size.width / colors.size, size.height)
     var x = 0f
-    println("draw colors $colors for $program $itemSize $size")
     colors.forEach { color ->
       drawRect(
         color = color,
