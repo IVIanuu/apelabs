@@ -31,7 +31,16 @@ fun BluetoothDevice.debugName() = "[${alias ?: name} ~ $address]"
 
 fun Wapp.debugName() = "[$name ~ $address]"
 
-data class Light(val id: String, val group: Int)
+data class Light(
+  val id: String,
+  val group: Int,
+  val battery: Float? = null,
+  val type: Type?
+) {
+  enum class Type(val id: Int) {
+    COIN(-96)
+  }
+}
 
 fun lightIdOf(id1: Byte, id2: Byte) = "$id1:$id2"
 

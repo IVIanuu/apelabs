@@ -205,7 +205,22 @@ import kotlinx.coroutines.isActive
                     onClick = { toggleLightSelection(light) },
                     onLongClick = { toggleLightSelection(light) }
                   ) {
-                    Text("Light ${light.id}")
+                    Text(
+                      buildString {
+                        append(
+                          "${
+                            light.type?.name?.toLowerCase()?.capitalize() ?: "Light"
+                          } ${light.id}"
+                        )
+                        if (light.battery != null) {
+                          if (light.battery < 0f) {
+                            append(", charging")
+                          } else {
+                            append(", bat ${(light.battery * 100).toInt()}%")
+                          }
+                        }
+                      }
+                    )
                   }
                 }
               }

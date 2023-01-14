@@ -74,7 +74,13 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
             message.getOrNull(1)?.toInt() != -112
           ) {
             val id = lightIdOf(message[2], message[3])
-            val light = Light(id, message.getOrNull(10)?.toInt()?.inc() ?: 1)
+            val type = Light.Type.values().firstOrNull { it.id == message[1].toInt() }
+            val light = Light(
+              id = id,
+              group = message.getOrNull(10)?.toInt()?.inc() ?: 1,
+              battery = if (type != Light.Type.COIN) message[6] / 100f else null,
+              type = type
+            )
             val oldLight = lights.singleOrNull { it.id == id }
 
             if ((message[0].toInt() == 82 && oldLight == null) ||
