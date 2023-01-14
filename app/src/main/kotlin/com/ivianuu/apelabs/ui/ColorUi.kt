@@ -54,9 +54,7 @@ import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.injekt.Provide
 
-data class ColorKey(
-  val initial: LightColor = LightColor()
-) : PopupKey<LightColor>
+data class ColorKey(val initial: LightColor = LightColor()) : PopupKey<LightColor>
 
 context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
     @Provide fun colorUi() = SimpleKeyUi<ColorKey> {

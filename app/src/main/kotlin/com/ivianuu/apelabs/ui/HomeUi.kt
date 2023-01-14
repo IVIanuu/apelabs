@@ -182,7 +182,11 @@ import kotlinx.coroutines.isActive
                 buildString {
                   append("Wapp")
                   if (wappState.battery != null) {
-                    append(", bat ${(wappState.battery * 100).toInt()}%")
+                    if (wappState.battery < 0f) {
+                      append(", charging")
+                    } else {
+                      append(", bat ${(wappState.battery * 100).toInt()}%")
+                    }
                   }
                 }
               )
