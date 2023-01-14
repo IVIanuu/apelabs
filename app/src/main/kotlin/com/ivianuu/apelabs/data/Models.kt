@@ -47,7 +47,11 @@ fun String.toApeLabsId() = split(":").let { it[0].toByte() to it[1].toByte() }
 
 @Serializable sealed interface Program {
   @Serializable data class SingleColor(val color: LightColor = LightColor()) : Program
-  @Serializable data class MultiColor(val items: List<Item> = emptyList()) : Program {
+  @Serializable data class MultiColor(val items: List<Item> = listOf(Item())) : Program {
+    init {
+      check(items.size in ITEM_RANGE)
+    }
+
     @Serializable data class Item(
       val color: LightColor = LightColor(),
       val fade: Duration = 1.seconds,
@@ -55,7 +59,7 @@ fun String.toApeLabsId() = split(":").let { it[0].toByte() to it[1].toByte() }
     )
 
     companion object {
-      const val MAX_ITEMS = 4
+      val ITEM_RANGE = 1..4
     }
   }
 

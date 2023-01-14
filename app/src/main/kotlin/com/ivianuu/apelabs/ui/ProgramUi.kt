@@ -3,6 +3,7 @@ package com.ivianuu.apelabs.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -135,7 +136,10 @@ data class ProgramKey(val id: String) : Key<Unit>
                 )
               }
 
-              IconButton(onClick = { deleteItem(index) }) { Icon(Icons.Default.Close) }
+              if (index != 0)
+                IconButton(onClick = { deleteItem(index) }) { Icon(Icons.Default.Close) }
+              else
+                Spacer(Modifier.size(40.dp))
             }
           }
         }
@@ -184,7 +188,7 @@ data class ProgramModel(
   val updatePreviewsEnabled: (Boolean) -> Unit
 ) {
   val canAddItem: Boolean
-    get() = program.getOrNull()?.items?.size?.let { it < Program.MultiColor.MAX_ITEMS } == true
+    get() = program.getOrNull()?.items?.size?.let { it in Program.MultiColor.ITEM_RANGE } == true
 }
 
 context(PreviewRepository, ProgramRepository, KeyUiContext<ProgramKey>)
