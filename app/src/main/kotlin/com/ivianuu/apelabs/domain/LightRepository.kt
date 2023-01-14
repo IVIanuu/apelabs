@@ -81,8 +81,8 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
               battery = if (type != Light.Type.COIN) message[6] / 100f else null,
               type = type
             )
-            val oldLight = lights.singleOrNull { it.id == id }
 
+            val oldLight = lights.singleOrNull { it.id == id }
             if ((message[0].toInt() == 82 && oldLight == null) ||
               (oldLight != null && light.group != oldLight.group)
             )
@@ -97,7 +97,7 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
           lightRemovalJobs.remove(light.id)?.cancel()
 
           lightRemovalJobs[light.id] = launch {
-            delay(20.seconds)
+            delay(30.seconds)
             log { "${light.id} remove light" }
             lights = lights
               .filter { it.id != light.id }
