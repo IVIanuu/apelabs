@@ -42,6 +42,16 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
     val lightRemovalJobs = remember { mutableMapOf<String, Job>() }
 
     LaunchedEffect(true) {
+      _groupLightsChangedEvents.collect { event ->
+        lights = lights
+          .map {
+            if (it.id == event.lightId) it.copy(group = event.group)
+            else it
+          }
+      }
+    }
+
+    LaunchedEffect(true) {
       wapps
         .flatMapLatest { wapps ->
           callbackFlow {
@@ -60,8 +70,8 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
           log { "on message ${message.contentToString()}" }
           if ((message.getOrNull(0)?.toInt() == 82 ||
                 message.getOrNull(0)?.toInt() == 83) &&
-            // -96 means that it's a light
-            message.getOrNull(1)?.toInt() == -96
+            // -112 is the wapp
+            message.getOrNull(1)?.toInt() != -112
           ) {
             val id = lightIdOf(message[2], message[3])
             val light = Light(id, message.getOrNull(10)?.toInt()?.inc() ?: 1)
@@ -70,7 +80,7 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
             if ((message[0].toInt() == 82 && oldLight == null) ||
               (oldLight != null && light.group != oldLight.group)
             )
-              _groupLightsChangedEvents.tryEmit(light.group)
+              _groupLightsChangedEvents.tryEmit(GroupLightChangedEvent(light.group, light.id))
 
             light
           } else null
@@ -98,8 +108,10 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
     .distinctUntilChanged()
     .shareIn(this@NamedCoroutineScope, SharingStarted.WhileSubscribed(), 1)
 
-  private val _groupLightsChangedEvents = EventFlow<Int>()
+  private val _groupLightsChangedEvents = EventFlow<GroupLightChangedEvent>()
   val groupLightsChangedEvents get() = _groupLightsChangedEvents
+
+  data class GroupLightChangedEvent(val group: Int, val lightId: String?)
 
   suspend fun flashLight(id: String) {
     wapps.first().parForEach { wapp ->
@@ -115,6 +127,7 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
       withWapp(wapp.address) {
         val (id1, id2) = id.toApeLabsId()
         write(byteArrayOf(82, 10, id1, id2, 0, (group - 1).toByte(), 1, 0, 2, 13, 10))
+        _groupLightsChangedEvents.tryEmit(GroupLightChangedEvent(group, id))
       }
     }
   }

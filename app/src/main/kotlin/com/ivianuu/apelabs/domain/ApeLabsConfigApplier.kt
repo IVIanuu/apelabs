@@ -41,6 +41,7 @@ context(ApeLabsPrefsContext, Logger, LightRepository, PreviewRepository, WappRem
           .distinctUntilChanged()
           .flatMapLatest { groupConfigs ->
             groupLightsChangedEvents
+              .map { it.group }
               .onEach { changedGroup ->
                 log { "force reapply for $changedGroup" }
                 cache.lastProgram.remove(changedGroup)
