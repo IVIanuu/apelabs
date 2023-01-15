@@ -35,7 +35,7 @@ context(ColorRepository, Db, Logger) @Provide @Scoped<AppScope> class ProgramRep
       .map { it.filter { !it.id.isUUID } }
       .flatMapLatest { entities ->
         if (entities.isEmpty()) flowOf(emptyList<Program>())
-        combine(
+        else combine(
           entities
             .map { it.toProgram() }
         ) { it.toList() }
@@ -75,6 +75,9 @@ context(ColorRepository, Db, Logger) @Provide @Scoped<AppScope> class ProgramRep
     selectById<ProgramEntity>(id).first()?.items?.forEach { deleteProgramItem(it) }
     deleteById<ProgramEntity>(id)
   }
+
+  suspend fun programItem(id: String) = selectById<ProgramEntity.Item>(id)
+    .flatMapLatest { it?.toItem() ?: flowOf(null) }
 
   suspend fun createProgramItem(): Program.Item = transaction {
     val item = Program.Item(id = randomId(), color = createColor())

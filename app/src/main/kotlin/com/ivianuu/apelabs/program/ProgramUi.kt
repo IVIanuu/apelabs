@@ -29,6 +29,8 @@ import com.ivianuu.apelabs.color.ColorKey
 import com.ivianuu.apelabs.color.ColorListIcon
 import com.ivianuu.apelabs.color.ColorRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
+import com.ivianuu.apelabs.group.GROUPS
+import com.ivianuu.apelabs.group.GroupConfigRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
@@ -51,6 +53,8 @@ import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -191,7 +195,7 @@ data class ProgramModel(
     get() = program.getOrNull()?.items?.size?.let { it < Program.ITEM_RANGE.last } == true
 }
 
-context(ColorRepository, PreviewRepository, ProgramRepository, KeyUiContext<ProgramKey>)
+context(ColorRepository, GroupConfigRepository, PreviewRepository, ProgramRepository, KeyUiContext<ProgramKey>)
     @Provide fun programModel() = Model {
   val id = key.id
 
@@ -203,10 +207,18 @@ context(ColorRepository, PreviewRepository, ProgramRepository, KeyUiContext<Prog
     .collectAsState(Idle)
 
   LaunchedEffect(true) {
-    providePreviews {
+    providePreviews { update ->
       snapshotFlow { program }
-        .map { it.getOrNull() }
-        .collect(it)
+        .flatMapLatest { program ->
+          groupConfigs
+            .map { configs ->
+              configs
+                .mapValues { (_, config) ->
+                  program.getOrNull()?.let { config.copy(program = it) }
+                }
+            }
+        }
+        .collect(update)
     }
   }
 
@@ -218,7 +230,7 @@ context(ColorRepository, PreviewRepository, ProgramRepository, KeyUiContext<Prog
     id: String,
     block: Program.Item.() -> Program.Item
   ) {
-    updateProgramItem(item = program.get().items.single { it.id == id }.block())
+    updateProgramItem(item = programItem(id).first()!!.block())
   }
 
   ProgramModel(

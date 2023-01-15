@@ -2,6 +2,7 @@ package com.ivianuu.apelabs.group
 
 import com.ivianuu.apelabs.program.Program
 import com.ivianuu.apelabs.program.ProgramRepository
+import com.ivianuu.apelabs.util.randomId
 import com.ivianuu.essentials.db.Db
 import com.ivianuu.essentials.db.InsertConflictStrategy
 import com.ivianuu.essentials.db.deleteById
@@ -17,16 +18,20 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 context(Db, Logger, ProgramRepository) @Provide class GroupConfigRepository {
-  val groupConfigs: Flow<List<GroupConfig>>
-    get() = selectAll<GroupConfigEntity>()
-      .map { it.filter { it.id.toIntOrNull() in GROUPS } }
-      .flatMapLatest { entities ->
-        if (entities.isEmpty()) flowOf(emptyList())
-        else combine(
-          entities
-            .map { it.toGroupConfig() }
-        ) { it.toList() }
-      }
+  val groupConfigs: Flow<Map<Int, GroupConfig>>
+    get() = combine(
+      GROUPS
+        .map { group ->
+          groupConfig(group.toString())
+            .map { group to (it ?: GroupConfig.DEFAULT) }
+        }
+    ) { it.toList().toMap() }
+
+  suspend fun createGroupConfig(): GroupConfig = transaction {
+    val finalConfig = GroupConfig(randomId())
+    insert(finalConfig.toEntity())
+    finalConfig
+  }
 
   fun groupConfig(id: String): Flow<GroupConfig?> = selectById<GroupConfigEntity>(id)
     .flatMapLatest { it?.toGroupConfig() ?: flowOf(null) }

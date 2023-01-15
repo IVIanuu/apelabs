@@ -31,4 +31,19 @@ import com.ivianuu.apelabs.program.Program
   }
 }
 
+@Composable fun ColorListIcon(modifier: Modifier, program: Program) {
+  ColorListIcon(
+    modifier = modifier,
+    colors = when {
+      program === Program.RAINBOW -> listOf(
+        Color.Red.toApeColor("R"),
+        Color.Yellow.toApeColor("Y"),
+        Color.Green.toApeColor("G"),
+        Color.Blue.toApeColor("B")
+      )
+      else -> program.items.map { it.color }
+    }
+  )
+}
+
 private val ColorPadding = 1.dp

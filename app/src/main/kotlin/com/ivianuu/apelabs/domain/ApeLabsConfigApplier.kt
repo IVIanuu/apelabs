@@ -4,6 +4,7 @@ import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.group.GroupConfig
 import com.ivianuu.apelabs.device.LightRepository
 import com.ivianuu.apelabs.device.WappRepository
+import com.ivianuu.apelabs.group.GROUPS
 import com.ivianuu.apelabs.group.GroupConfigRepository
 import com.ivianuu.apelabs.program.Program
 import com.ivianuu.essentials.app.AppForegroundScope
@@ -42,22 +43,16 @@ context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, Pre
               emit(it)
               delay(200.milliseconds)
             },
-          pref.data,
-          preview
+          previewGroupConfigs
         )
-          .map { (groupConfigs, pref, previewProgram) ->
-            previewProgram?.let {
-              groupConfigs.map {
-                if (it.id.toIntOrNull() in pref.selectedGroups)
-                  it.copy(program = previewProgram)
-                else it
-              }
-            } ?: groupConfigs
+          .map { (groupConfigs, previewGroupConfigs) ->
+            GROUPS
+              .associateWith { previewGroupConfigs[it] ?: groupConfigs[it]!! }
           }
           .distinctUntilChanged()
           .flatMapLatest { groupConfigs ->
             groupLightsChangedEvents
-              .map { it.group.toString() }
+              .map { it.group }
               .onEach { changedGroup ->
                 log { "force reapply for $changedGroup" }
                 cache.lastProgram.remove(changedGroup)
@@ -75,29 +70,29 @@ context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, Pre
 }
 
 private class Cache {
-  val lastProgram = mutableMapOf<String, Program>()
-  val lastBrightness = mutableMapOf<String, Float>()
-  val lastSpeed = mutableMapOf<String, Float>()
-  val lastMusicMode = mutableMapOf<String, Boolean>()
+  val lastProgram = mutableMapOf<Int, Program>()
+  val lastBrightness = mutableMapOf<Int, Float>()
+  val lastSpeed = mutableMapOf<Int, Float>()
+  val lastMusicMode = mutableMapOf<Int, Boolean>()
 }
 
 context(Logger, WappServer) private suspend fun applyGroupConfig(
-  configs: List<GroupConfig>,
+  configs: Map<Int, GroupConfig>,
   cache: Cache
 ) {
   suspend fun <T> applyIfChanged(
     tag: String,
     get: GroupConfig.() -> T,
-    cache: MutableMap<String, T>,
+    cache: MutableMap<Int, T>,
     apply: suspend (T, List<Int>) -> Unit
   ) {
     configs
       .toList()
-      .groupBy { get(it) }
+      .groupBy { get(it.second) }
       // filter out changed groups
       .mapValues { (value, config) ->
         config
-          .map { it.id }
+          .map { it.first }
           .filter { cache[it] != value }
       }
       // only apply if there any groups
@@ -108,7 +103,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
           block = {
             // cache and apply output
             log { "apply $tag $value for $groups" }
-            apply(value, groups.map { it.toInt() })
+            apply(value, groups)
             groups.forEach { cache[it] = value }
           },
           onCancel = {

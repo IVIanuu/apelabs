@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,24 +40,25 @@ import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.color.ApeColor
 import com.ivianuu.apelabs.color.BuiltInColors
 import com.ivianuu.apelabs.color.ColorKey
-import com.ivianuu.apelabs.data.ApeLabsPrefs
-import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.group.GROUPS
-import com.ivianuu.apelabs.group.GroupConfig
-import com.ivianuu.apelabs.device.Light
-import com.ivianuu.apelabs.device.WappState
-import com.ivianuu.apelabs.group.merge
-import com.ivianuu.apelabs.device.LightRepository
-import com.ivianuu.apelabs.program.ProgramRepository
-import com.ivianuu.apelabs.device.WappRepository
-import com.ivianuu.apelabs.program.Program
 import com.ivianuu.apelabs.color.ColorListIcon
 import com.ivianuu.apelabs.color.ColorRepository
 import com.ivianuu.apelabs.color.toApeColor
+import com.ivianuu.apelabs.data.ApeLabsPrefs
+import com.ivianuu.apelabs.data.ApeLabsPrefsContext
+import com.ivianuu.apelabs.device.Light
+import com.ivianuu.apelabs.device.LightRepository
+import com.ivianuu.apelabs.device.WappRepository
+import com.ivianuu.apelabs.device.WappState
+import com.ivianuu.apelabs.group.GROUPS
+import com.ivianuu.apelabs.group.GroupConfig
 import com.ivianuu.apelabs.group.GroupConfigRepository
+import com.ivianuu.apelabs.group.merge
+import com.ivianuu.apelabs.program.Program
 import com.ivianuu.apelabs.program.ProgramKey
+import com.ivianuu.apelabs.program.ProgramRepository
+import com.ivianuu.apelabs.scene.Scene
+import com.ivianuu.apelabs.scene.SceneKey
 import com.ivianuu.apelabs.scene.SceneRepository
-import com.ivianuu.apelabs.util.randomId
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
@@ -82,7 +84,6 @@ import com.ivianuu.essentials.ui.navigation.RootKey
 import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.popup.PopupMenuItem
-import com.ivianuu.essentials.ui.prefs.ScaledPercentageUnitText
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
@@ -91,6 +92,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
+import kotlin.math.roundToInt
 
 @Provide object HomeKey : RootKey
 
@@ -139,7 +141,7 @@ import kotlinx.coroutines.isActive
             onValueChange = updateBrightness,
             stepPolicy = incrementingStepPolicy(0.05f),
             title = { Text("Brightness") },
-            valueText = { ScaledPercentageUnitText(it) }
+            valueText = { Text("${(it * 100f).roundToInt()}") }
           )
         }
 
@@ -149,7 +151,7 @@ import kotlinx.coroutines.isActive
             onValueChange = updateSpeed,
             stepPolicy = incrementingStepPolicy(0.05f),
             title = { Text("Speed") },
-            valueText = { ScaledPercentageUnitText(it) }
+            valueText = { Text("${(it * 100f).roundToInt()}") }
           )
         }
 
@@ -280,7 +282,7 @@ import kotlinx.coroutines.isActive
               leading = {
                 ColorListIcon(
                   modifier = Modifier.size(40.dp),
-                  colors = program.items.map { it.color }
+                  program = program
                 )
               },
               trailing = {
@@ -300,12 +302,7 @@ import kotlinx.coroutines.isActive
           leading = {
             ColorListIcon(
               modifier = Modifier.size(40.dp),
-              colors = listOf(
-                Color.Red.toApeColor("R"),
-                Color.Yellow.toApeColor("Y"),
-                Color.Green.toApeColor("G"),
-                Color.Blue.toApeColor("B")
-              )
+              program = Program.RAINBOW
             )
           }
         )
@@ -318,6 +315,37 @@ import kotlinx.coroutines.isActive
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
           onClick = addProgram
         ) { Text("ADD PROGRAM") }
+      }
+
+      item {
+        Subheader { Text("Scenes") }
+      }
+
+      val scenes = scenes.getOrElse { emptyList() }
+      scenes
+        .sortedBy { it.id }
+        .forEach { scene ->
+          item {
+            ListItem(
+              modifier = Modifier.clickable { applyScene(scene) },
+              title = { Text(scene.id) },
+              trailing = {
+                PopupMenuButton {
+                  PopupMenuItem(onSelected = { openScene(scene) }) { Text("Open") }
+                  PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
+                }
+              }
+            )
+          }
+        }
+
+      item {
+        Button(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+          onClick = addScene
+        ) { Text("ADD SCENE") }
       }
     }
   }
@@ -378,7 +406,12 @@ data class HomeModel(
   val updateProgram: (Program) -> Unit,
   val openProgram: (Program) -> Unit,
   val addProgram: () -> Unit,
-  val deleteProgram: (Program) -> Unit
+  val deleteProgram: (Program) -> Unit,
+  val scenes: Resource<List<Scene>>,
+  val applyScene: (Scene) -> Unit,
+  val openScene: (Scene) -> Unit,
+  val addScene: () -> Unit,
+  val deleteScene: (Scene) -> Unit
 )
 
 context(ApeLabsPrefsContext, ColorRepository, Db, GroupConfigRepository, LightRepository,
@@ -472,11 +505,10 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
         navigator.push(ColorKey(color(Program.COLOR_PICKER_ID).first() ?: ApeColor.BLACK))
           ?.let {
             updateColor(it.copy(id = Program.COLOR_PICKER_ID))
-            updateConfig { copy(program = program) }
-          }
-      } else {
-        updateConfig { copy(program = program) }
+          } ?: return@action
       }
+
+      updateConfig { copy(program = program) }
     },
     openProgram = action { program -> navigator.push(ProgramKey(program.id)) },
     addProgram = action {
@@ -486,6 +518,23 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
           navigator.push(ProgramKey(it))
         }
     },
-    deleteProgram = action { program -> deleteProgram(program.id) }
+    deleteProgram = action { program -> deleteProgram(program.id) },
+    scenes = scenes.bindResource(),
+    applyScene = action { scene ->
+      scene.groupConfigs
+        .filterValues { it != null }
+        .forEach { (group, config) ->
+          updateGroupConfig(config!!.copy(id = group.toString()))
+        }
+    },
+    openScene = action { scene -> navigator.push(SceneKey(scene.id)) },
+    addScene = action {
+      navigator.push(TextInputKey(label = "Name.."))
+        ?.let {
+          createScene(it)
+          navigator.push(SceneKey(it))
+        }
+    },
+    deleteScene = action { scene -> deleteScene(scene.id) }
   )
 }

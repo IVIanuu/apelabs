@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.domain.PreviewRepository
+import com.ivianuu.apelabs.group.GROUPS
+import com.ivianuu.apelabs.group.GroupConfigRepository
 import com.ivianuu.apelabs.program.Program
 import com.ivianuu.apelabs.program.asProgram
 import com.ivianuu.essentials.compose.action
@@ -50,10 +52,13 @@ import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 
 data class ColorKey(val initial: ApeColor) : PopupKey<ApeColor>
 
-context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
+context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<ColorKey>)
     @Provide fun colorUi() = SimpleKeyUi<ColorKey> {
   DialogScaffold {
     var red by remember { mutableStateOf(key.initial.red) }
@@ -66,7 +71,16 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
     LaunchedEffect(true) {
       providePreviews { update ->
         snapshotFlow { currentColor() }
-          .collect { update(it.asProgram(Program.COLOR_PICKER_ID)) }
+          .flatMapLatest { color ->
+            groupConfigs
+              .map { configs ->
+                configs
+                  .mapValues { (_, config) ->
+                    config.copy(program = color.asProgram(Program.COLOR_PICKER_ID))
+                  }
+              }
+          }
+          .collect(update)
       }
     }
 
@@ -182,7 +196,7 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
                       Box(modifier = Modifier.requiredSize(18.dp)) {
                         PopupMenuButton {
                           PopupMenuItem(
-                            onSelected = action { deleteColor(color.id!!) }
+                            onSelected = action { deleteColor(color.id) }
                           ) { Text("Delete") }
                         }
                       }
