@@ -59,6 +59,7 @@ import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.parForEach
+import com.ivianuu.essentials.db.Db
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.resource.Resource
@@ -300,10 +301,10 @@ import kotlinx.coroutines.isActive
             ColorListIcon(
               modifier = Modifier.size(40.dp),
               colors = listOf(
-                Color.Red.toApeColor(),
-                Color.Yellow.toApeColor(),
-                Color.Green.toApeColor(),
-                Color.Blue.toApeColor()
+                Color.Red.toApeColor("R"),
+                Color.Yellow.toApeColor("Y"),
+                Color.Green.toApeColor("G"),
+                Color.Blue.toApeColor("B")
               )
             )
           }
@@ -382,7 +383,7 @@ data class HomeModel(
   val deleteProgram: (Program) -> Unit
 )
 
-context(ApeLabsPrefsContext, ColorRepository, GroupConfigRepository, LightRepository,
+context(ApeLabsPrefsContext, ColorRepository, Db, GroupConfigRepository, LightRepository,
 Logger, KeyUiContext<HomeKey>, ProgramRepository, WappRepository)
     @Provide fun homeModel() = Model {
   val prefs = pref.data.bind(ApeLabsPrefs())
@@ -390,17 +391,18 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, WappRepository)
   val groupConfig = combine(
     prefs.selectedGroups
       .map { group ->
-        groupConfig(group)
-          .map { it ?: GroupConfig() }
+        groupConfig(group.toString())
+          .map { it ?: GroupConfig(group.toString()) }
       }
-  ) { it.toList().merge() }
-    .bind(GroupConfig(), prefs.selectedGroups)
+  ) { it.toList().merge("Merged") }
+    .bind(GroupConfig("Merged"), prefs.selectedGroups)
 
   suspend fun updateConfig(block: GroupConfig.() -> GroupConfig) {
-    updateGroupConfigs(
+    transaction {
       prefs.selectedGroups
-        .associateWith { (groupConfig(it).first() ?: GroupConfig()).block() }
-    )
+        .map { (groupConfig(it.toString()).first() ?: GroupConfig(it.toString())).block() }
+        .forEach { updateGroupConfig(it) }
+    }
   }
 
   val lights = lights.bindResource()
@@ -468,9 +470,10 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, WappRepository)
     },
     programs = programs.bindResource(),
     updateColor = action {
-      navigator.push(ColorKey())
+      val color = createColor()
+      navigator.push(ColorKey(color))
         ?.let {
-          val color = createColor(color = it)
+          updateColor(it)
           val programItem = createProgramItem()
           updateProgramItem(programItem.copy(color = color))
           val program = Program(randomId(), listOf(programItem))

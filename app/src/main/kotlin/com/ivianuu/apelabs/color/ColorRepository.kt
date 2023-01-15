@@ -11,6 +11,7 @@ import com.ivianuu.essentials.db.selectById
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
@@ -26,12 +27,15 @@ context(Db) @Provide class ColorRepository {
           .map { it.toColor() }
       }
 
-  fun color(id: String) = selectById<ApeColorEntity>(id)
-    .map { it?.toColor() }
-    .distinctUntilChanged()
+  fun color(id: String): Flow<ApeColor?> {
+    return if (id == ApeColor.BLACK.id) flowOf(ApeColor.BLACK)
+    else return selectById<ApeColorEntity>(id)
+      .map { it?.toColor() }
+      .distinctUntilChanged()
+  }
 
-  suspend fun createColor(color: ApeColor = ApeColor()): ApeColor = transaction {
-    val finalColor = color.copy(id = randomId())
+  suspend fun createColor(): ApeColor = transaction {
+    val finalColor = ApeColor(randomId())
     insert(finalColor.toEntity())
     finalColor
   }
@@ -47,7 +51,7 @@ context(Db) @Provide class ColorRepository {
   private fun ApeColorEntity.toColor() = ApeColor(id, red, green, blue, white)
 
   private fun ApeColor.toEntity() =
-    ApeColorEntity(id ?: error("Entity requires a id"), red, green, blue, white)
+    ApeColorEntity(id, red, green, blue, white)
 }
 
 val BuiltInColors = listOf(

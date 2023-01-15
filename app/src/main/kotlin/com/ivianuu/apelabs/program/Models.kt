@@ -16,7 +16,7 @@ import kotlin.time.Duration
 
   @Serializable data class Item(
     val id: String,
-    val color: ApeColor = ApeColor(),
+    val color: ApeColor,
     val fade: Duration = 1.seconds,
     val hold: Duration = 1.seconds
   )

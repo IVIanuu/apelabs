@@ -6,17 +6,21 @@ import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable
 
 @Serializable data class ApeColor(
-  val id: String? = null,
+  val id: String,
   val red: Float = 0f,
   val green: Float = 0f,
   val blue: Float = 0f,
   val white: Float = 0f
-)
+) {
+  companion object {
+    val BLACK = ApeColor("__blackout")
+  }
+}
 
 fun ApeColor.toComposeColor() = Color(red, green, blue)
   .overlay(Color.White.copy(alpha = white))
 
-fun Color.toApeColor() = ApeColor(null, red, green, blue)
+fun Color.toApeColor(id: String) = ApeColor(id, red, green, blue)
 
 private fun Color.overlay(overlay: Color): Color {
   val alphaSum = alpha + overlay.alpha

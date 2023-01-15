@@ -12,6 +12,7 @@ import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable
 
 @Serializable data class GroupConfig(
+  val id: String,
   val program: Program = Program.RAINBOW,
   val brightness: Float = 1f,
   val speed: Float = 0f,
@@ -20,28 +21,30 @@ import kotlinx.serialization.Serializable
 )
 
 @Serializable data class GroupConfigEntity(
+  @PrimaryKey val id: String,
   val program: String,
   val brightness: Float,
   val speed: Float,
   val musicMode: Boolean,
   val blackout: Boolean
-)
+) {
+  companion object : AbstractEntityDescriptor<GroupConfigEntity>("group_configs")
+}
 
-fun List<GroupConfig>.merge(): GroupConfig = when {
-  isEmpty() -> GroupConfig()
+fun List<GroupConfig>.merge(id: String): GroupConfig = when {
+  isEmpty() -> GroupConfig(id)
   size == 1 -> single()
   else -> GroupConfig(
+    id = id,
     program = when {
       all { a -> all { a.program == it.program } } -> first().program
-      else -> Program("Color", listOf(Program.Item("Color", ApeColor())))
+      else -> Program.RAINBOW
     },
     brightness = map { it.brightness }.average().toFloat(),
     speed = map { it.speed }.average().toFloat(),
     musicMode = all { it.musicMode },
     blackout = all { it.blackout }
   )
-}.also {
-  println("merged $it for $this")
 }
 
 val GROUPS = (1..4).toList()

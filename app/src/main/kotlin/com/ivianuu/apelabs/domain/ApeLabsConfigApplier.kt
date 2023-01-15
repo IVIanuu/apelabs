@@ -34,17 +34,17 @@ context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, Pre
         combine(groupConfigs, pref.data, preview)
           .map { (groupConfigs, pref, previewProgram) ->
             previewProgram?.let {
-              groupConfigs.mapValues {
-                if (it.key in pref.selectedGroups)
-                  it.value.copy(program = previewProgram)
-                else it.value
+              groupConfigs.map {
+                if (it.id.toIntOrNull() in pref.selectedGroups)
+                  it.copy(program = previewProgram)
+                else it
               }
             } ?: groupConfigs
           }
           .distinctUntilChanged()
           .flatMapLatest { groupConfigs ->
             groupLightsChangedEvents
-              .map { it.group }
+              .map { it.group.toString() }
               .onEach { changedGroup ->
                 log { "force reapply for $changedGroup" }
                 cache.lastProgram.remove(changedGroup)
@@ -65,29 +65,29 @@ context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, Pre
 }
 
 private class Cache {
-  val lastProgram = mutableMapOf<Int, Program>()
-  val lastBrightness = mutableMapOf<Int, Float>()
-  val lastSpeed = mutableMapOf<Int, Float>()
-  val lastMusicMode = mutableMapOf<Int, Boolean>()
+  val lastProgram = mutableMapOf<String, Program>()
+  val lastBrightness = mutableMapOf<String, Float>()
+  val lastSpeed = mutableMapOf<String, Float>()
+  val lastMusicMode = mutableMapOf<String, Boolean>()
 }
 
 context(Logger, WappServer) private suspend fun applyGroupConfig(
-  configs: Map<Int, GroupConfig>,
+  configs: List<GroupConfig>,
   cache: Cache
 ) {
   suspend fun <T> applyIfChanged(
     tag: String,
     get: GroupConfig.() -> T,
-    cache: MutableMap<Int, T>,
+    cache: MutableMap<String, T>,
     apply: suspend (T, List<Int>) -> Unit
   ) {
     configs
       .toList()
-      .groupBy { get(it.second) }
+      .groupBy { get(it) }
       // filter out changed groups
       .mapValues { (value, config) ->
         config
-          .map { it.first }
+          .map { it.id }
           .filter { cache[it] != value }
       }
       // only apply if there any groups
@@ -98,7 +98,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
           block = {
             // cache and apply output
             log { "apply $tag $value for $groups" }
-            apply(value, groups)
+            apply(value, groups.map { it.toInt() })
             groups.forEach { cache[it] = value }
           },
           onCancel = {

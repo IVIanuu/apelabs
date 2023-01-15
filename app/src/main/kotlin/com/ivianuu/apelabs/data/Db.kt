@@ -3,6 +3,7 @@ package com.ivianuu.apelabs.data
 import com.ivianuu.apelabs.color.ApeColorEntity
 import com.ivianuu.apelabs.group.GroupConfigEntity
 import com.ivianuu.apelabs.program.ProgramEntity
+import com.ivianuu.apelabs.scene.SceneEntity
 import com.ivianuu.essentials.AppContext
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.db.AndroidDb
@@ -18,7 +19,13 @@ context(AppContext) @Provide fun apeLabsDb(ioContext: IOContext): @Scoped<AppSco
   name = "ape_labs.db",
   schema = Schema(
     version = 1,
-    entities = listOf(ApeColorEntity, ProgramEntity, ProgramEntity.Item),
+    entities = listOf(
+      ApeColorEntity,
+      GroupConfigEntity,
+      ProgramEntity,
+      ProgramEntity.Item,
+      SceneEntity
+    ),
     migrations = listOf()
   ),
   coroutineContext = ioContext
