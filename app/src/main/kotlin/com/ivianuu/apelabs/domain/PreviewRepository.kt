@@ -49,11 +49,6 @@ context(Logger, NamedCoroutineScope<AppScope>)
       }
     }
     .distinctUntilChanged()
-    .conflate()
-    .transform {
-      emit(it)
-      delay(200.milliseconds)
-    }
     .share(SharingStarted.WhileSubscribed(), 1)
 
   suspend fun updatePreviewsEnabled(value: Boolean) {

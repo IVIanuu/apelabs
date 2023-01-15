@@ -4,6 +4,7 @@ import com.ivianuu.apelabs.program.Program
 import com.ivianuu.apelabs.program.ProgramRepository
 import com.ivianuu.essentials.db.Db
 import com.ivianuu.essentials.db.InsertConflictStrategy
+import com.ivianuu.essentials.db.deleteById
 import com.ivianuu.essentials.db.insert
 import com.ivianuu.essentials.db.selectAll
 import com.ivianuu.essentials.db.selectById
@@ -32,6 +33,10 @@ context(Db, Logger, ProgramRepository) @Provide class GroupConfigRepository {
 
   suspend fun updateGroupConfig(config: GroupConfig) = transaction {
     insert(config.toEntity(), InsertConflictStrategy.REPLACE)
+  }
+
+  suspend fun deleteGroupConfig(id: String) = transaction {
+    deleteById<GroupConfigEntity>(id)
   }
 
   private fun GroupConfigEntity.toGroupConfig(): Flow<GroupConfig> = program(program)

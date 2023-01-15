@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.domain.PreviewRepository
+import com.ivianuu.apelabs.program.Program
 import com.ivianuu.apelabs.program.asProgram
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
@@ -65,7 +66,7 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
     LaunchedEffect(true) {
       providePreviews { update ->
         snapshotFlow { currentColor() }
-          .collect { update(it.asProgram()) }
+          .collect { update(it.asProgram(Program.COLOR_PICKER_ID)) }
       }
     }
 
@@ -157,7 +158,7 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
             FlowRow {
               colors
                 .toList()
-                .sortedBy { it.id!!.lowercase() }
+                .sortedBy { it.id.lowercase() }
                 .forEach { color ->
                   Chip(
                     modifier = Modifier

@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
+import com.ivianuu.apelabs.color.ApeColor
 import com.ivianuu.apelabs.color.BuiltInColors
 import com.ivianuu.apelabs.color.ColorKey
 import com.ivianuu.apelabs.data.ApeLabsPrefs
@@ -54,6 +55,7 @@ import com.ivianuu.apelabs.color.ColorRepository
 import com.ivianuu.apelabs.color.toApeColor
 import com.ivianuu.apelabs.group.GroupConfigRepository
 import com.ivianuu.apelabs.program.ProgramKey
+import com.ivianuu.apelabs.scene.SceneRepository
 import com.ivianuu.apelabs.util.randomId
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
@@ -61,7 +63,6 @@ import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.db.Db
 import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.time.seconds
@@ -89,7 +90,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 
 @Provide object HomeKey : RootKey
@@ -258,8 +258,8 @@ import kotlinx.coroutines.isActive
 
       item {
         ListItem(
-          modifier = Modifier.clickable(onClick = updateColor),
-          title = { Text("Color") },
+          modifier = Modifier.clickable { updateProgram(Program.COLOR_PICKER) },
+          title = { Text(Program.COLOR_PICKER_ID) },
           leading = {
             ColorListIcon(
               modifier = Modifier.size(40.dp),
@@ -295,7 +295,7 @@ import kotlinx.coroutines.isActive
 
       item {
         ListItem(
-          modifier = Modifier.clickable(onClick = updateRainbowProgram),
+          modifier = Modifier.clickable { updateProgram(Program.RAINBOW) },
           title = { Text("Rainbow") },
           leading = {
             ColorListIcon(
@@ -375,16 +375,14 @@ data class HomeModel(
   val toggleLightSelection: (Light) -> Unit,
   val regroupLights: () -> Unit,
   val programs: Resource<List<Program>>,
-  val updateColor: () -> Unit,
   val updateProgram: (Program) -> Unit,
-  val updateRainbowProgram: () -> Unit,
   val openProgram: (Program) -> Unit,
   val addProgram: () -> Unit,
   val deleteProgram: (Program) -> Unit
 )
 
 context(ApeLabsPrefsContext, ColorRepository, Db, GroupConfigRepository, LightRepository,
-Logger, KeyUiContext<HomeKey>, ProgramRepository, WappRepository)
+Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     @Provide fun homeModel() = Model {
   val prefs = pref.data.bind(ApeLabsPrefs())
 
@@ -469,20 +467,17 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, WappRepository)
         }
     },
     programs = programs.bindResource(),
-    updateColor = action {
-      val color = createColor()
-      navigator.push(ColorKey(color))
-        ?.let {
-          updateColor(it)
-          val programItem = createProgramItem()
-          updateProgramItem(programItem.copy(color = color))
-          val program = Program(randomId(), listOf(programItem))
-          updateProgram(program)
-          updateConfig { copy(program = program) }
-        }
+    updateProgram = action { program ->
+      if (program === Program.COLOR_PICKER) {
+        navigator.push(ColorKey(color(Program.COLOR_PICKER_ID).first() ?: ApeColor.BLACK))
+          ?.let {
+            updateColor(it.copy(id = Program.COLOR_PICKER_ID))
+            updateConfig { copy(program = program) }
+          }
+      } else {
+        updateConfig { copy(program = program) }
+      }
     },
-    updateProgram = action { program -> updateConfig { copy(program = program) } },
-    updateRainbowProgram = action { updateConfig { copy(program = Program.RAINBOW) } },
     openProgram = action { program -> navigator.push(ProgramKey(program.id)) },
     addProgram = action {
       navigator.push(TextInputKey(label = "Name.."))

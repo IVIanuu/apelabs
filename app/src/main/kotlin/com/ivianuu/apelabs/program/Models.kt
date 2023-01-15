@@ -11,7 +11,7 @@ import kotlin.time.Duration
 
 @Serializable data class Program(val id: String, val items: List<Item>) {
   init {
-    check(items.size in ITEM_RANGE || id == "Rainbow")
+    check(items.size in ITEM_RANGE || id == RAINBOW_ID || id == COLOR_PICKER_ID)
   }
 
   @Serializable data class Item(
@@ -23,12 +23,15 @@ import kotlin.time.Duration
 
   companion object {
     val ITEM_RANGE = 1..4
-    val RAINBOW = Program("Rainbow", emptyList())
+    val COLOR_PICKER_ID = "Color"
+    val COLOR_PICKER = Program(COLOR_PICKER_ID, emptyList())
+    val RAINBOW_ID = "Rainbow"
+    val RAINBOW = Program(RAINBOW_ID, emptyList())
   }
 }
 
-fun ApeColor.asProgram(id: String = "Color") =
-  Program(id = id, items = listOf(Program.Item(id = randomId(), color = this)))
+fun ApeColor.asProgram(id: String) =
+  Program(id = id, items = listOf(Program.Item(id = id, color = this)))
 
 @Serializable data class ProgramEntity(
   @PrimaryKey val id: String,

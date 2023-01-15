@@ -42,10 +42,19 @@ context(ColorRepository, Db, Logger) @Provide @Scoped<AppScope> class ProgramRep
       }
 
   fun program(id: String): Flow<Program?> =
-    if (id == Program.RAINBOW.id) flowOf(Program.RAINBOW)
-    else selectById<ProgramEntity>(id)
-      .flatMapLatest { it?.toProgram() ?: flowOf(null) }
-      .distinctUntilChanged()
+    when (id) {
+      Program.RAINBOW_ID -> flowOf(Program.RAINBOW)
+      Program.COLOR_PICKER_ID -> color(id)
+        .map {
+          Program(
+            Program.COLOR_PICKER_ID,
+            listOf(Program.Item(Program.COLOR_PICKER_ID, it ?: ApeColor(Program.COLOR_PICKER_ID)))
+          )
+        }
+      else -> selectById<ProgramEntity>(id)
+        .flatMapLatest { it?.toProgram() ?: flowOf(null) }
+        .distinctUntilChanged()
+    }
 
   suspend fun createProgram(id: String) = transaction {
     val program = Program(

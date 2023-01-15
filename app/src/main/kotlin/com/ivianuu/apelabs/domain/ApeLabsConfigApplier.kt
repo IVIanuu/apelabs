@@ -14,13 +14,17 @@ import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
+import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.transform
 import kotlin.time.Duration
 
 context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
@@ -31,7 +35,16 @@ context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, Pre
 
     wapps.parForEach { wapp ->
       withWapp(wapp.address) {
-        combine(groupConfigs, pref.data, preview)
+        combine(
+          groupConfigs
+            .conflate()
+            .transform {
+              emit(it)
+              delay(200.milliseconds)
+            },
+          pref.data,
+          preview
+        )
           .map { (groupConfigs, pref, previewProgram) ->
             previewProgram?.let {
               groupConfigs.map {
@@ -55,10 +68,7 @@ context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, Pre
               .onStart<Any?> { emit(Unit) }
               .map { groupConfigs }
           }
-          .collectLatest { groupConfigs ->
-            log { "values $groupConfigs " }
-            applyGroupConfig(groupConfigs, cache)
-          }
+          .collectLatest { applyGroupConfig(it, cache) }
       }
     }
   }

@@ -18,7 +18,11 @@ import kotlinx.serialization.Serializable
   val speed: Float = 0f,
   val musicMode: Boolean = false,
   val blackout: Boolean = false
-)
+) {
+  companion object {
+    val DEFAULT = GroupConfig("__default")
+  }
+}
 
 @Serializable data class GroupConfigEntity(
   @PrimaryKey val id: String,
