@@ -40,7 +40,7 @@ import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
-import com.ivianuu.apelabs.data.LightColor
+import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.merge
@@ -444,7 +444,7 @@ context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepo
     updateColor = action {
       navigator.push(
         ColorKey(
-          groupConfig.program.safeAs<Program.SingleColor>()?.color ?: LightColor()
+          groupConfig.program.safeAs<Program.SingleColor>()?.color ?: ApeColor()
         )
       )
         ?.let { updateConfig { copy(program = Program.SingleColor(it)) } }

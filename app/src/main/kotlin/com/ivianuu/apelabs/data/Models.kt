@@ -47,7 +47,7 @@ fun lightIdOf(id1: Byte, id2: Byte) = "$id1:$id2"
 fun String.toApeLabsId() = split(":").let { it[0].toByte() to it[1].toByte() }
 
 @Serializable data class GroupConfig(
-  val program: Program = Program.SingleColor(LightColor()),
+  val program: Program = Program.SingleColor(ApeColor()),
   val brightness: Float = 1f,
   val speed: Float = 0f,
   val musicMode: Boolean = false,
@@ -55,14 +55,14 @@ fun String.toApeLabsId() = split(":").let { it[0].toByte() to it[1].toByte() }
 )
 
 @Serializable sealed interface Program {
-  @Serializable data class SingleColor(val color: LightColor = LightColor()) : Program
+  @Serializable data class SingleColor(val color: ApeColor = ApeColor()) : Program
   @Serializable data class MultiColor(val items: List<Item> = listOf(Item())) : Program {
     init {
       check(items.size in ITEM_RANGE)
     }
 
     @Serializable data class Item(
-      val color: LightColor = LightColor(),
+      val color: ApeColor = ApeColor(),
       val fade: Duration = 1.seconds,
       val hold: Duration = 1.seconds
     )
@@ -75,14 +75,14 @@ fun String.toApeLabsId() = split(":").let { it[0].toByte() to it[1].toByte() }
   @Serializable object Rainbow : Program
 }
 
-@Serializable data class LightColor(
+@Serializable data class ApeColor(
   val red: Float = 0f,
   val green: Float = 0f,
   val blue: Float = 0f,
   val white: Float = 0f
 )
 
-fun LightColor.toColor() = Color(red, green, blue)
+fun ApeColor.toColor() = Color(red, green, blue)
   .overlay(Color.White.copy(alpha = white))
 
 private fun Color.overlay(overlay: Color): Color {
@@ -103,7 +103,7 @@ fun List<GroupConfig>.merge(): GroupConfig = when {
       all { it.program is Program.SingleColor } -> {
         val colors = map { it.program.cast<Program.SingleColor>().color }
         Program.SingleColor(
-          color = LightColor(
+          color = ApeColor(
             red = colors.map { it.red }.average().toFloat(),
             green = colors.map { it.green }.average().toFloat(),
             blue = colors.map { it.blue }.average().toFloat(),
@@ -112,7 +112,7 @@ fun List<GroupConfig>.merge(): GroupConfig = when {
         )
       }
       all { a -> all { a.program == it.program } } -> first().program
-      else -> Program.SingleColor(LightColor())
+      else -> Program.SingleColor(ApeColor())
     },
     brightness = map { it.brightness }.average().toFloat(),
     speed = map { it.speed }.average().toFloat(),
@@ -124,7 +124,7 @@ fun List<GroupConfig>.merge(): GroupConfig = when {
 @Serializable data class ApeLabsPrefs(
   val selectedGroups: Set<Int> = emptySet(),
   val groupConfigs: Map<Int, GroupConfig> = emptyMap(),
-  val colors: Map<String, LightColor> = emptyMap(),
+  val colors: Map<String, ApeColor> = emptyMap(),
   val programs: Map<String, Program.MultiColor> = emptyMap()
 ) {
   companion object {

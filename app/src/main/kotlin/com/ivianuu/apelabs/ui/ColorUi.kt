@@ -30,7 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowRow
-import com.ivianuu.apelabs.data.LightColor
+import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.toColor
 import com.ivianuu.apelabs.domain.BuiltInColors
@@ -54,7 +54,7 @@ import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.injekt.Provide
 
-data class ColorKey(val initial: LightColor = LightColor()) : PopupKey<LightColor>
+data class ColorKey(val initial: ApeColor = ApeColor()) : PopupKey<ApeColor>
 
 context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
     @Provide fun colorUi() = SimpleKeyUi<ColorKey> {
@@ -64,7 +64,7 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
     var blue by remember { mutableStateOf(key.initial.blue) }
     var white by remember { mutableStateOf(key.initial.white) }
 
-    fun currentColor() = LightColor(red, green, blue, white)
+    fun currentColor() = ApeColor(red, green, blue, white)
 
     LaunchedEffect(true) {
       providePreviews { update ->
@@ -152,7 +152,7 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
           }
 
           @Composable fun ColorList(
-            colors: Map<String, LightColor>,
+            colors: Map<String, ApeColor>,
             deletable: Boolean,
             title: String
           ) {
