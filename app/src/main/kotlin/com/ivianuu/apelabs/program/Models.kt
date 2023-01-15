@@ -11,7 +11,7 @@ import kotlin.time.Duration
 
 @Serializable data class Program(val id: String, val items: List<Item>) {
   init {
-    check(items.size in ITEM_RANGE || id == RAINBOW_ID || id == COLOR_PICKER_ID)
+    check(items.size in ITEM_RANGE || id == RAINBOW_ID || id == COLOR_PICKER_ID || id == NONE_ID)
   }
 
   @Serializable data class Item(
@@ -22,6 +22,7 @@ import kotlin.time.Duration
   )
 
   companion object {
+    val NONE_ID = "None"
     val ITEM_RANGE = 1..4
     val COLOR_PICKER_ID = "Color"
     val COLOR_PICKER = Program(COLOR_PICKER_ID, emptyList())

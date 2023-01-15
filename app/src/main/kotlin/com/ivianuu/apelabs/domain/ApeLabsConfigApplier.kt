@@ -106,7 +106,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
           onCancel = {
             // invalidate cache
             log { "apply cancelled $tag for $groups" }
-            groups.forEach { cache[it] = value }
+            groups.forEach { cache.remove(it) }
           }
         )
       }
@@ -114,7 +114,17 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
 
   applyIfChanged(
     tag = "program",
-    get = { program },
+    get = {
+      // erase ids to make sure that the same colors will we reused
+      program
+        .copy(
+          id = Program.NONE_ID,
+          items = program.items
+            .map { item ->
+              item.copy(id = Program.NONE_ID, color = item.color.copy(id = Program.NONE_ID))
+            }
+        )
+    },
     cache = cache.lastProgram,
     apply = { value, groups ->
       when {
@@ -134,7 +144,8 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
             )
           )
         }
-        value === Program.RAINBOW -> write(
+        // super dirty way to check if it's the rainbow program -_-
+        value.items.isEmpty() -> write(
           byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0)
         )
         else -> {

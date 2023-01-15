@@ -432,7 +432,7 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
     transaction {
       prefs.selectedGroups
         .map { (groupConfig(it.toString()).first() ?: GroupConfig(it.toString())).block() }
-        .forEach { updateGroupConfig(it) }
+        .parForEach { updateGroupConfig(it) }
     }
   }
 
@@ -521,11 +521,13 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
     deleteProgram = action { program -> deleteProgram(program.id) },
     scenes = scenes.bindResource(),
     applyScene = action { scene ->
-      scene.groupConfigs
-        .filterValues { it != null }
-        .forEach { (group, config) ->
-          updateGroupConfig(config!!.copy(id = group.toString()))
-        }
+      transaction {
+        scene.groupConfigs
+          .filterValues { it != null }
+          .forEach { (group, config) ->
+            updateGroupConfig(config!!.copy(id = group.toString()))
+          }
+      }
     },
     openScene = action { scene -> navigator.push(SceneKey(scene.id)) },
     addScene = action {
