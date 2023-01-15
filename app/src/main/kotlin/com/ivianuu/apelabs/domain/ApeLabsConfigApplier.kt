@@ -20,6 +20,7 @@ import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -37,11 +38,7 @@ context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, Pre
     wapps.parForEach { wapp ->
       withWapp(wapp.address) {
         combine(groupConfigs, previewGroupConfigs)
-          .conflate()
-          .transform {
-            emit(it)
-            delay(200.milliseconds)
-          }
+          .debounce(100.milliseconds)
           .map { (groupConfigs, previewGroupConfigs) ->
             GROUPS
               .associateWith { previewGroupConfigs[it] ?: groupConfigs[it]!! }
