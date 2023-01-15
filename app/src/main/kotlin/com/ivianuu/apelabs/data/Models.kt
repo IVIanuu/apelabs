@@ -79,7 +79,7 @@ fun String.toApeLabsId() = split(":").let { it[0].toByte() to it[1].toByte() }
   val red: Float = 0f,
   val green: Float = 0f,
   val blue: Float = 0f,
-  val white: Float = 1f
+  val white: Float = 0f
 )
 
 fun LightColor.toColor() = Color(red, green, blue)
