@@ -36,15 +36,12 @@ context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, Pre
 
     wapps.parForEach { wapp ->
       withWapp(wapp.address) {
-        combine(
-          groupConfigs
-            .conflate()
-            .transform {
-              emit(it)
-              delay(200.milliseconds)
-            },
-          previewGroupConfigs
-        )
+        combine(groupConfigs, previewGroupConfigs)
+          .conflate()
+          .transform {
+            emit(it)
+            delay(200.milliseconds)
+          }
           .map { (groupConfigs, previewGroupConfigs) ->
             GROUPS
               .associateWith { previewGroupConfigs[it] ?: groupConfigs[it]!! }
