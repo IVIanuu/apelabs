@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.toColor
 
@@ -25,8 +26,11 @@ import com.ivianuu.apelabs.data.toColor
   }
 
   Canvas(modifier) {
-    val itemSize = Size(size.width / colors.size, size.height)
-    var x = 0f
+    val itemSize = Size(
+      width = size.width / colors.size - ColorPadding.toPx(),
+      height = size.height
+    )
+    var x = (ColorPadding.toPx() * colors.size - 1) / 2
     colors.forEach { color ->
       drawRect(
         color = color,
@@ -34,6 +38,9 @@ import com.ivianuu.apelabs.data.toColor
         size = itemSize
       )
       x += itemSize.width
+      x += ColorPadding.toPx()
     }
   }
 }
+
+private val ColorPadding = 1.dp
