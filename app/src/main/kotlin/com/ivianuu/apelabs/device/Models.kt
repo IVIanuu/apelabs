@@ -1,4 +1,4 @@
-package com.ivianuu.apelabs.data
+package com.ivianuu.apelabs.device
 
 import android.bluetooth.BluetoothDevice
 

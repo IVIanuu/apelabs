@@ -1,4 +1,4 @@
-package com.ivianuu.apelabs.ui
+package com.ivianuu.apelabs.program
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -26,9 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ivianuu.apelabs.color.ColorKey
-import com.ivianuu.apelabs.data.Program
+import com.ivianuu.apelabs.color.ColorListIcon
+import com.ivianuu.apelabs.color.ColorRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
-import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
@@ -43,7 +43,6 @@ import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Slider
 import com.ivianuu.essentials.ui.material.TopAppBar
-import com.ivianuu.essentials.ui.material.incrementingStepPolicy
 import com.ivianuu.essentials.ui.navigation.Key
 import com.ivianuu.essentials.ui.navigation.KeyUiContext
 import com.ivianuu.essentials.ui.navigation.Model
@@ -83,11 +82,11 @@ data class ProgramKey(val id: String) : Key<Unit>
                 .padding(horizontal = 16.dp),
               verticalAlignment = Alignment.CenterVertically
             ) {
-              Program(
+              ColorListIcon(
                 modifier = Modifier
                   .size(40.dp)
-                  .clickable { updateColor(index) },
-                program = Program.SingleColor(item.color)
+                  .clickable { updateColor(item) },
+                colors = listOf(item.color)
               )
 
               Column(
@@ -126,19 +125,19 @@ data class ProgramKey(val id: String) : Key<Unit>
 
                 DurationSlider(
                   value = item.fade,
-                  onValueChange = { updateFade(index, it) },
+                  onValueChange = { updateFade(item, it) },
                   title = "Fade"
                 )
 
                 DurationSlider(
                   value = item.hold,
-                  onValueChange = { updateHold(index, it) },
+                  onValueChange = { updateHold(item, it) },
                   title = "Hold"
                 )
               }
 
               if (index != 0)
-                IconButton(onClick = { deleteItem(index) }) { Icon(Icons.Default.Close) }
+                IconButton(onClick = { deleteItem(item) }) { Icon(Icons.Default.Close) }
               else
                 Spacer(Modifier.size(40.dp))
             }
@@ -179,26 +178,28 @@ private val DurationToFloat = FloatToDuration
 
 data class ProgramModel(
   val id: String,
-  val program: Resource<Program.MultiColor>,
+  val program: Resource<Program>,
   val addItem: () -> Unit,
-  val updateColor: (Int) -> Unit,
-  val updateFade: (Int, Duration) -> Unit,
-  val updateHold: (Int, Duration) -> Unit,
-  val deleteItem: (Int) -> Unit,
+  val updateColor: (Program.Item) -> Unit,
+  val updateFade: (Program.Item, Duration) -> Unit,
+  val updateHold: (Program.Item, Duration) -> Unit,
+  val deleteItem: (Program.Item) -> Unit,
   val previewsEnabled: Boolean,
   val updatePreviewsEnabled: (Boolean) -> Unit
 ) {
   val canAddItem: Boolean
-    get() = program.getOrNull()?.items?.size?.let { it in Program.MultiColor.ITEM_RANGE } == true
+    get() = program.getOrNull()?.items?.size?.let { it < Program.ITEM_RANGE.last } == true
 }
 
-context(PreviewRepository, ProgramRepository, KeyUiContext<ProgramKey>)
+context(ColorRepository, PreviewRepository, ProgramRepository, KeyUiContext<ProgramKey>)
     @Provide fun programModel() = Model {
   val id = key.id
 
-  val program by program(id)
-    .flowAsResource()
-    .map { it.map { it!! } }
+  val program by remember {
+    program(id)
+      .flowAsResource()
+      .map { it.map { it!! } }
+  }
     .collectAsState(Idle)
 
   LaunchedEffect(true) {
@@ -209,45 +210,37 @@ context(PreviewRepository, ProgramRepository, KeyUiContext<ProgramKey>)
     }
   }
 
-  suspend fun updateProgram(block: Program.MultiColor.() -> Program.MultiColor) {
-    updateProgram(id, program.get().block())
+  suspend fun updateProgram(block: Program.() -> Program) {
+    updateProgram(program.get().block())
   }
 
   suspend fun updateItem(
-    index: Int,
-    block: Program.MultiColor.Item.() -> Program.MultiColor.Item
+    id: String,
+    block: Program.Item.() -> Program.Item
   ) {
-    updateProgram {
-      copy(
-        items = items.toMutableList().apply {
-          set(index, get(index).block())
-        }
-      )
-    }
+    updateProgramItem(item = program.get().items.single { it.id == id }.block())
   }
 
   ProgramModel(
     id = id,
     program = program,
     addItem = action {
-      updateProgram { copy(items = items + Program.MultiColor.Item()) }
+      val item = createProgramItem()
+      updateProgram { copy(items = items + item) }
     },
-    updateColor = action { index ->
-      navigator.push(ColorKey(program.get().items[index].color))
-        ?.let {
-          updateItem(index) { copy(color = it) }
-        }
+    updateColor = action { item ->
+      navigator.push(ColorKey(program.get().items.single { it.id == item.id }.color))
+        ?.let { updateColor(it.copy(id = item.color.id)) }
     },
-    updateFade = action { index, fade ->
-      updateItem(index) { copy(fade = fade) }
+    updateFade = action { item, fade ->
+      updateItem(item.id) { copy(fade = fade) }
     },
-    updateHold = action { index, hold ->
-      updateItem(index) { copy(hold = hold) }
+    updateHold = action { item, hold ->
+      updateItem(item.id) { copy(hold = hold) }
     },
-    deleteItem = action { index ->
-      updateProgram {
-        copy(items = items.toMutableList().apply { removeAt(index) })
-      }
+    deleteItem = action { item ->
+      updateProgram { copy(items = items.filter { it.id != item.id }) }
+      deleteProgramItem(item.id)
     },
     previewsEnabled = previewsEnabled.bind(),
     updatePreviewsEnabled = action { value -> updatePreviewsEnabled(value) }

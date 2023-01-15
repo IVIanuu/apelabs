@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
@@ -42,13 +43,16 @@ import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
-import com.ivianuu.apelabs.data.Light
-import com.ivianuu.apelabs.data.Program
-import com.ivianuu.apelabs.data.WappState
+import com.ivianuu.apelabs.device.Light
+import com.ivianuu.apelabs.device.WappState
 import com.ivianuu.apelabs.data.merge
-import com.ivianuu.apelabs.domain.LightRepository
-import com.ivianuu.apelabs.domain.ProgramRepository
-import com.ivianuu.apelabs.domain.WappRepository
+import com.ivianuu.apelabs.device.LightRepository
+import com.ivianuu.apelabs.program.ProgramRepository
+import com.ivianuu.apelabs.device.WappRepository
+import com.ivianuu.apelabs.program.Program
+import com.ivianuu.apelabs.color.ColorListIcon
+import com.ivianuu.apelabs.color.toApeColor
+import com.ivianuu.apelabs.program.ProgramKey
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
@@ -249,28 +253,32 @@ import kotlinx.coroutines.isActive
           modifier = Modifier.clickable(onClick = updateColor),
           title = { Text("Color") },
           leading = {
-            Program(
+            ColorListIcon(
               modifier = Modifier.size(40.dp),
-              program = remember { Program.SingleColor(BuiltInColors.values.shuffled().first()) }
+              colors = remember { listOf(BuiltInColors.shuffled().first()) }
             )
           }
         )
       }
 
-      val programs = programs.getOrElse { emptyMap() }
+      val programs = programs.getOrElse { emptyList() }
       programs
-        .toList()
-        .sortedBy { it.first }
-        .forEach { (id, program) ->
+        .sortedBy { it.id }
+        .forEach { program ->
           item {
             ListItem(
               modifier = Modifier.clickable { updateProgram(program) },
-              title = { Text(id) },
-              leading = { Program(modifier = Modifier.size(40.dp), program = program) },
+              title = { Text(program.id) },
+              leading = {
+                ColorListIcon(
+                  modifier = Modifier.size(40.dp),
+                  colors = program.items.map { it.color }
+                )
+              },
               trailing = {
                 PopupMenuButton {
-                  PopupMenuItem(onSelected = { openProgram(id) }) { Text("Open") }
-                  PopupMenuItem(onSelected = { deleteProgram(id) }) { Text("Delete") }
+                  PopupMenuItem(onSelected = { openProgram(program) }) { Text("Open") }
+                  PopupMenuItem(onSelected = { deleteProgram(program) }) { Text("Delete") }
                 }
               }
             )
@@ -281,7 +289,17 @@ import kotlinx.coroutines.isActive
         ListItem(
           modifier = Modifier.clickable(onClick = updateRainbowProgram),
           title = { Text("Rainbow") },
-          leading = { Program(modifier = Modifier.size(40.dp), program = Program.Rainbow) }
+          leading = {
+            ColorListIcon(
+              modifier = Modifier.size(40.dp),
+              colors = listOf(
+                Color.Red.toApeColor(),
+                Color.Yellow.toApeColor(),
+                Color.Green.toApeColor(),
+                Color.Blue.toApeColor()
+              )
+            )
+          }
         )
       }
 
@@ -348,13 +366,13 @@ data class HomeModel(
   val selectedLights: Set<String>,
   val toggleLightSelection: (Light) -> Unit,
   val regroupLights: () -> Unit,
-  val programs: Resource<Map<String, Program.MultiColor>>,
+  val programs: Resource<List<Program>>,
   val updateColor: () -> Unit,
   val updateProgram: (Program) -> Unit,
   val updateRainbowProgram: () -> Unit,
-  val openProgram: (String) -> Unit,
+  val openProgram: (Program) -> Unit,
   val addProgram: () -> Unit,
-  val deleteProgram: (String) -> Unit
+  val deleteProgram: (Program) -> Unit
 )
 
 context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepository, WappRepository)
@@ -443,25 +461,21 @@ context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepo
     },
     programs = programs.bindResource(),
     updateColor = action {
-      navigator.push(
-        ColorKey(
-          groupConfig.program.safeAs<Program.SingleColor>()?.color ?: ApeColor()
-        )
-      )
-        ?.let { updateConfig { copy(program = Program.SingleColor(it)) } }
+      navigator.push(ColorKey())
+        ?.let {
+          updateConfig { copy(program = Program("Color", listOf(Program.Item("Color", it)))) }
+        }
     },
     updateProgram = action { program -> updateConfig { copy(program = program) } },
-    updateRainbowProgram = action { updateConfig { copy(program = Program.Rainbow) } },
-    openProgram = action { program ->
-      navigator.push(ProgramKey(program))
-    },
+    updateRainbowProgram = action { updateConfig { copy(program = Program.RAINBOW) } },
+    openProgram = action { program -> navigator.push(ProgramKey(program.id)) },
     addProgram = action {
       navigator.push(TextInputKey(label = "Name.."))
         ?.let {
-          updateProgram(it, Program.MultiColor())
+          createProgram(it)
           navigator.push(ProgramKey(it))
         }
     },
-    deleteProgram = action { program -> deleteProgram(program) }
+    deleteProgram = action { program -> deleteProgram(program.id) }
   )
 }

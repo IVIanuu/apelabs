@@ -1,15 +1,12 @@
-package com.ivianuu.apelabs.domain
+package com.ivianuu.apelabs.device
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
-import com.ivianuu.apelabs.data.Wapp
-import com.ivianuu.apelabs.data.WappState
-import com.ivianuu.apelabs.data.debugName
-import com.ivianuu.apelabs.data.isWapp
-import com.ivianuu.apelabs.data.toWapp
+import com.ivianuu.apelabs.domain.WappRemote
+import com.ivianuu.apelabs.domain.apeLabsPermissionKeys
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.onCancel
 import com.ivianuu.essentials.coroutines.parForEach

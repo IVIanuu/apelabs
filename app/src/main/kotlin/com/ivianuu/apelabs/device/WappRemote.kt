@@ -8,7 +8,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
-import com.ivianuu.apelabs.data.debugName
+import com.ivianuu.apelabs.device.debugName
 import com.ivianuu.essentials.AppContext
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.catch

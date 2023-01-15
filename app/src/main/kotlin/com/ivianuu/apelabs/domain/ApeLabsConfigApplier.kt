@@ -2,7 +2,9 @@ package com.ivianuu.apelabs.domain
 
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GroupConfig
-import com.ivianuu.apelabs.data.Program
+import com.ivianuu.apelabs.device.LightRepository
+import com.ivianuu.apelabs.device.WappRepository
+import com.ivianuu.apelabs.program.Program
 import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.combine
@@ -112,8 +114,9 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
     get = { program },
     cache = cache.lastProgram,
     apply = { value, groups ->
-      when (value) {
-        is Program.SingleColor -> {
+      when {
+        value.items.size == 1 -> {
+          val color = value.items.single().color
           write(
             byteArrayOf(
               68,
@@ -121,14 +124,17 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
               groups.toGroupByte(),
               4,
               30,
-              value.color.red.toColorByte(),
-              value.color.green.toColorByte(),
-              value.color.blue.toColorByte(),
-              value.color.white.toColorByte()
+              color.red.toColorByte(),
+              color.green.toColorByte(),
+              color.blue.toColorByte(),
+              color.white.toColorByte()
             )
           )
         }
-        is Program.MultiColor -> {
+        value === Program.RAINBOW -> write(
+          byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0)
+        )
+        else -> {
           value.items.forEachIndexed { index, item ->
             write(
               byteArrayOf(
@@ -148,9 +154,6 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
             )
           }
         }
-        Program.Rainbow -> write(
-          byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0)
-        )
       }
     }
   )

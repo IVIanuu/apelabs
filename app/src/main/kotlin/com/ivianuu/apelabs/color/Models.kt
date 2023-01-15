@@ -6,14 +6,17 @@ import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable
 
 @Serializable data class ApeColor(
+  val id: String? = null,
   val red: Float = 0f,
   val green: Float = 0f,
   val blue: Float = 0f,
   val white: Float = 0f
 )
 
-fun ApeColor.toColor() = Color(red, green, blue)
+fun ApeColor.toComposeColor() = Color(red, green, blue)
   .overlay(Color.White.copy(alpha = white))
+
+fun Color.toApeColor() = ApeColor(null, red, green, blue)
 
 private fun Color.overlay(overlay: Color): Color {
   val alphaSum = alpha + overlay.alpha
@@ -25,19 +28,12 @@ private fun Color.overlay(overlay: Color): Color {
   )
 }
 
-@Serializable data class ColorEntity(
+@Serializable data class ApeColorEntity(
   @PrimaryKey val id: String,
-  val color: ApeColor
+  val red: Float = 0f,
+  val green: Float = 0f,
+  val blue: Float = 0f,
+  val white: Float = 0f,
 ) {
-  init {
-    check(id.startsWith(COLOR_ID_PREFIX))
-  }
-
-  companion object : AbstractEntityDescriptor<ColorEntity>("colors")
+  companion object : AbstractEntityDescriptor<ApeColorEntity>("colors")
 }
-
-const val COLOR_ID_PREFIX = "color:"
-
-fun colorIdOf(id: String) = COLOR_ID_PREFIX + id
-
-fun String.baseColorId() = removePrefix(COLOR_ID_PREFIX)

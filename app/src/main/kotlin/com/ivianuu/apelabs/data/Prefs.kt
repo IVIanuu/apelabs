@@ -7,8 +7,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable data class ApeLabsPrefs(
   val selectedGroups: Set<Int> = emptySet(),
-  val groupConfigs: Map<Int, GroupConfig> = emptyMap(),
-  val programs: Map<String, Program.MultiColor> = emptyMap()
+  val groupConfigs: Map<Int, GroupConfig> = emptyMap()
 ) {
   companion object {
     @Provide val prefModule = DataStoreModule("apelabs_prefs") { ApeLabsPrefs() }
