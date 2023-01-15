@@ -7,7 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.lightIdOf
-import com.ivianuu.apelabs.data.toApeLabsId
+import com.ivianuu.apelabs.data.toApeLabsLightId
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.compose.stateFlow
 import com.ivianuu.essentials.coroutines.EventFlow
@@ -122,7 +122,7 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
   suspend fun flashLight(id: String) {
     wapps.first().parForEach { wapp ->
       withWapp(wapp.address) {
-        val (id1, id2) = id.toApeLabsId()
+        val (id1, id2) = id.toApeLabsLightId()
         write(byteArrayOf(72, 10, id1, id2, 0))
       }
     }
@@ -131,7 +131,7 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
   suspend fun regroupLight(id: String, group: Int) = withContext(context) {
     wapps.first().parForEach { wapp ->
       withWapp(wapp.address) {
-        val (id1, id2) = id.toApeLabsId()
+        val (id1, id2) = id.toApeLabsLightId()
         write(byteArrayOf(82, 10, id1, id2, 0, (group - 1).toByte(), 1, 0, 2, 13, 10))
         _groupLightsChangedEvents.tryEmit(GroupLightChangedEvent(group, id))
       }

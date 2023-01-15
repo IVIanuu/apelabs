@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterialApi::class)
 
-package com.ivianuu.apelabs.ui
+package com.ivianuu.apelabs.color
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -30,12 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowRow
-import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.Program
-import com.ivianuu.apelabs.data.toColor
-import com.ivianuu.apelabs.domain.BuiltInColors
-import com.ivianuu.apelabs.domain.ColorRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
+import com.ivianuu.apelabs.ui.Program
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.ui.common.VerticalList
@@ -75,7 +72,9 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
 
     Dialog(
       content = {
-        val customColors = colors.bind(emptyMap())
+        val customColors = colors.bind(emptyList())
+          .associateBy { it.id.baseColorId() }
+          .mapValues { it.value.color }
 
         VerticalList {
           item {
@@ -185,7 +184,7 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
                       Box(modifier = Modifier.requiredSize(18.dp)) {
                         PopupMenuButton {
                           PopupMenuItem(
-                            onSelected = action { deleteColor(id) }
+                            onSelected = action { deleteColor(colorIdOf(id)) }
                           ) { Text("Delete") }
                         }
                       }
@@ -229,7 +228,7 @@ context(ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
         OutlinedButton(
           onClick = action {
             navigator.push(TextInputKey(label = "Name.."))
-              ?.let { saveColor(it, currentColor()) }
+              ?.let { updateColor(ColorEntity(colorIdOf(it), currentColor())) }
           }
         ) { Text("SAVE") }
 

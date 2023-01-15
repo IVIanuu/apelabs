@@ -1,34 +1,23 @@
-package com.ivianuu.apelabs.domain
+package com.ivianuu.apelabs.color
 
-import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.data.ApeColor
+import com.ivianuu.essentials.db.Db
+import com.ivianuu.essentials.db.InsertConflictStrategy
+import com.ivianuu.essentials.db.deleteById
+import com.ivianuu.essentials.db.insert
+import com.ivianuu.essentials.db.selectAll
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 
-context(ApeLabsPrefsContext) @Provide class ColorRepository {
-  val colors: Flow<Map<String, ApeColor>>
-    get() = pref.data
-      .map { it.colors }
-      .distinctUntilChanged()
+context(Db) @Provide class ColorRepository {
+  val colors: Flow<List<ColorEntity>>
+    get() = selectAll()
 
-  suspend fun saveColor(id: String, color: ApeColor) {
-    pref.updateData {
-      copy(
-        colors = colors.toMutableMap()
-          .apply { this[id] = color }
-      )
-    }
+  suspend fun updateColor(color: ColorEntity) {
+    insert(color, InsertConflictStrategy.REPLACE)
   }
 
   suspend fun deleteColor(id: String) {
-    pref.updateData {
-      copy(
-        colors = colors.toMutableMap()
-          .apply { remove(id) }
-      )
-    }
+    deleteById<ColorEntity>(id)
   }
 }
 

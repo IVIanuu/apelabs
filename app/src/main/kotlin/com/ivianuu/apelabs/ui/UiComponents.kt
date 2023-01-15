@@ -8,8 +8,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.ivianuu.apelabs.color.toColor
 import com.ivianuu.apelabs.data.Program
-import com.ivianuu.apelabs.data.toColor
 
 @Composable fun Program(modifier: Modifier, program: Program) {
   val colors = remember(program) {

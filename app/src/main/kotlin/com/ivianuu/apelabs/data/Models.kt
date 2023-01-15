@@ -4,47 +4,11 @@
 
 package com.ivianuu.apelabs.data
 
-import android.bluetooth.BluetoothDevice
-import androidx.compose.ui.graphics.Color
-import com.ivianuu.essentials.android.prefs.DataStoreModule
+import com.ivianuu.apelabs.color.ApeColor
 import com.ivianuu.essentials.cast
-import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.time.seconds
-import com.ivianuu.injekt.Provide
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration
-
-data class Wapp(val address: String, val name: String)
-
-data class WappState(
-  val isConnected: Boolean = false,
-  val battery: Float? = null
-)
-
-fun BluetoothDevice.toWapp() = Wapp(address, alias ?: name)
-
-fun BluetoothDevice.isWapp() = (alias ?: name).let {
-  it?.startsWith("APE-") == true
-}
-
-fun BluetoothDevice.debugName() = "[${alias ?: name} ~ $address]"
-
-fun Wapp.debugName() = "[$name ~ $address]"
-
-data class Light(
-  val id: String,
-  val group: Int,
-  val battery: Float? = null,
-  val type: Type?
-) {
-  enum class Type(val id: Int) {
-    COIN(-96)
-  }
-}
-
-fun lightIdOf(id1: Byte, id2: Byte) = "$id1:$id2"
-
-fun String.toApeLabsId() = split(":").let { it[0].toByte() to it[1].toByte() }
 
 @Serializable data class GroupConfig(
   val program: Program = Program.SingleColor(ApeColor()),
@@ -75,26 +39,6 @@ fun String.toApeLabsId() = split(":").let { it[0].toByte() to it[1].toByte() }
   @Serializable object Rainbow : Program
 }
 
-@Serializable data class ApeColor(
-  val red: Float = 0f,
-  val green: Float = 0f,
-  val blue: Float = 0f,
-  val white: Float = 0f
-)
-
-fun ApeColor.toColor() = Color(red, green, blue)
-  .overlay(Color.White.copy(alpha = white))
-
-private fun Color.overlay(overlay: Color): Color {
-  val alphaSum = alpha + overlay.alpha
-  return Color(
-    (red * alpha + overlay.red * overlay.alpha) / alphaSum,
-    (green * alpha + overlay.green * overlay.alpha) / alphaSum,
-    (blue * alpha + overlay.blue * overlay.alpha) / alphaSum,
-    alphaSum.coerceIn(0f, 1f),
-  )
-}
-
 fun List<GroupConfig>.merge(): GroupConfig = when {
   isEmpty() -> GroupConfig()
   size == 1 -> single()
@@ -120,18 +64,5 @@ fun List<GroupConfig>.merge(): GroupConfig = when {
     blackout = all { it.blackout }
   )
 }
-
-@Serializable data class ApeLabsPrefs(
-  val selectedGroups: Set<Int> = emptySet(),
-  val groupConfigs: Map<Int, GroupConfig> = emptyMap(),
-  val colors: Map<String, ApeColor> = emptyMap(),
-  val programs: Map<String, Program.MultiColor> = emptyMap()
-) {
-  companion object {
-    @Provide val prefModule = DataStoreModule("apelabs_prefs") { ApeLabsPrefs() }
-  }
-}
-
-@Provide @JvmInline value class ApeLabsPrefsContext(val pref: DataStore<ApeLabsPrefs>)
 
 val GROUPS = (1..4).toList()
