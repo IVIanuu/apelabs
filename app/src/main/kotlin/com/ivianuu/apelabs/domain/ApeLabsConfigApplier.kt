@@ -75,7 +75,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
   suspend fun <T> applyIfChanged(
     tag: String,
     get: GroupConfig.() -> T,
-    cacheField: Cache.() -> MutableMap<Int, T>,
+    cache: MutableMap<Int, T>,
     apply: suspend (T, List<Int>) -> Unit
   ) {
     configs
@@ -85,7 +85,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
       .mapValues { (value, config) ->
         config
           .map { it.first }
-          .filter { cache.cacheField()[it] != value }
+          .filter { cache[it] != value }
       }
       // only apply if there any groups
       .filterValues { it.isNotEmpty() }
@@ -96,12 +96,12 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
             // cache and apply output
             log { "apply $tag $value for $groups" }
             apply(value, groups)
-            groups.forEach { cache.cacheField()[it] = value }
+            groups.forEach { cache[it] = value }
           },
           onCancel = {
             // invalidate cache
             log { "apply cancelled $tag for $groups" }
-            groups.forEach { cache.cacheField()[it] = value }
+            groups.forEach { cache[it] = value }
           }
         )
       }
@@ -110,7 +110,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
   applyIfChanged(
     tag = "program",
     get = { program },
-    cacheField = { lastProgram },
+    cache = cache.lastProgram,
     apply = { value, groups ->
       when (value) {
         is Program.SingleColor -> {
@@ -158,7 +158,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
   applyIfChanged(
     tag = "brightness",
     get = { if (blackout) 0f else brightness },
-    cacheField = { lastBrightness },
+    cache = cache.lastBrightness,
     apply = { value, groups ->
       write(
         byteArrayOf(
@@ -175,7 +175,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
   applyIfChanged(
     tag = "speed",
     get = { speed },
-    cacheField = { lastSpeed },
+    cache = cache.lastSpeed,
     apply = { value, groups ->
       write(
         byteArrayOf(
@@ -192,7 +192,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
   applyIfChanged(
     tag = "music mode",
     get = { musicMode },
-    cacheField = { lastMusicMode },
+    cache = cache.lastMusicMode,
     apply = { value, groups ->
       write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (value) 1 else 0, 0))
     }
