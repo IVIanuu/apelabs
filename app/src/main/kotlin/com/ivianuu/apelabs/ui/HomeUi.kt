@@ -36,30 +36,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
-import com.ivianuu.apelabs.color.ApeColor
 import com.ivianuu.apelabs.color.BuiltInColors
 import com.ivianuu.apelabs.color.ColorKey
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.data.GROUPS
-import com.ivianuu.apelabs.data.GroupConfig
+import com.ivianuu.apelabs.group.GROUPS
+import com.ivianuu.apelabs.group.GroupConfig
 import com.ivianuu.apelabs.device.Light
 import com.ivianuu.apelabs.device.WappState
-import com.ivianuu.apelabs.data.merge
+import com.ivianuu.apelabs.group.merge
 import com.ivianuu.apelabs.device.LightRepository
 import com.ivianuu.apelabs.program.ProgramRepository
 import com.ivianuu.apelabs.device.WappRepository
 import com.ivianuu.apelabs.program.Program
 import com.ivianuu.apelabs.color.ColorListIcon
+import com.ivianuu.apelabs.color.ColorRepository
 import com.ivianuu.apelabs.color.toApeColor
+import com.ivianuu.apelabs.group.GroupConfigRepository
 import com.ivianuu.apelabs.program.ProgramKey
+import com.ivianuu.apelabs.util.randomId
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.parForEach
+import com.ivianuu.essentials.logging.Logger
+import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
-import com.ivianuu.essentials.safeAs
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.ListKey
@@ -82,6 +85,10 @@ import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 
 @Provide object HomeKey : RootKey
@@ -375,25 +382,25 @@ data class HomeModel(
   val deleteProgram: (Program) -> Unit
 )
 
-context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepository, WappRepository)
+context(ApeLabsPrefsContext, ColorRepository, GroupConfigRepository, LightRepository,
+Logger, KeyUiContext<HomeKey>, ProgramRepository, WappRepository)
     @Provide fun homeModel() = Model {
   val prefs = pref.data.bind(ApeLabsPrefs())
 
-  val groupConfig = prefs.selectedGroups
-    .map { prefs.groupConfigs[it] ?: GroupConfig() }
-    .merge()
+  val groupConfig = combine(
+    prefs.selectedGroups
+      .map { group ->
+        groupConfig(group)
+          .map { it ?: GroupConfig() }
+      }
+  ) { it.toList().merge() }
+    .bind(GroupConfig(), prefs.selectedGroups)
 
   suspend fun updateConfig(block: GroupConfig.() -> GroupConfig) {
-    pref.updateData {
-      copy(
-        groupConfigs = buildMap {
-          putAll(groupConfigs)
-          selectedGroups.forEach {
-            put(it, block(this[it] ?: GroupConfig()))
-          }
-        }
-      )
-    }
+    updateGroupConfigs(
+      prefs.selectedGroups
+        .associateWith { (groupConfig(it).first() ?: GroupConfig()).block() }
+    )
   }
 
   val lights = lights.bindResource()
@@ -463,7 +470,12 @@ context(ApeLabsPrefsContext, LightRepository, KeyUiContext<HomeKey>, ProgramRepo
     updateColor = action {
       navigator.push(ColorKey())
         ?.let {
-          updateConfig { copy(program = Program("Color", listOf(Program.Item("Color", it)))) }
+          val color = createColor(color = it)
+          val programItem = createProgramItem()
+          updateProgramItem(programItem.copy(color = color))
+          val program = Program(randomId(), listOf(programItem))
+          updateProgram(program)
+          updateConfig { copy(program = program) }
         }
     },
     updateProgram = action { program -> updateConfig { copy(program = program) } },

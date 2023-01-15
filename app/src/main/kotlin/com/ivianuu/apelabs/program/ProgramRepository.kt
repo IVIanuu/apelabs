@@ -12,6 +12,8 @@ import com.ivianuu.essentials.db.deleteById
 import com.ivianuu.essentials.db.insert
 import com.ivianuu.essentials.db.selectAll
 import com.ivianuu.essentials.db.selectById
+import com.ivianuu.essentials.logging.Logger
+import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.toDuration
 import com.ivianuu.essentials.time.toLong
 import com.ivianuu.injekt.Provide
@@ -19,15 +21,18 @@ import com.ivianuu.injekt.common.Scoped
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 
-context(ColorRepository, Db) @Provide @Scoped<AppScope> class ProgramRepository {
+context(ColorRepository, Db, Logger) @Provide @Scoped<AppScope> class ProgramRepository {
   val programs: Flow<List<Program>>
     get() = selectAll<ProgramEntity>()
+      .map { it.filter { !it.id.isUUID } }
       .flatMapLatest { entities ->
         if (entities.isEmpty()) flowOf(emptyList<Program>())
         combine(
@@ -36,9 +41,11 @@ context(ColorRepository, Db) @Provide @Scoped<AppScope> class ProgramRepository 
         ) { it.toList() }
       }
 
-  fun program(id: String) = selectById<ProgramEntity>(id)
-    .flatMapLatest { it?.toProgram() ?: flowOf(null) }
-    .distinctUntilChanged()
+  fun program(id: String): Flow<Program?> =
+    if (id == Program.RAINBOW.id) flowOf(Program.RAINBOW)
+    else selectById<ProgramEntity>(id)
+      .flatMapLatest { it?.toProgram() ?: flowOf(null) }
+      .distinctUntilChanged()
 
   suspend fun createProgram(id: String) = transaction {
     val program = Program(

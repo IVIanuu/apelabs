@@ -1,6 +1,7 @@
 package com.ivianuu.apelabs.data
 
 import com.ivianuu.apelabs.color.ApeColorEntity
+import com.ivianuu.apelabs.group.GroupConfigEntity
 import com.ivianuu.apelabs.program.ProgramEntity
 import com.ivianuu.essentials.AppContext
 import com.ivianuu.essentials.AppScope

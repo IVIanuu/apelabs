@@ -1,9 +1,10 @@
 package com.ivianuu.apelabs.domain
 
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.data.GroupConfig
+import com.ivianuu.apelabs.group.GroupConfig
 import com.ivianuu.apelabs.device.LightRepository
 import com.ivianuu.apelabs.device.WappRepository
+import com.ivianuu.apelabs.group.GroupConfigRepository
 import com.ivianuu.apelabs.program.Program
 import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
@@ -22,7 +23,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlin.time.Duration
 
-context(ApeLabsPrefsContext, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
+context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
     @Provide fun apeLabsConfigApplier() = ScopeWorker<AppForegroundScope> {
   wapps.collectLatest { wapps ->
     if (wapps.isEmpty()) return@collectLatest
@@ -30,15 +31,15 @@ context(ApeLabsPrefsContext, Logger, LightRepository, PreviewRepository, WappRem
 
     wapps.parForEach { wapp ->
       withWapp(wapp.address) {
-        combine(pref.data, preview)
-          .map { (pref, previewProgram) ->
+        combine(groupConfigs, pref.data, preview)
+          .map { (groupConfigs, pref, previewProgram) ->
             previewProgram?.let {
-              pref.groupConfigs.mapValues {
+              groupConfigs.mapValues {
                 if (it.key in pref.selectedGroups)
                   it.value.copy(program = previewProgram)
                 else it.value
               }
-            } ?: pref.groupConfigs
+            } ?: groupConfigs
           }
           .distinctUntilChanged()
           .flatMapLatest { groupConfigs ->
