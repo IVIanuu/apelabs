@@ -12,6 +12,7 @@ import com.ivianuu.essentials.compose.getValue
 import com.ivianuu.essentials.compose.setValue
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.parForEach
+import com.ivianuu.essentials.coroutines.share
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.seconds
@@ -29,11 +30,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
+context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
 @Provide @Scoped<AppScope> class LightRepository(
   private val context: IOContext
 ) {
@@ -112,7 +112,7 @@ context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
       .sortedBy { it.id }
   }
     .distinctUntilChanged()
-    .shareIn(this@NamedCoroutineScope, SharingStarted.WhileSubscribed(), 1)
+    .share(SharingStarted.WhileSubscribed(), 1)
 
   private val _groupLightsChangedEvents = EventFlow<GroupLightChangedEvent>()
   val groupLightsChangedEvents get() = _groupLightsChangedEvents
