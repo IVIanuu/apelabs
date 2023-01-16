@@ -4,45 +4,24 @@
 
 package com.ivianuu.apelabs.group
 
-import com.ivianuu.apelabs.color.ApeColor
 import com.ivianuu.apelabs.program.Program
-import com.ivianuu.apelabs.util.randomId
-import com.ivianuu.essentials.db.AbstractEntityDescriptor
-import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable
 
 @Serializable data class GroupConfig(
-  val id: String,
-  val program: Program = Program.RAINBOW,
+  val program: Program = Program(),
   val brightness: Float = 1f,
   val speed: Float = 0f,
   val musicMode: Boolean = false,
   val blackout: Boolean = false
-) {
-  companion object {
-    val DEFAULT = GroupConfig("__default")
-  }
-}
+)
 
-@Serializable data class GroupConfigEntity(
-  @PrimaryKey val id: String,
-  val program: String,
-  val brightness: Float,
-  val speed: Float,
-  val musicMode: Boolean,
-  val blackout: Boolean
-) {
-  companion object : AbstractEntityDescriptor<GroupConfigEntity>("group_configs")
-}
-
-fun List<GroupConfig>.merge(id: String): GroupConfig = when {
-  isEmpty() -> GroupConfig(id)
+fun List<GroupConfig>.merge(): GroupConfig = when {
+  isEmpty() -> GroupConfig()
   size == 1 -> single()
   else -> GroupConfig(
-    id = id,
     program = when {
       all { a -> all { a.program == it.program } } -> first().program
-      else -> Program.RAINBOW
+      else -> Program()
     },
     brightness = map { it.brightness }.average().toFloat(),
     speed = map { it.speed }.average().toFloat(),

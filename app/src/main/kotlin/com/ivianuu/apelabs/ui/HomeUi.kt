@@ -10,7 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,7 +32,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
@@ -42,7 +40,6 @@ import com.ivianuu.apelabs.color.BuiltInColors
 import com.ivianuu.apelabs.color.ColorKey
 import com.ivianuu.apelabs.color.ColorListIcon
 import com.ivianuu.apelabs.color.ColorRepository
-import com.ivianuu.apelabs.color.toApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.device.Light
@@ -56,6 +53,7 @@ import com.ivianuu.apelabs.group.merge
 import com.ivianuu.apelabs.program.Program
 import com.ivianuu.apelabs.program.ProgramKey
 import com.ivianuu.apelabs.program.ProgramRepository
+import com.ivianuu.apelabs.program.asProgram
 import com.ivianuu.apelabs.scene.Scene
 import com.ivianuu.apelabs.scene.SceneKey
 import com.ivianuu.apelabs.scene.SceneRepository
@@ -63,7 +61,6 @@ import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.parForEach
-import com.ivianuu.essentials.db.Db
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
@@ -88,9 +85,6 @@ import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
 
@@ -260,8 +254,8 @@ import kotlin.math.roundToInt
 
       item {
         ListItem(
-          modifier = Modifier.clickable { updateProgram(Program.COLOR_PICKER) },
-          title = { Text(Program.COLOR_PICKER_ID) },
+          modifier = Modifier.clickable(onClick = updateColor),
+          title = { Text("Color") },
           leading = {
             ColorListIcon(
               modifier = Modifier.size(40.dp),
@@ -271,14 +265,15 @@ import kotlin.math.roundToInt
         )
       }
 
-      val programs = programs.getOrElse { emptyList() }
+      val programs = programs.getOrElse { emptyMap() }
       programs
-        .sortedBy { it.id }
-        .forEach { program ->
+        .toList()
+        .sortedBy { it.first }
+        .forEach { (id, program) ->
           item {
             ListItem(
               modifier = Modifier.clickable { updateProgram(program) },
-              title = { Text(program.id) },
+              title = { Text(id) },
               leading = {
                 ColorListIcon(
                   modifier = Modifier.size(40.dp),
@@ -287,8 +282,8 @@ import kotlin.math.roundToInt
               },
               trailing = {
                 PopupMenuButton {
-                  PopupMenuItem(onSelected = { openProgram(program) }) { Text("Open") }
-                  PopupMenuItem(onSelected = { deleteProgram(program) }) { Text("Delete") }
+                  PopupMenuItem(onSelected = { openProgram(id) }) { Text("Open") }
+                  PopupMenuItem(onSelected = { deleteProgram(id) }) { Text("Delete") }
                 }
               }
             )
@@ -321,18 +316,19 @@ import kotlin.math.roundToInt
         Subheader { Text("Scenes") }
       }
 
-      val scenes = scenes.getOrElse { emptyList() }
+      val scenes = scenes.getOrElse { emptyMap() }
       scenes
-        .sortedBy { it.id }
-        .forEach { scene ->
+        .toList()
+        .sortedBy { it.first }
+        .forEach { (id, scene) ->
           item {
             ListItem(
               modifier = Modifier.clickable { applyScene(scene) },
-              title = { Text(scene.id) },
+              title = { Text(id) },
               trailing = {
                 PopupMenuButton {
-                  PopupMenuItem(onSelected = { openScene(scene) }) { Text("Open") }
-                  PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
+                  PopupMenuItem(onSelected = { openScene(id) }) { Text("Open") }
+                  PopupMenuItem(onSelected = { deleteScene(id) }) { Text("Delete") }
                 }
               }
             )
@@ -402,38 +398,33 @@ data class HomeModel(
   val selectedLights: Set<String>,
   val toggleLightSelection: (Light) -> Unit,
   val regroupLights: () -> Unit,
-  val programs: Resource<List<Program>>,
+  val programs: Resource<Map<String, Program>>,
+  val updateColor: () -> Unit,
   val updateProgram: (Program) -> Unit,
-  val openProgram: (Program) -> Unit,
+  val openProgram: (String) -> Unit,
   val addProgram: () -> Unit,
-  val deleteProgram: (Program) -> Unit,
-  val scenes: Resource<List<Scene>>,
+  val deleteProgram: (String) -> Unit,
+  val scenes: Resource<Map<String, Scene>>,
   val applyScene: (Scene) -> Unit,
-  val openScene: (Scene) -> Unit,
+  val openScene: (String) -> Unit,
   val addScene: () -> Unit,
-  val deleteScene: (Scene) -> Unit
+  val deleteScene: (String) -> Unit
 )
 
-context(ApeLabsPrefsContext, ColorRepository, Db, GroupConfigRepository, LightRepository,
+context(ApeLabsPrefsContext, ColorRepository, GroupConfigRepository, LightRepository,
 Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     @Provide fun homeModel() = Model {
   val prefs = pref.data.bind(ApeLabsPrefs())
 
-  val groupConfig = combine(
-    prefs.selectedGroups
-      .map { group ->
-        groupConfig(group.toString())
-          .map { it ?: GroupConfig(group.toString()) }
-      }
-  ) { it.toList().merge("Merged") }
-    .bind(GroupConfig("Merged"), prefs.selectedGroups)
+  val groupConfig = prefs.selectedGroups
+    .map { prefs.groupConfigs[it]!! }
+    .merge()
 
   suspend fun updateConfig(block: GroupConfig.() -> GroupConfig) {
-    transaction {
+    updateGroupConfigs(
       prefs.selectedGroups
-        .map { (groupConfig(it.toString()).first() ?: GroupConfig(it.toString())).block() }
-        .parForEach { updateGroupConfig(it) }
-    }
+        .associateWith { prefs.groupConfigs[it]!!.block() }
+    )
   }
 
   val lights = lights.bindResource()
@@ -500,45 +491,39 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
         }
     },
     programs = programs.bindResource(),
-    updateProgram = action { program ->
-      if (program === Program.COLOR_PICKER) {
-        navigator.push(ColorKey(ApeColor()))
-          ?.let {
-            val item = createProgramItem().copy(color = it)
-            updateProgramItem(item)
-            updateProgram(program = program.copy(items = listOf(item)))
-          } ?: return@action
-      }
-
-      updateConfig { copy(program = program) }
+    updateColor = action {
+      navigator.push(ColorKey(ApeColor()))
+        ?.let {
+          val program = it.asProgram()
+          updateConfig { copy(program = program) }
+        }
     },
-    openProgram = action { program -> navigator.push(ProgramKey(program.id)) },
+    updateProgram = action { program -> updateConfig { copy(program = program) } },
+    openProgram = action { programId -> navigator.push(ProgramKey(programId)) },
     addProgram = action {
       navigator.push(TextInputKey(label = "Name.."))
         ?.let {
-          createProgram(it)
+          updateProgram(it, Program())
           navigator.push(ProgramKey(it))
         }
     },
-    deleteProgram = action { program -> deleteProgram(program.id) },
+    deleteProgram = action { programId -> deleteProgram(programId) },
     scenes = scenes.bindResource(),
     applyScene = action { scene ->
-      transaction {
+      updateGroupConfigs(
         scene.groupConfigs
           .filterValues { it != null }
-          .forEach { (group, config) ->
-            updateGroupConfig(config!!.copy(id = group.toString()))
-          }
-      }
+          .mapValues { it.value!! }
+      )
     },
-    openScene = action { scene -> navigator.push(SceneKey(scene.id)) },
+    openScene = action { sceneId -> navigator.push(SceneKey(sceneId)) },
     addScene = action {
       navigator.push(TextInputKey(label = "Name.."))
         ?.let {
-          createScene(it)
+          updateScene(it, Scene())
           navigator.push(SceneKey(it))
         }
     },
-    deleteScene = action { scene -> deleteScene(scene.id) }
+    deleteScene = action { sceneId -> deleteScene(sceneId) }
   )
 }

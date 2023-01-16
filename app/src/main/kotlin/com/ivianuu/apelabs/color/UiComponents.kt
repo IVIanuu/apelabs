@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.ivianuu.apelabs.program.Program
 
@@ -33,15 +32,7 @@ import com.ivianuu.apelabs.program.Program
 @Composable fun ColorListIcon(modifier: Modifier, program: Program) {
   ColorListIcon(
     modifier = modifier,
-    colors = when {
-      program === Program.RAINBOW -> listOf(
-        Color.Red.toApeColor(),
-        Color.Yellow.toApeColor(),
-        Color.Green.toApeColor(),
-        Color.Blue.toApeColor()
-      )
-      else -> program.items.map { it.color }
-    }
+    colors = program.items.map { it.color }
   )
 }
 

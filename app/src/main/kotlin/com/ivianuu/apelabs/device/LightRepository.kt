@@ -5,9 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.ivianuu.apelabs.domain.WappRemote
 import com.ivianuu.essentials.AppScope
-import com.ivianuu.essentials.compose.stateFlow
 import com.ivianuu.essentials.compose.getValue
 import com.ivianuu.essentials.compose.setValue
+import com.ivianuu.essentials.compose.stateFlow
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger

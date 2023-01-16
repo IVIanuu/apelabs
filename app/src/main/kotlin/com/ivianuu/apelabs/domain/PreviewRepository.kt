@@ -2,7 +2,6 @@ package com.ivianuu.apelabs.domain
 
 import com.ivianuu.apelabs.group.GROUPS
 import com.ivianuu.apelabs.group.GroupConfig
-import com.ivianuu.apelabs.program.Program
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.bracket
 import com.ivianuu.essentials.coroutines.share

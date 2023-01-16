@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.group.GroupConfigRepository
-import com.ivianuu.apelabs.program.Program
 import com.ivianuu.apelabs.program.asProgram
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
@@ -74,7 +73,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
               .map { configs ->
                 configs
                   .mapValues { (_, config) ->
-                    config.copy(program = color.asProgram(Program.COLOR_PICKER_ID))
+                    config.copy(program = color.asProgram())
                   }
               }
           }

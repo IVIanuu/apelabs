@@ -1,10 +1,10 @@
 package com.ivianuu.apelabs.domain
 
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.group.GroupConfig
 import com.ivianuu.apelabs.device.LightRepository
 import com.ivianuu.apelabs.device.WappRepository
 import com.ivianuu.apelabs.group.GROUPS
+import com.ivianuu.apelabs.group.GroupConfig
 import com.ivianuu.apelabs.group.GroupConfigRepository
 import com.ivianuu.apelabs.program.Program
 import com.ivianuu.essentials.app.AppForegroundScope
@@ -17,16 +17,13 @@ import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.transform
 import kotlin.time.Duration
 
 context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
@@ -111,20 +108,13 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
 
   applyIfChanged(
     tag = "program",
-    get = {
-      // erase ids to make sure that the same colors will we reused
-      program
-        .copy(
-          id = Program.NONE_ID,
-          items = program.items
-            .map { item ->
-              item.copy(id = Program.NONE_ID, color = item.color)
-            }
-        )
-    },
+    get = { program },
     cache = cache.lastProgram,
     apply = { value, groups ->
       when {
+        value == Program.RAINBOW -> {
+          write(byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0))
+        }
         value.items.size == 1 -> {
           val color = value.items.single().color
           write(
@@ -141,10 +131,6 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
             )
           )
         }
-        // super dirty way to check if it's the rainbow program -_-
-        value.items.isEmpty() -> write(
-          byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0)
-        )
         else -> {
           value.items.forEachIndexed { index, item ->
             write(
@@ -157,9 +143,9 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
                 item.color.blue.toColorByte(),
                 item.color.white.toColorByte(),
                 0,
-                item.fade.toDurationByte(),
+                item.fadeTime.toDurationByte(),
                 0,
-                item.hold.toDurationByte(),
+                item.holdTime.toDurationByte(),
                 groups.toGroupByte()
               )
             )

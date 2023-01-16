@@ -29,7 +29,6 @@ import com.ivianuu.apelabs.color.ColorKey
 import com.ivianuu.apelabs.color.ColorListIcon
 import com.ivianuu.apelabs.color.ColorRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
-import com.ivianuu.apelabs.group.GROUPS
 import com.ivianuu.apelabs.group.GroupConfigRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
@@ -53,7 +52,6 @@ import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
 import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
@@ -79,7 +77,7 @@ data class ProgramKey(val id: String) : Key<Unit>
   ) {
     ResourceBox(program) { value ->
       VerticalList {
-        value.items.forEachIndexed { index, item ->
+        value.items.forEachIndexed { itemIndex, item ->
           item {
             Row(
               modifier = Modifier
@@ -89,7 +87,7 @@ data class ProgramKey(val id: String) : Key<Unit>
               ColorListIcon(
                 modifier = Modifier
                   .size(40.dp)
-                  .clickable { updateColor(item) },
+                  .clickable { updateColor(itemIndex) },
                 colors = listOf(item.color)
               )
 
@@ -128,20 +126,20 @@ data class ProgramKey(val id: String) : Key<Unit>
                 }
 
                 DurationSlider(
-                  value = item.fade,
-                  onValueChange = { updateFade(item, it) },
+                  value = item.fadeTime,
+                  onValueChange = { updateFade(itemIndex, it) },
                   title = "Fade"
                 )
 
                 DurationSlider(
-                  value = item.hold,
-                  onValueChange = { updateHold(item, it) },
+                  value = item.holdTime,
+                  onValueChange = { updateHold(itemIndex, it) },
                   title = "Hold"
                 )
               }
 
-              if (index != 0)
-                IconButton(onClick = { deleteItem(item) }) { Icon(Icons.Default.Close) }
+              if (itemIndex != 0)
+                IconButton(onClick = { deleteItem(itemIndex) }) { Icon(Icons.Default.Close) }
               else
                 Spacer(Modifier.size(40.dp))
             }
@@ -184,10 +182,10 @@ data class ProgramModel(
   val id: String,
   val program: Resource<Program>,
   val addItem: () -> Unit,
-  val updateColor: (Program.Item) -> Unit,
-  val updateFade: (Program.Item, Duration) -> Unit,
-  val updateHold: (Program.Item, Duration) -> Unit,
-  val deleteItem: (Program.Item) -> Unit,
+  val updateColor: (Int) -> Unit,
+  val updateFade: (Int, Duration) -> Unit,
+  val updateHold: (Int, Duration) -> Unit,
+  val deleteItem: (Int) -> Unit,
   val previewsEnabled: Boolean,
   val updatePreviewsEnabled: (Boolean) -> Unit
 ) {
@@ -223,36 +221,38 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, ProgramReposi
   }
 
   suspend fun updateProgram(block: Program.() -> Program) {
-    updateProgram(program.get().block())
+    updateProgram(id, program.get().block())
   }
 
   suspend fun updateItem(
-    id: String,
+    itemIndex: Int,
     block: Program.Item.() -> Program.Item
   ) {
-    updateProgramItem(item = programItem(id).first()!!.block())
+    val item = program.get().items[itemIndex].block()
+    updateProgram {
+      copy(
+        items = items.toMutableList()
+          .apply { set(itemIndex, item) }
+      )
+    }
   }
 
   ProgramModel(
     id = id,
     program = program,
-    addItem = action {
-      val item = createProgramItem()
-      updateProgram { copy(items = items + item) }
+    addItem = action { updateProgram { copy(items = items + Program.Item()) } },
+    updateColor = action { itemIndex ->
+      navigator.push(ColorKey(program.get().items.get(itemIndex).color))
+        ?.let { updateItem(itemIndex) { copy(color = it) } }
     },
-    updateColor = action { item ->
-      navigator.push(ColorKey(program.get().items.single { it.id == item.id }.color))
-        ?.let { updateItem(item.id) { copy(color = it) } }
+    updateFade = action { itemIndex, fade ->
+      updateItem(itemIndex) { copy(fadeTime = fade) }
     },
-    updateFade = action { item, fade ->
-      updateItem(item.id) { copy(fade = fade) }
+    updateHold = action { itemIndex, hold ->
+      updateItem(itemIndex) { copy(holdTime = hold) }
     },
-    updateHold = action { item, hold ->
-      updateItem(item.id) { copy(hold = hold) }
-    },
-    deleteItem = action { item ->
-      updateProgram { copy(items = items.filter { it.id != item.id }) }
-      deleteProgramItem(item.id)
+    deleteItem = action { itemIndex ->
+      updateProgram { copy(items = items.toMutableList().apply { removeAt(itemIndex) }) }
     },
     previewsEnabled = previewsEnabled.bind(),
     updatePreviewsEnabled = action { value -> updatePreviewsEnabled(value) }

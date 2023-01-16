@@ -35,7 +35,7 @@ import com.ivianuu.apelabs.group.GroupConfig
 import com.ivianuu.apelabs.group.GroupConfigRepository
 import com.ivianuu.apelabs.program.Program
 import com.ivianuu.apelabs.program.ProgramRepository
-import com.ivianuu.apelabs.util.randomId
+import com.ivianuu.apelabs.program.asProgram
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
@@ -118,7 +118,7 @@ data class SceneKey(val id: String) : Key<Unit>
                         .padding(horizontal = 4.dp),
                       value = internalValue,
                       onValueChange = { internalValue = it },
-                      onValueChangeFinished = { updateBrightness(config, internalValue) },
+                      onValueChangeFinished = { updateBrightness(group, internalValue) },
                       stepPolicy = incrementingStepPolicy(0.05f)
                     )
 
@@ -138,7 +138,7 @@ data class SceneKey(val id: String) : Key<Unit>
                         .padding(horizontal = 4.dp),
                       value = internalValue,
                       onValueChange = { internalValue = it },
-                      onValueChangeFinished = { updateSpeed(config, internalValue) },
+                      onValueChangeFinished = { updateSpeed(group, internalValue) },
                       stepPolicy = incrementingStepPolicy(0.05f)
                     )
 
@@ -153,14 +153,14 @@ data class SceneKey(val id: String) : Key<Unit>
 
                     Switch(
                       checked = config.musicMode,
-                      onCheckedChange = { updateMusicMode(config, it) }
+                      onCheckedChange = { updateMusicMode(group, it) }
                     )
                   }
                 }
               }
 
               if (config != null)
-                IconButton(onClick = { deleteGroupConfig(group, config) }) {
+                IconButton(onClick = { deleteGroupConfig(group) }) {
                   Icon(Icons.Default.Close)
                 }
             }
@@ -183,10 +183,10 @@ data class SceneModel(
   val id: String,
   val scene: Resource<Scene>,
   val updateProgram: (Int, GroupConfig?) -> Unit,
-  val updateBrightness: (GroupConfig, Float) -> Unit,
-  val updateSpeed: (GroupConfig, Float) -> Unit,
-  val updateMusicMode: (GroupConfig, Boolean) -> Unit,
-  val deleteGroupConfig: (Int, GroupConfig) -> Unit,
+  val updateBrightness: (Int, Float) -> Unit,
+  val updateSpeed: (Int, Float) -> Unit,
+  val updateMusicMode: (Int, Boolean) -> Unit,
+  val deleteGroupConfig: (Int) -> Unit,
   val previewsEnabled: Boolean,
   val updatePreviewsEnabled: (Boolean) -> Unit
 )
@@ -212,14 +212,20 @@ SceneRepository, KeyUiContext<SceneKey>)
   }
 
   suspend fun updateScene(block: Scene.() -> Scene) {
-    updateScene(scene.get().block())
+    updateScene(id, scene.get().block())
   }
 
   suspend fun updateGroupConfig(
-    id: String,
+    group: Int,
     block: GroupConfig.() -> GroupConfig
   ) {
-    updateGroupConfig(groupConfig(id).first()!!.block())
+    val groupConfig = (scene.get().groupConfigs.get(group) ?: GroupConfig()).block()
+    updateScene {
+      copy(
+        groupConfigs = groupConfigs.toMutableMap()
+          .apply { put(group, groupConfig) }
+      )
+    }
   }
 
   SceneModel(
@@ -227,56 +233,43 @@ SceneRepository, KeyUiContext<SceneKey>)
     scene = scene,
     updateProgram = action { group, config ->
       navigator.push(
-        ListKey<Program>(
-          buildList<Program> {
-            add(Program.COLOR_PICKER)
+        ListKey<Pair<String, Program?>>(
+          buildList<Pair<String, Program?>> {
+            add("Color" to null)
             addAll(
               programs.first()
-                .sortedBy { it.id.toLowerCase() }
+                .toList()
+                .sortedBy { it.first.toLowerCase() }
             )
-            add(Program.RAINBOW)
+            add("Rainbow" to null)
           }
-        ) { this.id }
+        ) { first }
       )
-        ?.let { program ->
-          val groupConfigId = (config ?: createGroupConfig()).id
-
-          val finalProgram = if (program === Program.COLOR_PICKER) {
-            navigator.push(ColorKey(ApeColor()))
-              ?.let { color ->
-                val programItem = Program.Item(id = randomId(), color)
-                updateProgramItem(programItem)
-                val program = Program(randomId(), listOf(programItem))
-                updateProgram(program)
-                program
-              } ?: return@let
-          } else program
-
-          updateGroupConfig(groupConfigId) { copy(program = finalProgram) }
-          val groupConfig = groupConfig(groupConfigId).first()!!
-          updateScene {
-            copy(groupConfigs = groupConfigs.toMutableMap().apply {
-              put(group, groupConfig)
-            })
+        ?.let { (id, program) ->
+          val finalProgram = when (id) {
+            "Color" -> navigator.push(ColorKey(ApeColor()))?.asProgram() ?: return@let
+            "Rainbow" -> Program.RAINBOW
+            else -> program!!
           }
+
+          updateGroupConfig(group) { copy(program = finalProgram) }
         }
     },
-    updateBrightness = action { config, brightness ->
-      updateGroupConfig(config.id) { copy(brightness = brightness) }
+    updateBrightness = action { group, brightness ->
+      updateGroupConfig(group) { copy(brightness = brightness) }
     },
-    updateSpeed = action { config, speed ->
-      updateGroupConfig(config.id) { copy(speed = speed) }
+    updateSpeed = action { group, speed ->
+      updateGroupConfig(group) { copy(speed = speed) }
     },
-    updateMusicMode = action { config, musicMode ->
-      updateGroupConfig(config.id) { copy(musicMode = musicMode) }
+    updateMusicMode = action { group, musicMode ->
+      updateGroupConfig(group) { copy(musicMode = musicMode) }
     },
-    deleteGroupConfig = action { group, config ->
+    deleteGroupConfig = action { group ->
       updateScene {
         copy(groupConfigs = groupConfigs.toMutableMap().apply {
           put(group, null)
         })
       }
-      deleteGroupConfig(config.id)
     },
     previewsEnabled = previewsEnabled.bind(),
     updatePreviewsEnabled = action { value -> updatePreviewsEnabled(value) }

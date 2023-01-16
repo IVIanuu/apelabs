@@ -1,11 +1,6 @@
 package com.ivianuu.apelabs.color
 
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.essentials.db.Db
-import com.ivianuu.essentials.db.InsertConflictStrategy
-import com.ivianuu.essentials.db.deleteById
-import com.ivianuu.essentials.db.insert
-import com.ivianuu.essentials.db.selectAll
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged

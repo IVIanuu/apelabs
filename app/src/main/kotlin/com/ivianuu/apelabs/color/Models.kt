@@ -1,8 +1,6 @@
 package com.ivianuu.apelabs.color
 
 import androidx.compose.ui.graphics.Color
-import com.ivianuu.essentials.db.AbstractEntityDescriptor
-import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable
 
 @Serializable data class ApeColor(
