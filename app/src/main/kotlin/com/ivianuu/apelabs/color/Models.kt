@@ -27,9 +27,3 @@ private fun Color.overlay(overlay: Color): Color {
   )
 }
 
-@Serializable data class NamedColor(
-  @PrimaryKey val name: String,
-  val color: ApeColor
-) {
-  companion object : AbstractEntityDescriptor<NamedColor>("colors")
-}

@@ -84,7 +84,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
 
     Dialog(
       content = {
-        val customColors = colors.bind(emptyList())
+        val customColors = colors.bind(emptyMap())
 
         VerticalList {
           item {
@@ -161,7 +161,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
           }
 
           @Composable fun ColorList(
-            colors: List<NamedColor>,
+            colors: Map<String, ApeColor>,
             deletable: Boolean,
             title: String
           ) {
@@ -170,23 +170,23 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
             FlowRow {
               colors
                 .toList()
-                .sortedBy { it.name.lowercase() }
-                .forEach { color ->
+                .sortedBy { it.first.lowercase() }
+                .forEach { (id, color) ->
                   Chip(
                     modifier = Modifier
                       .padding(start = 16.dp),
                     onClick = {
-                      red = color.color.red
-                      green = color.color.green
-                      blue = color.color.blue
-                      white = color.color.white
+                      red = color.red
+                      green = color.green
+                      blue = color.blue
+                      white = color.white
                     },
                     colors = ChipDefaults.chipColors(
-                      backgroundColor = color.color.toComposeColor(),
-                      contentColor = guessingContentColorFor(color.color.toComposeColor())
+                      backgroundColor = color.toComposeColor(),
+                      contentColor = guessingContentColorFor(color.toComposeColor())
                     )
                   ) {
-                    Text(color.name)
+                    Text(id)
 
                     if (deletable) {
                       Spacer(Modifier.padding(start = 8.dp))
@@ -194,7 +194,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
                       Box(modifier = Modifier.requiredSize(18.dp)) {
                         PopupMenuButton {
                           PopupMenuItem(
-                            onSelected = action { deleteColor(color.name) }
+                            onSelected = action { deleteColor(id) }
                           ) { Text("Delete") }
                         }
                       }
@@ -238,7 +238,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
         OutlinedButton(
           onClick = action {
             navigator.push(TextInputKey(label = "Name.."))
-              ?.let { updateColor(NamedColor(it, currentColor())) }
+              ?.let { updateColor(it, currentColor()) }
           }
         ) { Text("SAVE") }
 

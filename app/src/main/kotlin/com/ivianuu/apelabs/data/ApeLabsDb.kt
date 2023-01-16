@@ -1,6 +1,5 @@
 package com.ivianuu.apelabs.data
 
-import com.ivianuu.apelabs.color.NamedColor
 import com.ivianuu.apelabs.group.GroupConfigEntity
 import com.ivianuu.apelabs.program.ProgramEntity
 import com.ivianuu.apelabs.scene.SceneEntity
@@ -20,7 +19,6 @@ context(AppContext) @Provide fun apeLabsDb(ioContext: IOContext): @Scoped<AppSco
   schema = Schema(
     version = 1,
     entities = listOf(
-      NamedColor,
       GroupConfigEntity,
       ProgramEntity,
       ProgramEntity.Item,
