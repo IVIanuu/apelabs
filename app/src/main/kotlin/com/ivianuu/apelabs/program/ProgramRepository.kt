@@ -112,13 +112,13 @@ context(ColorRepository, Db, Logger) @Provide @Scoped<AppScope> class ProgramRep
   )
 
   private fun ProgramEntity.Item.toItem(): Flow<Program.Item> = color(color)
-    .map { Program.Item(id, it ?: ApeColor.BLACK, fade.toDuration(), hold.toDuration()) }
+    .map { Program.Item(id, it ?: ApeColor.BLACK, fade, hold) }
     .distinctUntilChanged()
 
   private fun Program.Item.toEntity() = ProgramEntity.Item(
     id = id,
     color = color.id,
-    fade = fade.toLong(),
-    hold = hold.toLong()
+    fade = fade,
+    hold = hold
   )
 }

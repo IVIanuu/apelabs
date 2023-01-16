@@ -41,8 +41,8 @@ fun ApeColor.asProgram(id: String) =
   @Serializable data class Item(
     @PrimaryKey val id: String,
     val color: String,
-    val fade: Long,
-    val hold: Long
+    val fade: Duration,
+    val hold: Duration
   ) {
     companion object : AbstractEntityDescriptor<Item>("program_items")
   }
