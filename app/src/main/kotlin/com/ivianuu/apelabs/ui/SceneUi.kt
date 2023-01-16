@@ -1,4 +1,4 @@
-package com.ivianuu.apelabs.scene
+package com.ivianuu.apelabs.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box

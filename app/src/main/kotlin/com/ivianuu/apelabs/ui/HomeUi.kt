@@ -50,14 +50,12 @@ import com.ivianuu.apelabs.data.asProgram
 import com.ivianuu.apelabs.data.deleteProgram
 import com.ivianuu.apelabs.data.merge
 import com.ivianuu.apelabs.domain.LightRepository
-import com.ivianuu.apelabs.program.ProgramKey
 import com.ivianuu.apelabs.data.deleteScene
 import com.ivianuu.apelabs.data.programs
 import com.ivianuu.apelabs.data.scenes
 import com.ivianuu.apelabs.data.updateGroupConfigs
 import com.ivianuu.apelabs.data.updateProgram
 import com.ivianuu.apelabs.data.updateScene
-import com.ivianuu.apelabs.scene.SceneKey
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
