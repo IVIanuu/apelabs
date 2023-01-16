@@ -2,7 +2,6 @@ package com.ivianuu.apelabs.color
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -36,10 +35,10 @@ import com.ivianuu.apelabs.program.Program
     modifier = modifier,
     colors = when {
       program === Program.RAINBOW -> listOf(
-        Color.Red.toApeColor("R"),
-        Color.Yellow.toApeColor("Y"),
-        Color.Green.toApeColor("G"),
-        Color.Blue.toApeColor("B")
+        Color.Red.toApeColor(),
+        Color.Yellow.toApeColor(),
+        Color.Green.toApeColor(),
+        Color.Blue.toApeColor()
       )
       else -> program.items.map { it.color }
     }

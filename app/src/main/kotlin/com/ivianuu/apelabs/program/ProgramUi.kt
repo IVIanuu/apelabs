@@ -242,7 +242,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, ProgramReposi
     },
     updateColor = action { item ->
       navigator.push(ColorKey(program.get().items.single { it.id == item.id }.color))
-        ?.let { updateColor(it.copy(id = item.color.id)) }
+        ?.let { updateItem(item.id) { copy(color = it) } }
     },
     updateFade = action { item, fade ->
       updateItem(item.id) { copy(fade = fade) }

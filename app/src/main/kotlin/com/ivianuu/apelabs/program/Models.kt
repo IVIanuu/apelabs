@@ -40,7 +40,7 @@ fun ApeColor.asProgram(id: String) =
 ) {
   @Serializable data class Item(
     @PrimaryKey val id: String,
-    val color: String,
+    val color: ApeColor,
     val fade: Duration,
     val hold: Duration
   ) {

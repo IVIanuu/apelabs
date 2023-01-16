@@ -44,13 +44,6 @@ context(ColorRepository, Db, Logger) @Provide @Scoped<AppScope> class ProgramRep
   fun program(id: String): Flow<Program?> =
     when (id) {
       Program.RAINBOW_ID -> flowOf(Program.RAINBOW)
-      Program.COLOR_PICKER_ID -> color(id)
-        .map {
-          Program(
-            Program.COLOR_PICKER_ID,
-            listOf(Program.Item(Program.COLOR_PICKER_ID, it ?: ApeColor(Program.COLOR_PICKER_ID)))
-          )
-        }
       else -> selectById<ProgramEntity>(id)
         .flatMapLatest { it?.toProgram() ?: flowOf(null) }
         .distinctUntilChanged()
@@ -77,10 +70,10 @@ context(ColorRepository, Db, Logger) @Provide @Scoped<AppScope> class ProgramRep
   }
 
   suspend fun programItem(id: String) = selectById<ProgramEntity.Item>(id)
-    .flatMapLatest { it?.toItem() ?: flowOf(null) }
+    .map { it?.toItem() ?: null }
 
   suspend fun createProgramItem(): Program.Item = transaction {
-    val item = Program.Item(id = randomId(), color = createColor())
+    val item = Program.Item(id = randomId(), color = ApeColor())
     insert(item.toEntity())
     item
   }
@@ -90,11 +83,6 @@ context(ColorRepository, Db, Logger) @Provide @Scoped<AppScope> class ProgramRep
   }
 
   suspend fun deleteProgramItem(id: String) = transaction {
-    selectById<ProgramEntity.Item>(id).first()
-      ?.color
-      ?.takeIf { it.isUUID }
-      ?.let { deleteColor(it) }
-
     deleteById<ProgramEntity.Item>(id)
   }
 
@@ -102,7 +90,7 @@ context(ColorRepository, Db, Logger) @Provide @Scoped<AppScope> class ProgramRep
     items
       .map { itemId ->
         selectById<ProgramEntity.Item>(itemId)
-          .flatMapLatest { it!!.toItem() }
+          .map { it!!.toItem() }
       }
   ) { Program(id, it.toList()) }
 
@@ -111,14 +99,7 @@ context(ColorRepository, Db, Logger) @Provide @Scoped<AppScope> class ProgramRep
     items = items.map { it.id }
   )
 
-  private fun ProgramEntity.Item.toItem(): Flow<Program.Item> = color(color)
-    .map { Program.Item(id, it ?: ApeColor.BLACK, fade, hold) }
-    .distinctUntilChanged()
+  private fun ProgramEntity.Item.toItem() = Program.Item(id, color, fade, hold)
 
-  private fun Program.Item.toEntity() = ProgramEntity.Item(
-    id = id,
-    color = color.id,
-    fade = fade,
-    hold = hold
-  )
+  private fun Program.Item.toEntity() = ProgramEntity.Item(id, color, fade, hold)
 }

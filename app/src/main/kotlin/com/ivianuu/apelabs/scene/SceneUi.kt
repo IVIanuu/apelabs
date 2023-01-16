@@ -242,19 +242,9 @@ SceneRepository, KeyUiContext<SceneKey>)
           val groupConfigId = (config ?: createGroupConfig()).id
 
           val finalProgram = if (program === Program.COLOR_PICKER) {
-            navigator.push(
-              ColorKey(
-                color(groupConfigId).first() ?: ApeColor.BLACK.copy(id = groupConfigId)
-              )
-            )
+            navigator.push(ColorKey(ApeColor()))
               ?.let { color ->
-                val finalColor = if (color.id == groupConfigId) {
-                  val finalColor = color.copy(id = groupConfigId)
-                  updateColor(color)
-                  finalColor
-                } else color
-
-                val programItem = Program.Item(id = randomId(), finalColor)
+                val programItem = Program.Item(id = randomId(), color)
                 updateProgramItem(programItem)
                 val program = Program(randomId(), listOf(programItem))
                 updateProgram(program)

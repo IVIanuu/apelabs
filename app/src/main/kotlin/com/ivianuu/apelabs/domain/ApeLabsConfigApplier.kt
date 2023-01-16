@@ -118,7 +118,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
           id = Program.NONE_ID,
           items = program.items
             .map { item ->
-              item.copy(id = Program.NONE_ID, color = item.color.copy(id = Program.NONE_ID))
+              item.copy(id = Program.NONE_ID, color = item.color)
             }
         )
     },

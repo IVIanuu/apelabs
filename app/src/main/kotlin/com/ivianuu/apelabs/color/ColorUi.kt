@@ -31,7 +31,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.domain.PreviewRepository
-import com.ivianuu.apelabs.group.GROUPS
 import com.ivianuu.apelabs.group.GroupConfigRepository
 import com.ivianuu.apelabs.program.Program
 import com.ivianuu.apelabs.program.asProgram
@@ -52,7 +51,6 @@ import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 
@@ -66,7 +64,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
     var blue by remember { mutableStateOf(key.initial.blue) }
     var white by remember { mutableStateOf(key.initial.white) }
 
-    fun currentColor() = ApeColor(key.initial.id, red, green, blue, white)
+    fun currentColor() = ApeColor(red, green, blue, white)
 
     LaunchedEffect(true) {
       providePreviews { update ->
@@ -163,7 +161,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
           }
 
           @Composable fun ColorList(
-            colors: List<ApeColor>,
+            colors: List<NamedColor>,
             deletable: Boolean,
             title: String
           ) {
@@ -172,23 +170,23 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
             FlowRow {
               colors
                 .toList()
-                .sortedBy { it.id.lowercase() }
+                .sortedBy { it.name.lowercase() }
                 .forEach { color ->
                   Chip(
                     modifier = Modifier
                       .padding(start = 16.dp),
                     onClick = {
-                      red = color.red
-                      green = color.green
-                      blue = color.blue
-                      white = color.white
+                      red = color.color.red
+                      green = color.color.green
+                      blue = color.color.blue
+                      white = color.color.white
                     },
                     colors = ChipDefaults.chipColors(
-                      backgroundColor = color.toComposeColor(),
-                      contentColor = guessingContentColorFor(color.toComposeColor())
+                      backgroundColor = color.color.toComposeColor(),
+                      contentColor = guessingContentColorFor(color.color.toComposeColor())
                     )
                   ) {
-                    Text(color.id!!)
+                    Text(color.name)
 
                     if (deletable) {
                       Spacer(Modifier.padding(start = 8.dp))
@@ -196,7 +194,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
                       Box(modifier = Modifier.requiredSize(18.dp)) {
                         PopupMenuButton {
                           PopupMenuItem(
-                            onSelected = action { deleteColor(color.id) }
+                            onSelected = action { deleteColor(color.name) }
                           ) { Text("Delete") }
                         }
                       }
@@ -240,7 +238,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
         OutlinedButton(
           onClick = action {
             navigator.push(TextInputKey(label = "Name.."))
-              ?.let { updateColor(currentColor().copy(id = it)) }
+              ?.let { updateColor(NamedColor(it, currentColor())) }
           }
         ) { Text("SAVE") }
 

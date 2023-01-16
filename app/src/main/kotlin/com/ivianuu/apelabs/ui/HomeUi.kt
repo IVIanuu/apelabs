@@ -265,7 +265,7 @@ import kotlin.math.roundToInt
           leading = {
             ColorListIcon(
               modifier = Modifier.size(40.dp),
-              colors = remember { listOf(BuiltInColors.shuffled().first()) }
+              colors = remember { listOf(BuiltInColors.shuffled().first().color) }
             )
           }
         )
@@ -502,9 +502,11 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
     programs = programs.bindResource(),
     updateProgram = action { program ->
       if (program === Program.COLOR_PICKER) {
-        navigator.push(ColorKey(color(Program.COLOR_PICKER_ID).first() ?: ApeColor.BLACK))
+        navigator.push(ColorKey(ApeColor()))
           ?.let {
-            updateColor(it.copy(id = Program.COLOR_PICKER_ID))
+            val item = createProgramItem().copy(color = it)
+            updateProgramItem(item)
+            updateProgram(program = program.copy(items = listOf(item)))
           } ?: return@action
       }
 
