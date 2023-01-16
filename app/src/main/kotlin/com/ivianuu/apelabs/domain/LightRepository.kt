@@ -1,13 +1,15 @@
-package com.ivianuu.apelabs.device
+package com.ivianuu.apelabs.domain
 
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import com.ivianuu.apelabs.domain.WappRemote
+import com.ivianuu.apelabs.data.Light
+import com.ivianuu.apelabs.data.lightIdOf
+import com.ivianuu.apelabs.data.toApeLabsLightId
 import com.ivianuu.essentials.AppScope
+import com.ivianuu.essentials.compose.stateFlow
 import com.ivianuu.essentials.compose.getValue
 import com.ivianuu.essentials.compose.setValue
-import com.ivianuu.essentials.compose.stateFlow
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
@@ -31,7 +33,7 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
+context(Logger, WappRemote, NamedCoroutineScope<com.ivianuu.essentials.AppScope>, WappRepository)
 @Provide @Scoped<AppScope> class LightRepository(
   private val context: IOContext
 ) {

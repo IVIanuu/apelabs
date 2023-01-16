@@ -1,12 +1,9 @@
 package com.ivianuu.apelabs.domain
 
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.device.LightRepository
-import com.ivianuu.apelabs.device.WappRepository
-import com.ivianuu.apelabs.group.GROUPS
-import com.ivianuu.apelabs.group.GroupConfig
-import com.ivianuu.apelabs.group.GroupConfigRepository
-import com.ivianuu.apelabs.program.Program
+import com.ivianuu.apelabs.data.GROUPS
+import com.ivianuu.apelabs.data.GroupConfig
+import com.ivianuu.apelabs.data.Program
 import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.combine

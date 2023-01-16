@@ -1,10 +1,5 @@
 package com.ivianuu.apelabs.data
 
-import com.ivianuu.apelabs.color.ApeColor
-import com.ivianuu.apelabs.group.GROUPS
-import com.ivianuu.apelabs.group.GroupConfig
-import com.ivianuu.apelabs.program.Program
-import com.ivianuu.apelabs.scene.Scene
 import com.ivianuu.essentials.android.prefs.DataStoreModule
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.injekt.Provide

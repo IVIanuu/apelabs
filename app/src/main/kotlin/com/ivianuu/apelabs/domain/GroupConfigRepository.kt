@@ -1,7 +1,7 @@
-package com.ivianuu.apelabs.group
+package com.ivianuu.apelabs.domain
 
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.program.ProgramRepository
+import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow

@@ -1,8 +1,7 @@
-package com.ivianuu.apelabs.scene
+package com.ivianuu.apelabs.domain
 
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.group.GroupConfigRepository
-import com.ivianuu.apelabs.program.ProgramRepository
+import com.ivianuu.apelabs.data.Scene
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged

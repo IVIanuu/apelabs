@@ -1,5 +1,6 @@
-package com.ivianuu.apelabs.color
+package com.ivianuu.apelabs.domain
 
+import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow

@@ -1,7 +1,7 @@
-package com.ivianuu.apelabs.program
+package com.ivianuu.apelabs.domain
 
-import com.ivianuu.apelabs.color.ColorRepository
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
+import com.ivianuu.apelabs.data.Program
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.injekt.Provide

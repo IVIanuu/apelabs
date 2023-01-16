@@ -25,17 +25,19 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.ivianuu.apelabs.color.ApeColor
-import com.ivianuu.apelabs.color.ColorKey
-import com.ivianuu.apelabs.color.ColorListIcon
-import com.ivianuu.apelabs.color.ColorRepository
+import com.ivianuu.apelabs.ui.ColorListIcon
+import com.ivianuu.apelabs.data.ApeColor
+import com.ivianuu.apelabs.data.GROUPS
+import com.ivianuu.apelabs.data.GroupConfig
+import com.ivianuu.apelabs.data.Program
+import com.ivianuu.apelabs.data.Scene
+import com.ivianuu.apelabs.data.asProgram
+import com.ivianuu.apelabs.domain.ColorRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
-import com.ivianuu.apelabs.group.GROUPS
-import com.ivianuu.apelabs.group.GroupConfig
-import com.ivianuu.apelabs.group.GroupConfigRepository
-import com.ivianuu.apelabs.program.Program
-import com.ivianuu.apelabs.program.ProgramRepository
-import com.ivianuu.apelabs.program.asProgram
+import com.ivianuu.apelabs.domain.GroupConfigRepository
+import com.ivianuu.apelabs.domain.ProgramRepository
+import com.ivianuu.apelabs.domain.SceneRepository
+import com.ivianuu.apelabs.ui.ColorKey
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
@@ -247,7 +249,9 @@ SceneRepository, KeyUiContext<SceneKey>)
       )
         ?.let { (id, program) ->
           val finalProgram = when (id) {
-            "Color" -> navigator.push(ColorKey(ApeColor()))?.asProgram() ?: return@let
+            "Color" -> navigator.push(
+              ColorKey(config?.program?.items?.singleOrNull()?.color ?: ApeColor())
+            )?.asProgram() ?: return@let
             "Rainbow" -> Program.RAINBOW
             else -> program!!
           }

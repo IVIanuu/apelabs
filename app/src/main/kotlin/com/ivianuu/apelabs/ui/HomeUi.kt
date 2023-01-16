@@ -35,28 +35,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
-import com.ivianuu.apelabs.color.ApeColor
-import com.ivianuu.apelabs.color.BuiltInColors
-import com.ivianuu.apelabs.color.ColorKey
-import com.ivianuu.apelabs.color.ColorListIcon
-import com.ivianuu.apelabs.color.ColorRepository
+import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.device.Light
-import com.ivianuu.apelabs.device.LightRepository
-import com.ivianuu.apelabs.device.WappRepository
-import com.ivianuu.apelabs.device.WappState
-import com.ivianuu.apelabs.group.GROUPS
-import com.ivianuu.apelabs.group.GroupConfig
-import com.ivianuu.apelabs.group.GroupConfigRepository
-import com.ivianuu.apelabs.group.merge
-import com.ivianuu.apelabs.program.Program
+import com.ivianuu.apelabs.data.GROUPS
+import com.ivianuu.apelabs.data.GroupConfig
+import com.ivianuu.apelabs.data.Light
+import com.ivianuu.apelabs.data.Program
+import com.ivianuu.apelabs.data.Scene
+import com.ivianuu.apelabs.domain.WappRepository
+import com.ivianuu.apelabs.data.WappState
+import com.ivianuu.apelabs.data.asProgram
+import com.ivianuu.apelabs.data.merge
+import com.ivianuu.apelabs.domain.BuiltInColors
+import com.ivianuu.apelabs.domain.ColorRepository
+import com.ivianuu.apelabs.domain.GroupConfigRepository
+import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.program.ProgramKey
-import com.ivianuu.apelabs.program.ProgramRepository
-import com.ivianuu.apelabs.program.asProgram
-import com.ivianuu.apelabs.scene.Scene
+import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.scene.SceneKey
-import com.ivianuu.apelabs.scene.SceneRepository
+import com.ivianuu.apelabs.domain.SceneRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
@@ -492,7 +490,7 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
     },
     programs = programs.bindResource(),
     updateColor = action {
-      navigator.push(ColorKey(ApeColor()))
+      navigator.push(ColorKey(groupConfig.program.items.singleOrNull()?.color ?: ApeColor()))
         ?.let {
           val program = it.asProgram()
           updateConfig { copy(program = program) }

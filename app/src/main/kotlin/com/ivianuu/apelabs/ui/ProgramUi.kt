@@ -25,11 +25,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.ivianuu.apelabs.color.ColorKey
-import com.ivianuu.apelabs.color.ColorListIcon
-import com.ivianuu.apelabs.color.ColorRepository
+import com.ivianuu.apelabs.ui.ColorListIcon
+import com.ivianuu.apelabs.data.Program
+import com.ivianuu.apelabs.domain.ColorRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
-import com.ivianuu.apelabs.group.GroupConfigRepository
+import com.ivianuu.apelabs.domain.GroupConfigRepository
+import com.ivianuu.apelabs.domain.ProgramRepository
+import com.ivianuu.apelabs.ui.ColorKey
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
