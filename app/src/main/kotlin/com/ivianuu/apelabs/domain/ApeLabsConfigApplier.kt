@@ -4,6 +4,7 @@ import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
+import com.ivianuu.apelabs.data.groupConfigs
 import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.combine
@@ -23,7 +24,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlin.time.Duration
 
-context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
+context(ApeLabsPrefsContext, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
     @Provide fun apeLabsConfigApplier() = ScopeWorker<AppForegroundScope> {
   wapps.collectLatest { wapps ->
     if (wapps.isEmpty()) return@collectLatest

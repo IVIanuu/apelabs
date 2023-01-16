@@ -33,7 +33,7 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-context(Logger, WappRemote, NamedCoroutineScope<com.ivianuu.essentials.AppScope>, WappRepository)
+context(Logger, WappRemote, NamedCoroutineScope<AppScope>, WappRepository)
 @Provide @Scoped<AppScope> class LightRepository(
   private val context: IOContext
 ) {

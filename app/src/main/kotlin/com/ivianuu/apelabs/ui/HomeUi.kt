@@ -38,6 +38,7 @@ import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
+import com.ivianuu.apelabs.data.BuiltInColors
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
@@ -46,15 +47,17 @@ import com.ivianuu.apelabs.data.Scene
 import com.ivianuu.apelabs.domain.WappRepository
 import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.asProgram
+import com.ivianuu.apelabs.data.deleteProgram
 import com.ivianuu.apelabs.data.merge
-import com.ivianuu.apelabs.domain.BuiltInColors
-import com.ivianuu.apelabs.domain.ColorRepository
-import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.program.ProgramKey
-import com.ivianuu.apelabs.domain.ProgramRepository
+import com.ivianuu.apelabs.data.deleteScene
+import com.ivianuu.apelabs.data.programs
+import com.ivianuu.apelabs.data.scenes
+import com.ivianuu.apelabs.data.updateGroupConfigs
+import com.ivianuu.apelabs.data.updateProgram
+import com.ivianuu.apelabs.data.updateScene
 import com.ivianuu.apelabs.scene.SceneKey
-import com.ivianuu.apelabs.domain.SceneRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
@@ -409,8 +412,7 @@ data class HomeModel(
   val deleteScene: (String) -> Unit
 )
 
-context(ApeLabsPrefsContext, ColorRepository, GroupConfigRepository, LightRepository,
-Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
+context(ApeLabsPrefsContext, LightRepository, Logger, KeyUiContext<HomeKey>, WappRepository)
     @Provide fun homeModel() = Model {
   val prefs = pref.data.bind(ApeLabsPrefs())
 

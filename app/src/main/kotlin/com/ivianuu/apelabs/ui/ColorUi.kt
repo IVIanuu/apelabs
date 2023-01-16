@@ -31,12 +31,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.data.ApeColor
+import com.ivianuu.apelabs.data.ApeLabsPrefsContext
+import com.ivianuu.apelabs.data.BuiltInColors
 import com.ivianuu.apelabs.data.asProgram
+import com.ivianuu.apelabs.data.colors
+import com.ivianuu.apelabs.data.deleteColor
+import com.ivianuu.apelabs.data.groupConfigs
 import com.ivianuu.apelabs.data.toComposeColor
-import com.ivianuu.apelabs.domain.BuiltInColors
-import com.ivianuu.apelabs.domain.ColorRepository
+import com.ivianuu.apelabs.data.updateColor
 import com.ivianuu.apelabs.domain.PreviewRepository
-import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.ui.common.VerticalList
@@ -59,7 +62,7 @@ import kotlinx.coroutines.flow.map
 
 data class ColorKey(val initial: ApeColor) : PopupKey<ApeColor>
 
-context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<ColorKey>)
+context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
     @Provide fun colorUi() = SimpleKeyUi<ColorKey> {
   DialogScaffold {
     var red by remember { mutableStateOf(key.initial.red) }

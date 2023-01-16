@@ -27,16 +27,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ivianuu.apelabs.ui.ColorListIcon
 import com.ivianuu.apelabs.data.ApeColor
+import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.Scene
 import com.ivianuu.apelabs.data.asProgram
-import com.ivianuu.apelabs.domain.ColorRepository
+import com.ivianuu.apelabs.data.programs
 import com.ivianuu.apelabs.domain.PreviewRepository
-import com.ivianuu.apelabs.domain.GroupConfigRepository
-import com.ivianuu.apelabs.domain.ProgramRepository
-import com.ivianuu.apelabs.domain.SceneRepository
+import com.ivianuu.apelabs.data.scene
+import com.ivianuu.apelabs.data.updateScene
 import com.ivianuu.apelabs.ui.ColorKey
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
@@ -193,8 +193,7 @@ data class SceneModel(
   val updatePreviewsEnabled: (Boolean) -> Unit
 )
 
-context(ColorRepository, GroupConfigRepository, PreviewRepository, ProgramRepository,
-SceneRepository, KeyUiContext<SceneKey>)
+context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<SceneKey>)
     @Provide fun sceneModel() = Model {
   val id = key.id
 

@@ -1,35 +1,31 @@
-package com.ivianuu.apelabs.domain
+package com.ivianuu.apelabs.data
 
-import com.ivianuu.apelabs.data.ApeColor
-import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.injekt.Provide
+import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
 
-context(ApeLabsPrefsContext) @Provide class ColorRepository {
-  val colors: Flow<Map<String, ApeColor>>
-    get() = pref.data
-      .map { it.colors }
-      .distinctUntilChanged()
+@Serializable data class ApeColor(
+  val red: Float = 0f,
+  val green: Float = 0f,
+  val blue: Float = 0f,
+  val white: Float = 0f
+)
 
-  suspend fun updateColor(id: String, color: ApeColor) {
-    pref.updateData {
-      copy(
-        colors = colors.toMutableMap()
-          .apply { put(id, color) }
-      )
-    }
-  }
+fun ApeColor.toComposeColor() = Color(red, green, blue)
+  .overlay(Color.White.copy(alpha = white))
 
-  suspend fun deleteColor(id: String) {
-    pref.updateData {
-      copy(
-        colors = colors.toMutableMap()
-          .apply { remove(id) }
-      )
-    }
-  }
+fun Color.toApeColor() = ApeColor(red, green, blue)
+
+private fun Color.overlay(overlay: Color): Color {
+  val alphaSum = alpha + overlay.alpha
+  return Color(
+    (red * alpha + overlay.red * overlay.alpha) / alphaSum,
+    (green * alpha + overlay.green * overlay.alpha) / alphaSum,
+    (blue * alpha + overlay.blue * overlay.alpha) / alphaSum,
+    alphaSum.coerceIn(0f, 1f),
+  )
 }
 
 val BuiltInColors = mapOf(
@@ -63,3 +59,28 @@ val BuiltInColors = mapOf(
   "Slate Blue" to ApeColor(0.00f, 0.45f, 1.00f, 0.38f),
   "Moonlight Blue" to ApeColor(0.00f, 0.55f, 1.00f, 0.00f)
 )
+
+fun ApeColor.asProgram() = Program(items = listOf(Program.Item(this)))
+
+context(ApeLabsPrefsContext) val colors: Flow<Map<String, ApeColor>>
+  get() = pref.data
+    .map { it.colors }
+    .distinctUntilChanged()
+
+context(ApeLabsPrefsContext) suspend fun updateColor(id: String, color: ApeColor) {
+  pref.updateData {
+    copy(
+      colors = colors.toMutableMap()
+        .apply { put(id, color) }
+    )
+  }
+}
+
+context(ApeLabsPrefsContext) suspend fun deleteColor(id: String) {
+  pref.updateData {
+    copy(
+      colors = colors.toMutableMap()
+        .apply { remove(id) }
+    )
+  }
+}

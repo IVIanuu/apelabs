@@ -25,12 +25,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.ui.ColorListIcon
 import com.ivianuu.apelabs.data.Program
-import com.ivianuu.apelabs.domain.ColorRepository
+import com.ivianuu.apelabs.data.groupConfigs
+import com.ivianuu.apelabs.data.program
+import com.ivianuu.apelabs.data.updateProgram
 import com.ivianuu.apelabs.domain.PreviewRepository
-import com.ivianuu.apelabs.domain.GroupConfigRepository
-import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.ui.ColorKey
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
@@ -195,7 +196,7 @@ data class ProgramModel(
     get() = program.getOrNull()?.items?.size?.let { it < Program.ITEM_RANGE.last } == true
 }
 
-context(ColorRepository, GroupConfigRepository, PreviewRepository, ProgramRepository, KeyUiContext<ProgramKey>)
+context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ProgramKey>)
     @Provide fun programModel() = Model {
   val id = key.id
 
