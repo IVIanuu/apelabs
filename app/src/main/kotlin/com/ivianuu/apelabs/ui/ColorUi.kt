@@ -14,6 +14,7 @@ import androidx.compose.material.Button
 import androidx.compose.material.Chip
 import androidx.compose.material.ChipDefaults
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Slider
 import androidx.compose.material.SliderDefaults
@@ -89,10 +90,13 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
     }
 
     Dialog(
+      applyContentPadding = false,
       content = {
         val customColors = colors.bind(emptyMap())
 
-        VerticalList {
+        VerticalList(
+          modifier = Modifier.padding(horizontal = 8.dp)
+        ) {
           item {
             ColorListIcon(
               colors = listOf(currentColor()),
@@ -105,16 +109,13 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
           @Composable fun ColorSlider(
             value: Float,
             onValueChange: (Float) -> Unit,
-            title: String,
             color: Color
           ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-              Text(title)
-
               Slider(
                 modifier = Modifier
                   .weight(1f)
-                  .padding(horizontal = 4.dp),
+                  .padding(end = 4.dp),
                 value = value,
                 onValueChange = onValueChange,
                 colors = SliderDefaults.colors(
@@ -125,7 +126,7 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
 
               Text(
                 modifier = Modifier.width(32.dp),
-                text = (value * 255).toInt().toString()
+                text = (value * 255f).toInt().toString()
               )
             }
           }
@@ -134,7 +135,6 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
             ColorSlider(
               value = red,
               onValueChange = { red = it },
-              title = "R",
               color = Color.Red
             )
           }
@@ -143,7 +143,6 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
             ColorSlider(
               value = green,
               onValueChange = { green = it },
-              title = "G",
               color = Color.Green
             )
           }
@@ -152,7 +151,6 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
             ColorSlider(
               value = blue,
               onValueChange = { blue = it },
-              title = "B",
               color = Color.Blue
             )
           }
@@ -161,7 +159,6 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
             ColorSlider(
               value = white,
               onValueChange = { white = it },
-              title = "W",
               color = Color.White
             )
           }

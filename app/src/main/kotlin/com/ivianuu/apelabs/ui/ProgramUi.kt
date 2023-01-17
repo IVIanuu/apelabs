@@ -25,6 +25,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.ui.ColorListIcon
 import com.ivianuu.apelabs.data.Program
@@ -243,7 +244,7 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ProgramKey>)
   ProgramModel(
     id = id,
     program = program,
-    addItem = action { updateProgram { copy(items = items + Program.Item()) } },
+    addItem = action { updateProgram { copy(items = items + Program.Item(color = ApeColor())) } },
     updateColor = action { itemIndex ->
       navigator.push(ColorKey(program.get().items.get(itemIndex).color))
         ?.let { updateItem(itemIndex) { copy(color = it) } }
