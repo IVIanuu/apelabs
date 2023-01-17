@@ -4,10 +4,7 @@ import android.bluetooth.BluetoothDevice
 
 data class Wapp(val address: String, val name: String)
 
-data class WappState(
-  val isConnected: Boolean = false,
-  val battery: Float? = null
-)
+data class WappState(val isConnected: Boolean = false, val battery: Float? = null)
 
 fun BluetoothDevice.toWapp() = Wapp(address, alias ?: name)
 
@@ -26,7 +23,7 @@ data class Light(
   val type: Type?
 ) {
   enum class Type(val id: Int) {
-    COIN(-96)
+    COIN(-96), LIGHTCAN(48)
   }
 }
 
