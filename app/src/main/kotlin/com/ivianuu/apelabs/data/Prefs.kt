@@ -7,7 +7,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable data class ApeLabsPrefs(
   val selectedGroups: Set<Int> = emptySet(),
-  val colors: Map<String, ApeColor> = emptyMap(),
   val programs: Map<String, Program> = emptyMap(),
   val groupConfigs: Map<Int, GroupConfig> = GROUPS.associateWith { GroupConfig() },
   val scenes: Map<String, Scene> = emptyMap()
