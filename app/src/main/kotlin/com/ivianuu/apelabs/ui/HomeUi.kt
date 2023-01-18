@@ -528,10 +528,10 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
     programs = userPrograms.bindResource(),
     colorPickerColor = colorPickerColor,
     updateColor = action {
-      navigator.push(ColorKey(colorPickerColor))
+      navigator.push(ColorKey(colorPickerColor.copy(id = colorPickerId)))
+        ?.asProgram(colorPickerId)
         ?.let {
-          val program = it.asProgram(colorPickerId)
-          updateProgram(program)
+          updateProgram(it)
           updateConfig { copy(program = program) }
         }
     },

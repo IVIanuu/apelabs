@@ -38,7 +38,6 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
   fun program(id: String): Flow<Program?> =
     if (id == Program.RAINBOW.id) flowOf(Program.RAINBOW)
     else selectById<ProgramEntity>(id)
-      .onEach { println("entity $it") }
       .mapEntity { it.toProgram() }
 
   suspend fun updateProgram(program: Program) = transaction {
