@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 
 context(ColorRepository, Db) @Provide class ProgramRepository {
   val userPrograms: Flow<List<Program>>
@@ -37,13 +38,14 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
   fun program(id: String): Flow<Program?> =
     if (id == Program.RAINBOW.id) flowOf(Program.RAINBOW)
     else selectById<ProgramEntity>(id)
+      .onEach { println("entity $it") }
       .mapEntity { it.toProgram() }
 
   suspend fun updateProgram(program: Program) = transaction {
     selectById<ProgramEntity>(program.id).first()
       ?.items
       ?.map { it.color }
-      ?.filter { it.isUUID }
+      ?.filter { it.isUUID && it !in program.items.map { it.color.id } }
       ?.parForEach { deleteColor(it) }
 
     program.items

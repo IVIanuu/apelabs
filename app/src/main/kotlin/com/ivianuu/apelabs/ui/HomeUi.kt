@@ -26,6 +26,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,6 +83,7 @@ import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
 
@@ -129,8 +131,7 @@ import kotlin.math.roundToInt
         item {
           val programName = when {
             groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
-            groupConfig.program.id.isUUID ||
-                groupConfig.program.id == Program.COLOR_PICKER_ID ->
+            groupConfig.program.id.isUUID ->
               groupConfig.program.items.singleOrNull()
                 ?.color
                 ?.takeUnless { it.id.isUUID }
@@ -463,13 +464,15 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
     }
   }
 
-  val colorPickerColor = program(Program.COLOR_PICKER_ID)
-    .bind(null)
+  val colorPickerId = Program.colorPickerId(prefs.selectedGroups.toList())
+
+  val colorPickerColor = program(colorPickerId)
+    .collectAsState(null)
+    .value
     ?.items
     ?.singleOrNull()
     ?.color
-    ?.copy(Program.COLOR_PICKER_ID)
-    ?: ApeColor(Program.COLOR_PICKER_ID)
+    ?: ApeColor(id = colorPickerId, white = 1f)
 
   HomeModel(
     groups = GROUPS,
@@ -522,19 +525,12 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
           selectedLights = emptySet()
         }
     },
-    programs = userPrograms
-      .map { programs ->
-        programs
-          .filterNot { it.id.isUUID }
-      }
-      .bindResource(),
+    programs = userPrograms.bindResource(),
     colorPickerColor = colorPickerColor,
     updateColor = action {
       navigator.push(ColorKey(colorPickerColor))
         ?.let {
-          if (it.id == Program.COLOR_PICKER_ID)
-            updateColor(it)
-          val program = it.asProgram(Program.COLOR_PICKER_ID)
+          val program = it.asProgram(colorPickerId)
           updateProgram(program)
           updateConfig { copy(program = program) }
         }

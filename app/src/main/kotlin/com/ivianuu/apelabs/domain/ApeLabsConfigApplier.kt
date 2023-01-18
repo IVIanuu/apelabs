@@ -227,4 +227,4 @@ private fun Int.toGroupByte() = when (this) {
   else -> throw AssertionError("Unexpected group $this")
 }
 
-private fun List<Int>.toGroupByte(): Byte = map { it.toGroupByte() }.sum().toByte()
+fun List<Int>.toGroupByte(): Byte = map { it.toGroupByte() }.sum().toByte()

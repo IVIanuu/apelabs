@@ -1,6 +1,7 @@
 package com.ivianuu.apelabs.data
 
 import androidx.compose.ui.graphics.Color
+import com.ivianuu.apelabs.domain.toGroupByte
 import com.ivianuu.essentials.db.AbstractEntityDescriptor
 import com.ivianuu.essentials.db.PrimaryKey
 import com.ivianuu.essentials.time.seconds
@@ -23,7 +24,13 @@ data class Program(
 
   companion object {
     val ITEM_RANGE = 1..4
-    const val COLOR_PICKER_ID = "895b4f7f-bc25-4d5a-bf5a-0eb7050601ce"
+    private const val COLOR_PICKER_ID = "895b4f7f-bc25-4d5a-bf5a-0eb7050601ce"
+
+    fun colorPickerId(groups: List<Int>): String {
+      val suffix = groups.toGroupByte().toString()
+      return COLOR_PICKER_ID.dropLast(suffix.length) + suffix
+    }
+
     val RAINBOW = Program(
       id = "50217819-189d-45a0-8ef4-5589df5ca466",
       items = listOf(

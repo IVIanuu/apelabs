@@ -64,7 +64,7 @@ context(ApeLabsPrefsContext, Db, ProgramRepository) @Provide class GroupConfigRe
     if (manageProgram) {
       selectById<GroupConfigEntity>(config.id).first()
         ?.program
-        ?.takeIf { it.isUUID }
+        ?.takeIf { it.isUUID && it != config.program.id }
         ?.let { deleteProgram(it) }
 
       if (config.program.id.isUUID)
