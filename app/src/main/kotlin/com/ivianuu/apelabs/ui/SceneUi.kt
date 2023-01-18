@@ -26,6 +26,7 @@ import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.Scene
 import com.ivianuu.apelabs.data.asProgram
+import com.ivianuu.apelabs.data.randomId
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
@@ -216,7 +217,9 @@ context(ProgramRepository, PreviewRepository, SceneRepository, KeyUiContext<Scen
         ?.let { (id, program) ->
           val finalProgram = when (id) {
             "Color" -> navigator.push(
-              ColorKey(config?.program?.items?.singleOrNull()?.color ?: ApeColor())
+              ColorKey(
+                config?.program?.items?.singleOrNull()?.color?.copy(id = randomId()) ?: ApeColor()
+              )
             )?.asProgram() ?: return@let
             "Rainbow" -> Program.RAINBOW
             else -> program!!

@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.Program
+import com.ivianuu.apelabs.data.randomId
 import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
@@ -243,7 +244,7 @@ context(GroupConfigRepository, ProgramRepository, PreviewRepository, KeyUiContex
     program = program,
     addItem = action { updateProgram { copy(items = items + Program.Item(color = ApeColor())) } },
     updateColor = action { itemIndex ->
-      navigator.push(ColorKey(program.get().items.get(itemIndex).color))
+      navigator.push(ColorKey(program.get().items.get(itemIndex).color.copy(id = randomId())))
         ?.let { updateItem(itemIndex) { copy(color = it) } }
     },
     updateFade = action { itemIndex, fade ->

@@ -468,6 +468,7 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
     ?.items
     ?.singleOrNull()
     ?.color
+    ?.copy(Program.COLOR_PICKER_ID)
     ?: ApeColor(Program.COLOR_PICKER_ID)
 
   HomeModel(

@@ -130,7 +130,10 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
           item {
             ColorSlider(
               value = red,
-              onValueChange = { red = it },
+              onValueChange = {
+                id = key.initial.id
+                red = it
+              },
               color = Color.Red
             )
           }
@@ -138,7 +141,10 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
           item {
             ColorSlider(
               value = green,
-              onValueChange = { green = it },
+              onValueChange = {
+                id = key.initial.id
+                green = it
+              },
               color = Color.Green
             )
           }
@@ -146,7 +152,10 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
           item {
             ColorSlider(
               value = blue,
-              onValueChange = { blue = it },
+              onValueChange = {
+                id = key.initial.id
+                blue = it
+              },
               color = Color.Blue
             )
           }
@@ -154,7 +163,10 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
           item {
             ColorSlider(
               value = white,
-              onValueChange = { white = it },
+              onValueChange = {
+                id = key.initial.id
+                white = it
+              },
               color = Color.White
             )
           }
