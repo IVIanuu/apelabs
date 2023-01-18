@@ -51,8 +51,8 @@ context(Logger, NamedCoroutineScope<AppScope>)
         }
       }
     }
-    .distinctUntilChanged()
     .share(SharingStarted.WhileSubscribed(), 1)
+    .distinctUntilChanged()
 
   suspend fun updatePreviewsEnabled(value: Boolean) {
     _previewsEnabled.value = value

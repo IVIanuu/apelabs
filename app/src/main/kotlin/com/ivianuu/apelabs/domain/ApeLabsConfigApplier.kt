@@ -6,7 +6,9 @@ import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
+import com.ivianuu.essentials.coroutines.ExitCase
 import com.ivianuu.essentials.coroutines.combine
+import com.ivianuu.essentials.coroutines.guarantee
 import com.ivianuu.essentials.coroutines.onCancel
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.lerp
@@ -55,7 +57,7 @@ context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, Pre
               .onStart<Any?> { emit(Unit) }
               .map { groupConfigs }
           }
-          .debounce(100.milliseconds)
+          .debounce(20.milliseconds)
           .collectLatest { applyGroupConfig(it, cache) }
       }
     }
@@ -90,19 +92,20 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
       }
       // only apply if there any groups
       .filterValues { it.isNotEmpty() }
-      .toList()
       .forEach { (value, groups) ->
-        onCancel(
+        guarantee(
           block = {
             // cache and apply output
             log { "apply $tag $value for $groups" }
             apply(value, groups)
             groups.forEach { cache[it] = value }
           },
-          onCancel = {
-            // invalidate cache
-            log { "apply cancelled $tag for $groups" }
-            groups.forEach { cache.remove(it) }
+          finalizer = {
+            if (it !is ExitCase.Completed) {
+              // invalidate cache
+              log { "apply failed cause of $it $tag for $groups" }
+              groups.forEach { cache.remove(it) }
+            }
           }
         )
       }
@@ -167,23 +170,6 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
   )
 
   applyIfChanged(
-    tag = "brightness",
-    get = { if (blackout) 0f else brightness },
-    cache = cache.lastBrightness,
-    apply = { value, groups ->
-      write(
-        byteArrayOf(
-          68,
-          68,
-          groups.toGroupByte(),
-          1,
-          (value * 100f).toInt().toByte()
-        )
-      )
-    }
-  )
-
-  applyIfChanged(
     tag = "speed",
     get = { speed },
     cache = cache.lastSpeed,
@@ -206,6 +192,23 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
     cache = cache.lastMusicMode,
     apply = { value, groups ->
       write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (value) 1 else 0, 0))
+    }
+  )
+
+  applyIfChanged(
+    tag = "brightness",
+    get = { if (blackout) 0f else brightness },
+    cache = cache.lastBrightness,
+    apply = { value, groups ->
+      write(
+        byteArrayOf(
+          68,
+          68,
+          groups.toGroupByte(),
+          1,
+          (value * 100f).toInt().toByte()
+        )
+      )
     }
   )
 }

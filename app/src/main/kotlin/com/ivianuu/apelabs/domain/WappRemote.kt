@@ -136,7 +136,7 @@ class WappServer(
     )
 
   private val writeLock = Mutex()
-  private val writeLimiter = RateLimiter(1, 200.milliseconds)
+  private val writeLimiter = RateLimiter(1, 50.milliseconds)
 
   init {
     log { "${device.debugName()} init" }

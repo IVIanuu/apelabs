@@ -48,6 +48,7 @@ context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManag
     }
     .flowOn(context)
     .share(SharingStarted.WhileSubscribed(2000), 1)
+    .distinctUntilChanged()
 
   private val foundWapps = mutableSetOf<Wapp>()
   private val wappsLock = Mutex()

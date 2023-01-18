@@ -111,8 +111,8 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
     lights
       .sortedBy { it.id }
   }
-    .distinctUntilChanged()
     .share(SharingStarted.WhileSubscribed(), 1)
+    .distinctUntilChanged()
 
   private val _groupLightsChangedEvents = EventFlow<GroupLightChangedEvent>()
   val groupLightsChangedEvents get() = _groupLightsChangedEvents
