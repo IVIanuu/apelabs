@@ -31,28 +31,27 @@ import kotlinx.coroutines.sync.withLock
 context(Logger, NamedCoroutineScope<AppScope>)
 @Provide @Scoped<AppScope> class PreviewRepository {
   private val _previewProviders =
-    MutableStateFlow<List<suspend (suspend (Map<Int, GroupConfig?>) -> Unit) -> Unit>>(emptyList())
+    MutableStateFlow<List<suspend (suspend (List<GroupConfig>) -> Unit) -> Unit>>(emptyList())
   private val lock = Mutex()
 
   private val _previewsEnabled = MutableStateFlow(false)
   val previewsEnabled: StateFlow<Boolean> get() = _previewsEnabled
 
-  val previewGroupConfigs: Flow<Map<Int, GroupConfig?>> = _previewsEnabled
+  val previewGroupConfigs: Flow<List<GroupConfig>> = _previewsEnabled
     .flatMapLatest {
       if (it) _previewProviders
       else flowOf(emptyList())
     }
     .map { it.lastOrNull() }
     .flatMapLatest { provider ->
-      if (provider == null) flowOf(GROUPS.associateWith { null })
-      else callbackFlow<Map<Int, GroupConfig?>> {
+      if (provider == null) flowOf(emptyList())
+      else callbackFlow {
         provider {
           trySend(it)
         }
       }
     }
     .distinctUntilChanged()
-    .debounce(100.milliseconds)
     .share(SharingStarted.WhileSubscribed(), 1)
 
   suspend fun updatePreviewsEnabled(value: Boolean) {
@@ -60,7 +59,7 @@ context(Logger, NamedCoroutineScope<AppScope>)
   }
 
   suspend fun providePreviews(
-    block: suspend (suspend (Map<Int, GroupConfig?>) -> Unit) -> Unit
+    block: suspend (suspend (List<GroupConfig>) -> Unit) -> Unit
   ): Nothing = bracket(
     acquire = {
       lock.withLock {

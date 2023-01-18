@@ -1,11 +1,11 @@
 package com.ivianuu.apelabs.data
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
+import com.ivianuu.essentials.db.AbstractEntityDescriptor
+import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable
 
-@Serializable data class Scene(
+data class Scene(
+  val id: String,
   val groupConfigs: Map<Int, GroupConfig?> = GROUPS.associateWith { null }
 ) {
   init {
@@ -15,29 +15,10 @@ import kotlinx.serialization.Serializable
   }
 }
 
-context(ApeLabsPrefsContext) val scenes: Flow<Map<String, Scene>>
-  get() = pref.data
-    .map { it.scenes }
-    .distinctUntilChanged()
-
-context(ApeLabsPrefsContext) fun scene(id: String) = scenes
-  .map { it[id] }
-  .distinctUntilChanged()
-
-context(ApeLabsPrefsContext) suspend fun updateScene(id: String, scene: Scene) {
-  pref.updateData {
-    copy(
-      scenes = scenes.toMutableMap()
-        .apply { put(id, scene) }
-    )
-  }
+@Serializable data class SceneEntity(
+  @PrimaryKey val id: String,
+  val groupConfigs: Map<Int, String?>
+) {
+  companion object : AbstractEntityDescriptor<SceneEntity>("scenes")
 }
 
-context(ApeLabsPrefsContext) suspend fun deleteScene(id: String) {
-  pref.updateData {
-    copy(
-      scenes = scenes.toMutableMap()
-        .apply { remove(id) }
-    )
-  }
-}

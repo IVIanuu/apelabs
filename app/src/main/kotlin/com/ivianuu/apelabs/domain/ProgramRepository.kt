@@ -14,13 +14,16 @@ import com.ivianuu.essentials.db.selectById
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 context(ColorRepository, Db) @Provide class ProgramRepository {
-  val programs: Flow<List<Program>>
+  val userPrograms: Flow<List<Program>>
     get() = selectAll<ProgramEntity>()
+      .map { entities ->
+        entities
+          .filterNot { it.id.isUUID }
+      }
       .mapEntities { it.toProgram() }
 
   suspend fun createProgram(id: String): Program = transaction {
@@ -34,6 +37,17 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
     .mapEntity { it.toProgram() }
 
   suspend fun updateProgram(program: Program) = transaction {
+    selectById<ProgramEntity>(program.id).first()
+      ?.items
+      ?.map { it.color }
+      ?.filter { it.isUUID }
+      ?.parForEach { deleteColor(it) }
+
+    program.items
+      .map { it.color }
+      .filter { it.id.isUUID }
+      .parForEach { updateColor(it) }
+
     insert(program.toEntity(), InsertConflictStrategy.REPLACE)
   }
 
@@ -47,7 +61,9 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
     deleteById<ProgramEntity>(id)
   }
 
-  private fun Program.toEntity() = ProgramEntity(id, items = items.map { it.toEntityItem() })
+  private fun Program.toEntity() = ProgramEntity(id, items.map {
+    ProgramEntity.Item(it.color.id, it.fadeTime, it.holdTime)
+  })
 
   private fun ProgramEntity.toProgram(): Flow<Program> = combine(
     items
@@ -56,6 +72,4 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
           .map { Program.Item(it ?: ApeColor()) }
       }
   ) { Program(id, it.toList()) }
-
-  private fun Program.Item.toEntityItem() = ProgramEntity.Item(color.id, fadeTime, holdTime)
 }

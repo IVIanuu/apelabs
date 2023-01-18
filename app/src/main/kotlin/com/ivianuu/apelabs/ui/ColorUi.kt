@@ -14,7 +14,6 @@ import androidx.compose.material.Button
 import androidx.compose.material.Chip
 import androidx.compose.material.ChipDefaults
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Slider
 import androidx.compose.material.SliderDefaults
@@ -32,14 +31,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.data.ApeColor
-import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.BuiltInColors
-import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.asProgram
-import com.ivianuu.apelabs.data.groupConfigs
-import com.ivianuu.apelabs.data.isUUID
 import com.ivianuu.apelabs.data.toComposeColor
 import com.ivianuu.apelabs.domain.ColorRepository
+import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
@@ -63,7 +59,7 @@ import kotlinx.coroutines.flow.map
 
 data class ColorKey(val initial: ApeColor) : PopupKey<ApeColor>
 
-context(ApeLabsPrefsContext, ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
+context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<ColorKey>)
     @Provide fun colorUi() = SimpleKeyUi<ColorKey> {
   DialogScaffold {
     var id by remember { mutableStateOf(key.initial.id) }
@@ -81,9 +77,7 @@ context(ApeLabsPrefsContext, ColorRepository, PreviewRepository, KeyUiContext<Co
             groupConfigs
               .map { configs ->
                 configs
-                  .mapValues { (_, config) ->
-                    config.copy(program = color.asProgram())
-                  }
+                  .map { config -> config.copy(program = color.asProgram()) }
               }
           }
           .collect(update)
@@ -93,11 +87,7 @@ context(ApeLabsPrefsContext, ColorRepository, PreviewRepository, KeyUiContext<Co
     Dialog(
       applyContentPadding = false,
       content = {
-        val customColors = colors
-          .map { colors ->
-            colors
-              .filterNot { it.id.isUUID }
-          }
+        val userColors = userColors
           .bind(emptyList())
 
         VerticalList(
@@ -213,10 +203,10 @@ context(ApeLabsPrefsContext, ColorRepository, PreviewRepository, KeyUiContext<Co
             }
           }
 
-          if (customColors.isNotEmpty()) {
+          if (userColors.isNotEmpty()) {
             item {
               ColorList(
-                customColors,
+                userColors,
                 true,
                 "Custom"
               )

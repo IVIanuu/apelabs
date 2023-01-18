@@ -5,11 +5,7 @@ import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.injekt.Provide
 import kotlinx.serialization.Serializable
 
-@Serializable data class ApeLabsPrefs(
-  val selectedGroups: Set<Int> = emptySet(),
-  val groupConfigs: Map<Int, GroupConfig> = GROUPS.associateWith { GroupConfig() },
-  val scenes: Map<String, Scene> = emptyMap()
-) {
+@Serializable data class ApeLabsPrefs(val selectedGroups: Set<Int> = emptySet()) {
   companion object {
     @Provide val prefModule = DataStoreModule("apelabs_prefs") { ApeLabsPrefs() }
   }

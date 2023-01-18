@@ -4,13 +4,10 @@ import androidx.compose.ui.graphics.Color
 import com.ivianuu.essentials.db.AbstractEntityDescriptor
 import com.ivianuu.essentials.db.PrimaryKey
 import com.ivianuu.essentials.time.seconds
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration
 
-@Serializable data class Program(
+data class Program(
   val id: String = randomId(),
   val items: List<Item> = listOf(Item())
 ) {
@@ -18,7 +15,7 @@ import kotlin.time.Duration
     check(items.size in ITEM_RANGE)
   }
 
-  @Serializable data class Item(
+  data class Item(
     val color: ApeColor = ApeColor(white = 1f),
     val fadeTime: Duration = 1.seconds,
     val holdTime: Duration = 1.seconds

@@ -25,20 +25,14 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.ivianuu.apelabs.ui.ColorListIcon
 import com.ivianuu.apelabs.data.ApeColor
-import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.Scene
 import com.ivianuu.apelabs.data.asProgram
-import com.ivianuu.apelabs.data.isUUID
 import com.ivianuu.apelabs.domain.PreviewRepository
-import com.ivianuu.apelabs.data.scene
-import com.ivianuu.apelabs.data.updateScene
 import com.ivianuu.apelabs.domain.ProgramRepository
-import com.ivianuu.apelabs.ui.ColorKey
+import com.ivianuu.apelabs.domain.SceneRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
@@ -194,7 +188,7 @@ data class SceneModel(
   val updatePreviewsEnabled: (Boolean) -> Unit
 )
 
-context(ApeLabsPrefsContext, ProgramRepository, PreviewRepository, KeyUiContext<SceneKey>)
+context(ProgramRepository, PreviewRepository, SceneRepository, KeyUiContext<SceneKey>)
     @Provide fun sceneModel() = Model {
   val id = key.id
 
@@ -208,13 +202,20 @@ context(ApeLabsPrefsContext, ProgramRepository, PreviewRepository, KeyUiContext<
   LaunchedEffect(true) {
     providePreviews { update ->
       snapshotFlow { scene }
-        .map { scene.getOrNull()?.groupConfigs ?: GROUPS.associateWith { null } }
+        .map {
+          scene.getOrNull()
+            ?.groupConfigs
+            ?.mapValues { it.value?.copy(id = it.key.toString()) }
+            ?.values
+            ?.filterNotNull()
+            ?: emptyList()
+        }
         .collect(update)
     }
   }
 
   suspend fun updateScene(block: Scene.() -> Scene) {
-    updateScene(id, scene.get().block())
+    updateScene(scene.get().block())
   }
 
   suspend fun updateGroupConfig(
@@ -239,8 +240,7 @@ context(ApeLabsPrefsContext, ProgramRepository, PreviewRepository, KeyUiContext<
           buildList<Pair<String, Program?>> {
             add("Color" to null)
             addAll(
-              programs.first()
-                .filterNot { it.id.isUUID }
+              userPrograms.first()
                 .sortedBy { it.id.toLowerCase() }
                 .map { it.id to it }
             )

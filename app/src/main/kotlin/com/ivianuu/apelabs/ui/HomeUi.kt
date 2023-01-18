@@ -38,24 +38,21 @@ import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.data.BuiltInColors
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.Scene
-import com.ivianuu.apelabs.domain.WappRepository
 import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.asProgram
-import com.ivianuu.apelabs.data.merge
-import com.ivianuu.apelabs.domain.LightRepository
-import com.ivianuu.apelabs.data.deleteScene
 import com.ivianuu.apelabs.data.isUUID
-import com.ivianuu.apelabs.data.scenes
-import com.ivianuu.apelabs.data.updateGroupConfigs
-import com.ivianuu.apelabs.data.updateScene
+import com.ivianuu.apelabs.data.merge
 import com.ivianuu.apelabs.domain.ColorRepository
+import com.ivianuu.apelabs.domain.GroupConfigRepository
+import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
+import com.ivianuu.apelabs.domain.SceneRepository
+import com.ivianuu.apelabs.domain.WappRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
@@ -84,7 +81,6 @@ import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
@@ -316,19 +312,18 @@ import kotlin.math.roundToInt
         Subheader { Text("Scenes") }
       }
 
-      val scenes = scenes.getOrElse { emptyMap() }
+      val scenes = scenes.getOrElse { emptyList() }
       scenes
-        .toList()
-        .sortedBy { it.first }
-        .forEach { (id, scene) ->
+        .sortedBy { it.id }
+        .forEach { scene ->
           item {
             ListItem(
               modifier = Modifier.clickable { applyScene(scene) },
-              title = { Text(id) },
+              title = { Text(scene.id) },
               trailing = {
                 PopupMenuButton {
-                  PopupMenuItem(onSelected = { openScene(id) }) { Text("Open") }
-                  PopupMenuItem(onSelected = { deleteScene(id) }) { Text("Delete") }
+                  PopupMenuItem(onSelected = { openScene(scene) }) { Text("Open") }
+                  PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
                 }
               }
             )
@@ -405,25 +400,28 @@ data class HomeModel(
   val openProgram: (Program) -> Unit,
   val addProgram: () -> Unit,
   val deleteProgram: (Program) -> Unit,
-  val scenes: Resource<Map<String, Scene>>,
+  val scenes: Resource<List<Scene>>,
   val applyScene: (Scene) -> Unit,
-  val openScene: (String) -> Unit,
+  val openScene: (Scene) -> Unit,
   val addScene: () -> Unit,
-  val deleteScene: (String) -> Unit
+  val deleteScene: (Scene) -> Unit
 )
 
-context(ApeLabsPrefsContext, ColorRepository, LightRepository, Logger, KeyUiContext<HomeKey>, ProgramRepository, WappRepository)
+context(ApeLabsPrefsContext, ColorRepository, GroupConfigRepository, LightRepository,
+Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     @Provide fun homeModel() = Model {
   val prefs = pref.data.bind(ApeLabsPrefs())
 
-  val groupConfig = prefs.selectedGroups
-    .map { prefs.groupConfigs[it]!! }
+  val selectedGroupConfigs = selectedGroupConfigs
+    .bind(emptyList())
+
+  val groupConfig = selectedGroupConfigs
     .merge()
 
   suspend fun updateConfig(block: GroupConfig.() -> GroupConfig) {
     updateGroupConfigs(
-      prefs.selectedGroups
-        .associateWith { prefs.groupConfigs[it]!!.block() }
+      selectedGroupConfigs
+        .map { it.block() }
     )
   }
 
@@ -497,7 +495,7 @@ context(ApeLabsPrefsContext, ColorRepository, LightRepository, Logger, KeyUiCont
           selectedLights = emptySet()
         }
     },
-    programs = programs
+    programs = userPrograms
       .map { programs ->
         programs
           .filterNot { it.id.isUUID }
@@ -517,28 +515,22 @@ context(ApeLabsPrefsContext, ColorRepository, LightRepository, Logger, KeyUiCont
     openProgram = action { program -> navigator.push(ProgramKey(program.id)) },
     addProgram = action {
       navigator.push(TextInputKey(label = "Name.."))
-        ?.let {
-          createProgram(it)
-          navigator.push(ProgramKey(it))
-        }
+        ?.let { navigator.push(ProgramKey(createProgram(it).id)) }
     },
     deleteProgram = action { program -> deleteProgram(program.id) },
-    scenes = scenes.bindResource(),
+    scenes = userScenes.bindResource(),
     applyScene = action { scene ->
       updateGroupConfigs(
         scene.groupConfigs
           .filterValues { it != null }
-          .mapValues { it.value!! }
+          .map { it.value!! }
       )
     },
-    openScene = action { sceneId -> navigator.push(SceneKey(sceneId)) },
+    openScene = action { scene -> navigator.push(SceneKey(scene.id)) },
     addScene = action {
       navigator.push(TextInputKey(label = "Name.."))
-        ?.let {
-          updateScene(it, Scene())
-          navigator.push(SceneKey(it))
-        }
+        ?.let { navigator.push(SceneKey(createScene(it).id)) }
     },
-    deleteScene = action { sceneId -> deleteScene(sceneId) }
+    deleteScene = action { scene -> deleteScene(scene.id) }
   )
 }

@@ -4,7 +4,6 @@ import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
-import com.ivianuu.apelabs.data.groupConfigs
 import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.combine
@@ -25,18 +24,22 @@ import kotlinx.coroutines.flow.onStart
 import java.util.UUID
 import kotlin.time.Duration
 
-context(ApeLabsPrefsContext, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
+context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
     @Provide fun apeLabsConfigApplier() = ScopeWorker<AppForegroundScope> {
   wapps.collectLatest { wapps ->
     if (wapps.isEmpty()) return@collectLatest
-    val cache = Cache()
 
     wapps.parForEach { wapp ->
+      val cache = Cache()
+
       withWapp(wapp.address) {
         combine(groupConfigs, previewGroupConfigs)
           .map { (groupConfigs, previewGroupConfigs) ->
             GROUPS
-              .associateWith { previewGroupConfigs[it] ?: groupConfigs[it]!! }
+              .associateWith { group ->
+                previewGroupConfigs.singleOrNull { it.id == group.toString() }
+                  ?: groupConfigs.single { it.id == group.toString() }
+              }
           }
           .distinctUntilChanged()
           .flatMapLatest { groupConfigs ->
@@ -52,6 +55,7 @@ context(ApeLabsPrefsContext, Logger, LightRepository, PreviewRepository, WappRem
               .onStart<Any?> { emit(Unit) }
               .map { groupConfigs }
           }
+          .debounce(100.milliseconds)
           .collectLatest { applyGroupConfig(it, cache) }
       }
     }

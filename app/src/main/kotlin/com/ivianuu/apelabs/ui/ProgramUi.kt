@@ -26,13 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ivianuu.apelabs.data.ApeColor
-import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.ui.ColorListIcon
 import com.ivianuu.apelabs.data.Program
-import com.ivianuu.apelabs.data.groupConfigs
+import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
-import com.ivianuu.apelabs.ui.ColorKey
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
@@ -56,6 +53,7 @@ import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -196,7 +194,7 @@ data class ProgramModel(
     get() = program.getOrNull()?.items?.size?.let { it < Program.ITEM_RANGE.last } == true
 }
 
-context(ApeLabsPrefsContext, ProgramRepository, PreviewRepository, KeyUiContext<ProgramKey>)
+context(GroupConfigRepository, ProgramRepository, PreviewRepository, KeyUiContext<ProgramKey>)
     @Provide fun programModel() = Model {
   val id = key.id
 
@@ -210,13 +208,13 @@ context(ApeLabsPrefsContext, ProgramRepository, PreviewRepository, KeyUiContext<
   LaunchedEffect(true) {
     providePreviews { update ->
       snapshotFlow { program }
+        .map { it.getOrNull() }
         .flatMapLatest { program ->
-          groupConfigs
+          if (program == null) flowOf(emptyList())
+          else groupConfigs
             .map { configs ->
               configs
-                .mapValues { (_, config) ->
-                  program.getOrNull()?.let { config.copy(program = it) }
-                }
+                .map { config -> config.copy(program = program) }
             }
         }
         .collect(update)

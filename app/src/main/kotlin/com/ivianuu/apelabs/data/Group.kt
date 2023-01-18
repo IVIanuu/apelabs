@@ -1,19 +1,30 @@
 package com.ivianuu.apelabs.data
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
+import com.ivianuu.essentials.db.AbstractEntityDescriptor
+import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable
 
-@Serializable data class GroupConfig(
-  val program: Program = Program(),
+data class GroupConfig(
+  val id: String = randomId(),
+  val program: Program = Program.RAINBOW,
   val brightness: Float = 1f,
   val speed: Float = 0f,
   val musicMode: Boolean = false,
   val blackout: Boolean = false
 )
 
-fun List<GroupConfig>.merge(): GroupConfig = when {
+@Serializable data class GroupConfigEntity(
+  @PrimaryKey val id: String,
+  val program: String,
+  val brightness: Float,
+  val speed: Float,
+  val musicMode: Boolean,
+  val blackout: Boolean
+) {
+  companion object : AbstractEntityDescriptor<GroupConfigEntity>("group_configs")
+}
+
+fun Collection<GroupConfig>.merge(): GroupConfig = when {
   isEmpty() -> GroupConfig()
   size == 1 -> single()
   else -> GroupConfig(
@@ -29,26 +40,3 @@ fun List<GroupConfig>.merge(): GroupConfig = when {
 }
 
 val GROUPS = (1..4).toList()
-
-context(ApeLabsPrefsContext) val groupConfigs: Flow<Map<Int, GroupConfig>>
-  get() = pref.data
-    .map { it.groupConfigs }
-    .distinctUntilChanged()
-
-context(ApeLabsPrefsContext) suspend fun updateGroupConfig(group: Int, config: GroupConfig) {
-  pref.updateData {
-    copy(
-      groupConfigs = groupConfigs.toMutableMap()
-        .apply { put(group, config) }
-    )
-  }
-}
-
-context(ApeLabsPrefsContext) suspend fun updateGroupConfigs(configs: Map<Int, GroupConfig>) {
-  pref.updateData {
-    copy(
-      groupConfigs = groupConfigs.toMutableMap()
-        .apply { putAll(configs) }
-    )
-  }
-}
