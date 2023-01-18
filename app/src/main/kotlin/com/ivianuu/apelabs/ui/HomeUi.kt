@@ -467,8 +467,7 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
   val colorPickerId = Program.colorPickerId(prefs.selectedGroups.toList())
 
   val colorPickerColor = program(colorPickerId)
-    .collectAsState(null)
-    .value
+    .bind(null, colorPickerId)
     ?.items
     ?.singleOrNull()
     ?.color
