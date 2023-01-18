@@ -15,6 +15,7 @@ import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 context(ColorRepository, Db) @Provide class ProgramRepository {
@@ -33,8 +34,10 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
     program
   }
 
-  fun program(id: String): Flow<Program?> = selectById<ProgramEntity>(id)
-    .mapEntity { it.toProgram() }
+  fun program(id: String): Flow<Program?> =
+    if (id == Program.RAINBOW.id) flowOf(Program.RAINBOW)
+    else selectById<ProgramEntity>(id)
+      .mapEntity { it.toProgram() }
 
   suspend fun updateProgram(program: Program) = transaction {
     selectById<ProgramEntity>(program.id).first()
