@@ -28,7 +28,7 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
       .mapEntities { it.toProgram() }
 
   suspend fun createProgram(id: String): Program = transaction {
-    val color = ApeColor().also { updateColor(it) }
+    val color = ApeColor(white = 1f).also { updateColor(it) }
     val program = Program(id = id, listOf(Program.Item(color)))
     updateProgram(program)
     program
