@@ -5,23 +5,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,7 +29,6 @@ import com.ivianuu.apelabs.data.asProgram
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
-import com.ivianuu.apelabs.stepValue
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
@@ -46,8 +40,7 @@ import com.ivianuu.essentials.resource.map
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.ListKey
 import com.ivianuu.essentials.ui.material.Scaffold
-import com.ivianuu.essentials.ui.material.Slider
-import com.ivianuu.essentials.ui.material.Switch
+import com.ivianuu.essentials.ui.material.Subheader
 import com.ivianuu.essentials.ui.material.TopAppBar
 import com.ivianuu.essentials.ui.material.incrementingStepPolicy
 import com.ivianuu.essentials.ui.navigation.Key
@@ -55,6 +48,7 @@ import com.ivianuu.essentials.ui.navigation.KeyUiContext
 import com.ivianuu.essentials.ui.navigation.Model
 import com.ivianuu.essentials.ui.navigation.ModelKeyUi
 import com.ivianuu.essentials.ui.navigation.push
+import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
 import com.ivianuu.injekt.Provide
@@ -76,7 +70,6 @@ data class SceneKey(val id: String) : Key<Unit>
           item {
             Row(
               modifier = Modifier
-                .height(150.dp)
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
               verticalAlignment = Alignment.CenterVertically
@@ -98,64 +91,31 @@ data class SceneKey(val id: String) : Key<Unit>
                 }
               }
 
-              Column(
-                modifier = Modifier
-                  .weight(1f)
-                  .padding(horizontal = 16.dp)
-              ) {
-                Text(
-                  "Group $group"
-                )
+              Column(modifier = Modifier.weight(1f)) {
+                Subheader { Text("Group $group") }
 
                 if (config != null) {
-                  val stepPolicy = incrementingStepPolicy(0.05f)
-
-                  @Composable fun SliderRow(
-                    value: Float,
-                    onValueChange: (Float) -> Unit,
-                    title: String
-                  ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                      Text(title)
-
-                      var internalValue by remember { mutableStateOf(value) }
-
-                      Slider(
-                        modifier = Modifier.weight(1f)
-                          .padding(horizontal = 4.dp),
-                        value = internalValue,
-                        onValueChange = { internalValue = it },
-                        onValueChangeFinished = { onValueChange(stepPolicy.stepValue(internalValue)) },
-                        stepPolicy = stepPolicy
-                      )
-
-                      Text(
-                        modifier = Modifier.width(40.dp),
-                        text = "${(internalValue * 100f).roundToInt()}"
-                      )
-                    }
-                  }
-
-                  SliderRow(
+                  SliderListItem(
                     value = config.brightness,
                     onValueChange = { updateBrightness(group, it) },
-                    title = "Brightness"
+                    stepPolicy = incrementingStepPolicy(0.05f),
+                    title = { Text("Brightness") },
+                    valueText = { Text("${(it * 100f).roundToInt()}") }
                   )
 
-                  SliderRow(
+                  SliderListItem(
                     value = config.speed,
                     onValueChange = { updateSpeed(group, it) },
-                    title = "Speed"
+                    stepPolicy = incrementingStepPolicy(0.05f),
+                    title = { Text("Speed") },
+                    valueText = { Text("${(it * 100f).roundToInt()}") }
                   )
 
-                  Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Music mode")
-
-                    Switch(
-                      checked = config.musicMode,
-                      onCheckedChange = { updateMusicMode(group, it) }
-                    )
-                  }
+                  SwitchListItem(
+                    value = config.musicMode,
+                    onValueChange = { updateMusicMode(group, it) },
+                    title = { Text("Music mode") }
+                  )
                 } else {
                   Text("unchanged")
                 }
