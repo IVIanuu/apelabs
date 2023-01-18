@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import java.util.UUID
 import kotlin.time.Duration
 
 context(ApeLabsPrefsContext, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
@@ -105,7 +106,15 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
 
   applyIfChanged(
     tag = "program",
-    get = { program },
+    get = {
+      // erase ids here to make caching work correctly
+      // there could be the same program just with different ids
+      program.copy(
+        id = "",
+        items = program.items
+          .map { it.copy(color = it.color.copy(id = "")) }
+      )
+    },
     cache = cache.lastProgram,
     apply = { value, groups ->
       when {

@@ -15,7 +15,7 @@ context(AppContext) @Provide fun apeLabsDb(ioContext: IOContext): @Scoped<AppSco
   name = "ape_labs.db",
   schema = Schema(
     version = 1,
-    entities = listOf(ApeColor),
+    entities = listOf(ApeColor, ProgramEntity),
     migrations = listOf()
   ),
   coroutineContext = ioContext

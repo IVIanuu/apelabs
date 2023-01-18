@@ -34,8 +34,10 @@ import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.BuiltInColors
+import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.asProgram
 import com.ivianuu.apelabs.data.groupConfigs
+import com.ivianuu.apelabs.data.isUUID
 import com.ivianuu.apelabs.data.toComposeColor
 import com.ivianuu.apelabs.domain.ColorRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
@@ -91,7 +93,12 @@ context(ApeLabsPrefsContext, ColorRepository, PreviewRepository, KeyUiContext<Co
     Dialog(
       applyContentPadding = false,
       content = {
-        val customColors = colors.bind(emptyList())
+        val customColors = colors
+          .map { colors ->
+            colors
+              .filterNot { it.id.isUUID }
+          }
+          .bind(emptyList())
 
         VerticalList(
           modifier = Modifier.padding(horizontal = 8.dp)

@@ -65,5 +65,7 @@ val BuiltInColors = listOf(
   ApeColor("Moonlight Blue", 0.00f, 0.55f, 1.00f, 0.00f)
 )
 
-fun ApeColor.asProgram() = Program(items = listOf(Program.Item(this)))
-
+fun ApeColor.asProgram(id: String = randomId()) = Program(
+  id = id,
+  items = listOf(Program.Item(this))
+)

@@ -47,15 +47,15 @@ import com.ivianuu.apelabs.data.Scene
 import com.ivianuu.apelabs.domain.WappRepository
 import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.asProgram
-import com.ivianuu.apelabs.data.deleteProgram
 import com.ivianuu.apelabs.data.merge
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.data.deleteScene
-import com.ivianuu.apelabs.data.programs
+import com.ivianuu.apelabs.data.isUUID
 import com.ivianuu.apelabs.data.scenes
 import com.ivianuu.apelabs.data.updateGroupConfigs
-import com.ivianuu.apelabs.data.updateProgram
 import com.ivianuu.apelabs.data.updateScene
+import com.ivianuu.apelabs.domain.ColorRepository
+import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
@@ -84,6 +84,8 @@ import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
 
@@ -258,21 +260,20 @@ import kotlin.math.roundToInt
           leading = {
             ColorListIcon(
               modifier = Modifier.size(40.dp),
-              colors = remember { listOf(BuiltInColors.toList().shuffled().first()) }
+              colors = listOf(colorPickerColor)
             )
           }
         )
       }
 
-      val programs = programs.getOrElse { emptyMap() }
+      val programs = programs.getOrElse { emptyList() }
       programs
-        .toList()
-        .sortedBy { it.first }
-        .forEach { (id, program) ->
+        .sortedBy { it.id }
+        .forEach { program ->
           item {
             ListItem(
               modifier = Modifier.clickable { updateProgram(program) },
-              title = { Text(id) },
+              title = { Text(program.id) },
               leading = {
                 ColorListIcon(
                   modifier = Modifier.size(40.dp),
@@ -281,8 +282,8 @@ import kotlin.math.roundToInt
               },
               trailing = {
                 PopupMenuButton {
-                  PopupMenuItem(onSelected = { openProgram(id) }) { Text("Open") }
-                  PopupMenuItem(onSelected = { deleteProgram(id) }) { Text("Delete") }
+                  PopupMenuItem(onSelected = { openProgram(program) }) { Text("Open") }
+                  PopupMenuItem(onSelected = { deleteProgram(program) }) { Text("Delete") }
                 }
               }
             )
@@ -397,12 +398,13 @@ data class HomeModel(
   val selectedLights: Set<String>,
   val toggleLightSelection: (Light) -> Unit,
   val regroupLights: () -> Unit,
-  val programs: Resource<Map<String, Program>>,
+  val colorPickerColor: ApeColor,
+  val programs: Resource<List<Program>>,
   val updateColor: () -> Unit,
   val updateProgram: (Program) -> Unit,
-  val openProgram: (String) -> Unit,
+  val openProgram: (Program) -> Unit,
   val addProgram: () -> Unit,
-  val deleteProgram: (String) -> Unit,
+  val deleteProgram: (Program) -> Unit,
   val scenes: Resource<Map<String, Scene>>,
   val applyScene: (Scene) -> Unit,
   val openScene: (String) -> Unit,
@@ -410,7 +412,7 @@ data class HomeModel(
   val deleteScene: (String) -> Unit
 )
 
-context(ApeLabsPrefsContext, LightRepository, Logger, KeyUiContext<HomeKey>, WappRepository)
+context(ApeLabsPrefsContext, ColorRepository, LightRepository, Logger, KeyUiContext<HomeKey>, ProgramRepository, WappRepository)
     @Provide fun homeModel() = Model {
   val prefs = pref.data.bind(ApeLabsPrefs())
 
@@ -436,6 +438,13 @@ context(ApeLabsPrefsContext, LightRepository, Logger, KeyUiContext<HomeKey>, Wap
       }
     }
   }
+
+  val colorPickerColor = program(Program.COLOR_PICKER_ID)
+    .bind(null)
+    ?.items
+    ?.singleOrNull()
+    ?.color
+    ?: ApeColor(Program.COLOR_PICKER_ID)
 
   HomeModel(
     groups = GROUPS,
@@ -488,24 +497,32 @@ context(ApeLabsPrefsContext, LightRepository, Logger, KeyUiContext<HomeKey>, Wap
           selectedLights = emptySet()
         }
     },
-    programs = programs.bindResource(),
+    programs = programs
+      .map { programs ->
+        programs
+          .filterNot { it.id.isUUID }
+      }
+      .bindResource(),
+    colorPickerColor = colorPickerColor,
     updateColor = action {
-      navigator.push(ColorKey(groupConfig.program.items.singleOrNull()?.color ?: ApeColor()))
+      navigator.push(ColorKey(colorPickerColor))
         ?.let {
-          val program = it.asProgram()
+          updateColor(it)
+          val program = it.asProgram(Program.COLOR_PICKER_ID)
+          updateProgram(program)
           updateConfig { copy(program = program) }
         }
     },
     updateProgram = action { program -> updateConfig { copy(program = program) } },
-    openProgram = action { programId -> navigator.push(ProgramKey(programId)) },
+    openProgram = action { program -> navigator.push(ProgramKey(program.id)) },
     addProgram = action {
       navigator.push(TextInputKey(label = "Name.."))
         ?.let {
-          updateProgram(it, Program())
+          createProgram(it)
           navigator.push(ProgramKey(it))
         }
     },
-    deleteProgram = action { programId -> deleteProgram(programId) },
+    deleteProgram = action { program -> deleteProgram(program.id) },
     scenes = scenes.bindResource(),
     applyScene = action { scene ->
       updateGroupConfigs(

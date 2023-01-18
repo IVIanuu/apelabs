@@ -33,10 +33,11 @@ import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.Scene
 import com.ivianuu.apelabs.data.asProgram
-import com.ivianuu.apelabs.data.programs
+import com.ivianuu.apelabs.data.isUUID
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.data.scene
 import com.ivianuu.apelabs.data.updateScene
+import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.ui.ColorKey
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
@@ -193,7 +194,7 @@ data class SceneModel(
   val updatePreviewsEnabled: (Boolean) -> Unit
 )
 
-context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<SceneKey>)
+context(ApeLabsPrefsContext, ProgramRepository, PreviewRepository, KeyUiContext<SceneKey>)
     @Provide fun sceneModel() = Model {
   val id = key.id
 
@@ -239,8 +240,9 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<SceneKey>)
             add("Color" to null)
             addAll(
               programs.first()
-                .toList()
-                .sortedBy { it.first.toLowerCase() }
+                .filterNot { it.id.isUUID }
+                .sortedBy { it.id.toLowerCase() }
+                .map { it.id to it }
             )
             add("Rainbow" to null)
           }

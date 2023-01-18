@@ -30,9 +30,8 @@ import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.ui.ColorListIcon
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.groupConfigs
-import com.ivianuu.apelabs.data.program
-import com.ivianuu.apelabs.data.updateProgram
 import com.ivianuu.apelabs.domain.PreviewRepository
+import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.ui.ColorKey
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
@@ -197,7 +196,7 @@ data class ProgramModel(
     get() = program.getOrNull()?.items?.size?.let { it < Program.ITEM_RANGE.last } == true
 }
 
-context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ProgramKey>)
+context(ApeLabsPrefsContext, ProgramRepository, PreviewRepository, KeyUiContext<ProgramKey>)
     @Provide fun programModel() = Model {
   val id = key.id
 
@@ -225,7 +224,7 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ProgramKey>)
   }
 
   suspend fun updateProgram(block: Program.() -> Program) {
-    updateProgram(id, program.get().block())
+    updateProgram(program.get().block())
   }
 
   suspend fun updateItem(
