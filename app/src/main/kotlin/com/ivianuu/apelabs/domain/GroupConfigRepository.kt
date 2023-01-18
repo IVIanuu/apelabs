@@ -95,7 +95,7 @@ context(ApeLabsPrefsContext, Db, ProgramRepository) @Provide class GroupConfigRe
       .map {
         GroupConfig(
           id,
-          it ?: Program(items = listOf(Program.Item(ApeColor()))),
+          it ?: Program(items = listOf(Program.Item(ApeColor(white = 1f)))),
           brightness,
           speed,
           musicMode,
