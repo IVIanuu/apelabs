@@ -153,6 +153,8 @@ data class SceneKey(val id: String) : Key<Unit>
                       onCheckedChange = { updateMusicMode(group, it) }
                     )
                   }
+                } else {
+                  Text("unchanged")
                 }
               }
 
