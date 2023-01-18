@@ -35,11 +35,9 @@ import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.BuiltInColors
 import com.ivianuu.apelabs.data.asProgram
-import com.ivianuu.apelabs.data.colors
-import com.ivianuu.apelabs.data.deleteColor
 import com.ivianuu.apelabs.data.groupConfigs
 import com.ivianuu.apelabs.data.toComposeColor
-import com.ivianuu.apelabs.data.updateColor
+import com.ivianuu.apelabs.domain.ColorRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
@@ -63,15 +61,16 @@ import kotlinx.coroutines.flow.map
 
 data class ColorKey(val initial: ApeColor) : PopupKey<ApeColor>
 
-context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
+context(ApeLabsPrefsContext, ColorRepository, PreviewRepository, KeyUiContext<ColorKey>)
     @Provide fun colorUi() = SimpleKeyUi<ColorKey> {
   DialogScaffold {
+    var id by remember { mutableStateOf(key.initial.id) }
     var red by remember { mutableStateOf(key.initial.red) }
     var green by remember { mutableStateOf(key.initial.green) }
     var blue by remember { mutableStateOf(key.initial.blue) }
     var white by remember { mutableStateOf(key.initial.white) }
 
-    fun currentColor() = ApeColor(red, green, blue, white)
+    fun currentColor() = ApeColor(id, red, green, blue, white)
 
     LaunchedEffect(true) {
       providePreviews { update ->
@@ -92,7 +91,7 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
     Dialog(
       applyContentPadding = false,
       content = {
-        val customColors = colors.bind(emptyMap())
+        val customColors = colors.bind(emptyList())
 
         VerticalList(
           modifier = Modifier.padding(horizontal = 8.dp)
@@ -164,7 +163,7 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
           }
 
           @Composable fun ColorList(
-            colors: Map<String, ApeColor>,
+            colors: List<ApeColor>,
             deletable: Boolean,
             title: String
           ) {
@@ -173,8 +172,8 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
             FlowRow {
               colors
                 .toList()
-                .sortedBy { it.first.lowercase() }
-                .forEach { (id, color) ->
+                .sortedBy { it.id.lowercase() }
+                .forEach { color ->
                   Chip(
                     modifier = Modifier
                       .padding(start = 16.dp),
@@ -189,7 +188,7 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
                       contentColor = guessingContentColorFor(color.toComposeColor())
                     )
                   ) {
-                    Text(id)
+                    Text(color.id)
 
                     if (deletable) {
                       Spacer(Modifier.padding(start = 8.dp))
@@ -197,7 +196,7 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
                       Box(modifier = Modifier.requiredSize(18.dp)) {
                         PopupMenuButton {
                           PopupMenuItem(
-                            onSelected = action { deleteColor(id) }
+                            onSelected = action { deleteColor(color.id) }
                           ) { Text("Delete") }
                         }
                       }
@@ -241,7 +240,10 @@ context(ApeLabsPrefsContext, PreviewRepository, KeyUiContext<ColorKey>)
         OutlinedButton(
           onClick = action {
             navigator.push(TextInputKey(label = "Name.."))
-              ?.let { updateColor(it, currentColor()) }
+              ?.let {
+                id = it
+                updateColor(currentColor())
+              }
           }
         ) { Text("SAVE") }
 

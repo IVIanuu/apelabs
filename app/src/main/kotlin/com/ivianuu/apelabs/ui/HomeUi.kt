@@ -258,7 +258,7 @@ import kotlin.math.roundToInt
           leading = {
             ColorListIcon(
               modifier = Modifier.size(40.dp),
-              colors = remember { listOf(BuiltInColors.toList().shuffled().first().second) }
+              colors = remember { listOf(BuiltInColors.toList().shuffled().first()) }
             )
           }
         )
