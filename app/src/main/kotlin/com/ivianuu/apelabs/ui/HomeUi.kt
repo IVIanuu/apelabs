@@ -127,6 +127,31 @@ import kotlin.math.roundToInt
         }
       } else {
         item {
+          val programName = when {
+            groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
+            groupConfig.program.id.isUUID ||
+                groupConfig.program.id == Program.COLOR_PICKER_ID ->
+              groupConfig.program.items.singleOrNull()
+                ?.color
+                ?.takeUnless { it.id.isUUID }
+                ?.id
+                ?: "Color"
+            else -> groupConfig.program.id
+          }
+
+          ListItem(
+            leading = {
+              ColorListIcon(
+                modifier = Modifier.size(40.dp),
+                program = groupConfig.program
+              )
+            },
+            title = { Text("Program") },
+            subtitle = { Text(programName) }
+          )
+        }
+
+        item {
           SliderListItem(
             value = groupConfig.brightness,
             onValueChange = updateBrightness,
@@ -506,7 +531,8 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
     updateColor = action {
       navigator.push(ColorKey(colorPickerColor))
         ?.let {
-          updateColor(it)
+          if (it.id == Program.COLOR_PICKER_ID)
+            updateColor(it)
           val program = it.asProgram(Program.COLOR_PICKER_ID)
           updateProgram(program)
           updateConfig { copy(program = program) }

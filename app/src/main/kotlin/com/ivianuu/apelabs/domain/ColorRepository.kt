@@ -12,7 +12,6 @@ import com.ivianuu.essentials.db.selectById
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 
 context(Db) @Provide class ColorRepository {
@@ -25,6 +24,7 @@ context(Db) @Provide class ColorRepository {
       .distinctUntilChanged()
 
   fun color(id: String) = selectById<ApeColor>(id = id)
+    .map { it ?: BuiltInColors.singleOrNull { it.id == id } }
 
   suspend fun updateColor(color: ApeColor) = transaction {
     insert(color, InsertConflictStrategy.REPLACE)

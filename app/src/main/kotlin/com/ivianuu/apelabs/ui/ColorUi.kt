@@ -175,6 +175,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
                     modifier = Modifier
                       .padding(start = 16.dp),
                     onClick = {
+                      id = color.id
                       red = color.red
                       green = color.green
                       blue = color.blue
