@@ -421,7 +421,8 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
   suspend fun updateConfig(block: GroupConfig.() -> GroupConfig) {
     updateGroupConfigs(
       selectedGroupConfigs
-        .map { it.block() }
+        .map { it.block() },
+      false
     )
   }
 
@@ -523,7 +524,8 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
       updateGroupConfigs(
         scene.groupConfigs
           .filterValues { it != null }
-          .map { it.value!! }
+          .map { it.value!!.copy(id = it.key.toString()) },
+        false
       )
     },
     openScene = action { scene -> navigator.push(SceneKey(scene.id)) },

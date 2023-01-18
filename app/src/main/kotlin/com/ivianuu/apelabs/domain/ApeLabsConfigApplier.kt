@@ -113,7 +113,8 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
     get = {
       // erase ids here to make caching work correctly
       // there could be the same program just with different ids
-      program.copy(
+      if (program == Program.RAINBOW) program
+      else program.copy(
         id = "",
         items = program.items
           .map { it.copy(color = it.color.copy(id = "")) }
@@ -122,7 +123,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
     cache = cache.lastProgram,
     apply = { value, groups ->
       when {
-        value == Program.RAINBOW -> {
+        value.id == Program.RAINBOW.id -> {
           write(byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0))
         }
         value.items.size == 1 -> {

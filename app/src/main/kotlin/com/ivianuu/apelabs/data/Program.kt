@@ -27,10 +27,10 @@ data class Program(
     val RAINBOW = Program(
       id = "50217819-189d-45a0-8ef4-5589df5ca466",
       items = listOf(
-        Item(Color.Red.toApeColor(), Duration.INFINITE, Duration.INFINITE),
-        Item(Color.Yellow.toApeColor(), Duration.INFINITE, Duration.INFINITE),
-        Item(Color.Green.toApeColor(), Duration.INFINITE, Duration.INFINITE),
-        Item(Color.Blue.toApeColor(), Duration.INFINITE, Duration.INFINITE)
+        Item(Color.Red.toApeColor()),
+        Item(Color.Yellow.toApeColor()),
+        Item(Color.Green.toApeColor()),
+        Item(Color.Blue.toApeColor())
       )
     )
   }

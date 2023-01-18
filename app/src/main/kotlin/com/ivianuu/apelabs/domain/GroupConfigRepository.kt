@@ -1,12 +1,13 @@
 package com.ivianuu.apelabs.domain
 
+import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.GroupConfigEntity
 import com.ivianuu.apelabs.data.Program
+import com.ivianuu.apelabs.data.isUUID
 import com.ivianuu.apelabs.data.randomId
-import com.ivianuu.essentials.cast
 import com.ivianuu.essentials.db.Db
 import com.ivianuu.essentials.db.InsertConflictStrategy
 import com.ivianuu.essentials.db.deleteById
@@ -17,9 +18,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onEmpty
 
@@ -43,7 +44,8 @@ context(ApeLabsPrefsContext, Db, ProgramRepository) @Provide class GroupConfigRe
                 GroupConfig(
                   id = id,
                   program = createProgram(randomId())
-                )
+                ),
+                true
               )
             }
           }
@@ -55,15 +57,33 @@ context(ApeLabsPrefsContext, Db, ProgramRepository) @Provide class GroupConfigRe
   fun groupConfig(id: String): Flow<GroupConfig?> = selectById<GroupConfigEntity>(id = id)
     .mapEntity { it.toGroupConfig() }
 
-  suspend fun updateGroupConfig(config: GroupConfig) = transaction {
+  suspend fun updateGroupConfig(
+    config: GroupConfig,
+    manageProgram: Boolean
+  ) = transaction {
+    if (manageProgram) {
+      selectById<GroupConfigEntity>(config.id).first()
+        ?.program
+        ?.takeIf { it.isUUID }
+        ?.let { deleteProgram(it) }
+
+      if (config.program.id.isUUID)
+        updateProgram(config.program)
+    }
+
     insert(config.toEntity(), InsertConflictStrategy.REPLACE)
   }
 
-  suspend fun updateGroupConfigs(configs: List<GroupConfig>) = transaction {
-    configs.forEach { updateGroupConfig(it) }
+  suspend fun updateGroupConfigs(configs: List<GroupConfig>, manageProgram: Boolean) = transaction {
+    configs.forEach { updateGroupConfig(it, manageProgram) }
   }
 
   suspend fun deleteGroupConfig(id: String) = transaction {
+    selectById<GroupConfigEntity>(id).first()
+      ?.program
+      ?.takeIf { it.isUUID }
+      ?.let { deleteProgram(it) }
+
     deleteById<GroupConfigEntity>(id)
   }
 
@@ -73,6 +93,13 @@ context(ApeLabsPrefsContext, Db, ProgramRepository) @Provide class GroupConfigRe
   private fun GroupConfigEntity.toGroupConfig(): Flow<GroupConfig> =
     program(program)
       .map {
-        GroupConfig(id, it ?: Program.RAINBOW, brightness, speed, musicMode, blackout)
+        GroupConfig(
+          id,
+          it ?: Program(items = listOf(Program.Item(ApeColor()))),
+          brightness,
+          speed,
+          musicMode,
+          blackout
+        )
       }
 }

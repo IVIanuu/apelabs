@@ -44,7 +44,7 @@ context(GroupConfigRepository, Db) @Provide class SceneRepository {
     scene.groupConfigs
       .values
       .filterNotNull()
-      .parForEach { updateGroupConfig(it) }
+      .parForEach { updateGroupConfig(it, true) }
 
     insert(scene.toEntity(), InsertConflictStrategy.REPLACE)
   }

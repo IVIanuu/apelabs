@@ -15,6 +15,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,6 +34,7 @@ import com.ivianuu.apelabs.data.asProgram
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
+import com.ivianuu.apelabs.stepValue
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
@@ -75,7 +77,8 @@ data class SceneKey(val id: String) : Key<Unit>
             Row(
               modifier = Modifier
                 .height(150.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
               verticalAlignment = Alignment.CenterVertically
             ) {
               Box(
@@ -105,45 +108,45 @@ data class SceneKey(val id: String) : Key<Unit>
                 )
 
                 if (config != null) {
-                  Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Brightness")
+                  val stepPolicy = incrementingStepPolicy(0.05f)
 
-                    var internalValue by remember { mutableStateOf(config.brightness) }
+                  @Composable fun SliderRow(
+                    value: Float,
+                    onValueChange: (Float) -> Unit,
+                    title: String
+                  ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                      Text(title)
 
-                    Slider(
-                      modifier = Modifier.weight(1f)
-                        .padding(horizontal = 4.dp),
-                      value = internalValue,
-                      onValueChange = { internalValue = it },
-                      onValueChangeFinished = { updateBrightness(group, internalValue) },
-                      stepPolicy = incrementingStepPolicy(0.05f)
-                    )
+                      var internalValue by remember { mutableStateOf(value) }
 
-                    Text(
-                      modifier = Modifier.width(40.dp),
-                      text = "${(internalValue * 100f).roundToInt()}"
-                    )
+                      Slider(
+                        modifier = Modifier.weight(1f)
+                          .padding(horizontal = 4.dp),
+                        value = internalValue,
+                        onValueChange = { internalValue = it },
+                        onValueChangeFinished = { onValueChange(stepPolicy.stepValue(internalValue)) },
+                        stepPolicy = stepPolicy
+                      )
+
+                      Text(
+                        modifier = Modifier.width(40.dp),
+                        text = "${(internalValue * 100f).roundToInt()}"
+                      )
+                    }
                   }
 
-                  Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Speed")
+                  SliderRow(
+                    value = config.brightness,
+                    onValueChange = { updateBrightness(group, it) },
+                    title = "Brightness"
+                  )
 
-                    var internalValue by remember { mutableStateOf(config.speed) }
-
-                    Slider(
-                      modifier = Modifier.weight(1f)
-                        .padding(horizontal = 4.dp),
-                      value = internalValue,
-                      onValueChange = { internalValue = it },
-                      onValueChangeFinished = { updateSpeed(group, internalValue) },
-                      stepPolicy = incrementingStepPolicy(0.05f)
-                    )
-
-                    Text(
-                      modifier = Modifier.width(40.dp),
-                      text = "${(internalValue * 100f).roundToInt()}"
-                    )
-                  }
+                  SliderRow(
+                    value = config.speed,
+                    onValueChange = { updateSpeed(group, it) },
+                    title = "Speed"
+                  )
 
                   Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Music mode")
