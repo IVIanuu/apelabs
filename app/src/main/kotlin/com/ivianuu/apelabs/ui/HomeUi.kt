@@ -531,7 +531,7 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
         ?.asProgram(colorPickerId)
         ?.let {
           updateProgram(it)
-          updateConfig { copy(program = program) }
+          updateConfig { copy(program = it) }
         }
     },
     updateProgram = action { program -> updateConfig { copy(program = program) } },

@@ -258,7 +258,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
         ) { Text("SAVE") }
 
         Button(onClick = action {
-          navigator.pop(key, currentColor().takeIf { it != key.initial })
+          navigator.pop(key, currentColor())
         }) {
           Text("OK")
         }
