@@ -57,7 +57,7 @@ context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, Pre
               .onStart<Any?> { emit(Unit) }
               .map { groupConfigs }
           }
-          .debounce(20.milliseconds)
+          .debounce(100.milliseconds)
           .collectLatest { applyGroupConfig(it, cache) }
       }
     }

@@ -25,14 +25,15 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
@@ -48,12 +49,14 @@ import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.asProgram
 import com.ivianuu.apelabs.data.isUUID
 import com.ivianuu.apelabs.data.merge
+import com.ivianuu.apelabs.data.toApeColor
 import com.ivianuu.apelabs.domain.ColorRepository
 import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
 import com.ivianuu.apelabs.domain.WappRepository
+import com.ivianuu.essentials.ResourceProvider
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
@@ -82,24 +85,23 @@ import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
 
 @Provide object HomeKey : RootKey
 
-@Provide val homeUi = ModelKeyUi<HomeKey, HomeModel> {
-  Scaffold(
-    topBar = { TopAppBar(title = { Text("Ape labs") }) }
-  ) {
-    VerticalList {
-      item {
-        FlowRow(
-          modifier = Modifier.padding(8.dp),
-          mainAxisSpacing = 8.dp,
-          crossAxisSpacing = 8.dp
-        ) {
+context(ResourceProvider) @Provide val homeUi
+  get() = ModelKeyUi<HomeKey, HomeModel> {
+    Scaffold(
+      topBar = { TopAppBar(title = { Text("Ape labs") }) }
+    ) {
+      VerticalList {
+        item {
+          FlowRow(
+            modifier = Modifier.padding(8.dp),
+            mainAxisSpacing = 8.dp,
+            crossAxisSpacing = 8.dp
+          ) {
           LongClickChip(
             selected = groups.all { it in selectedGroups },
             onClick = toggleAllGroupSelections,
@@ -128,6 +130,29 @@ import kotlin.math.roundToInt
           )
         }
       } else {
+        item {
+          val controller = remember { ColorPickerController() }
+
+          ImageColorPicker(
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(200.dp)
+              .padding(horizontal = 16.dp),
+            controller = controller
+          )
+
+          LaunchedEffect(controller.selectedColor) {
+            controller.selectedColor?.let {
+              updateColorPickerColor(it)
+            }
+          }
+
+          LaunchedEffect(groupConfig.program) {
+            if (groupConfig.program.id != Program.colorPickerId(selectedGroups.toList()))
+              controller.clear()
+          }
+        }
+
         item {
           val programName = when {
             groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
@@ -421,6 +446,7 @@ data class HomeModel(
   val regroupLights: () -> Unit,
   val colorPickerColor: ApeColor,
   val programs: Resource<List<Program>>,
+  val updateColorPickerColor: (Color) -> Unit,
   val updateColor: () -> Unit,
   val updateProgram: (Program) -> Unit,
   val openProgram: (Program) -> Unit,
@@ -526,6 +552,15 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
     },
     programs = userPrograms.bindResource(),
     colorPickerColor = colorPickerColor,
+    updateColorPickerColor = action { composeColor ->
+      composeColor
+        .toApeColor(colorPickerId)
+        .asProgram(colorPickerId)
+        .let {
+          updateProgram(it)
+          updateConfig { copy(program = it) }
+        }
+    },
     updateColor = action {
       navigator.push(ColorKey(colorPickerColor.copy(id = colorPickerId)))
         ?.asProgram(colorPickerId)
