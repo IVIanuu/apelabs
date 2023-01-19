@@ -80,7 +80,6 @@ context(ResourceProvider) class ColorPickerController {
 
   fun updateSize(size: IntSize) {
     if (this.size != size) {
-      println("update size")
       this.size = size
       palette = loadResource<ImageBitmap>(R.drawable.color_picker)
         .asAndroidBitmap()
