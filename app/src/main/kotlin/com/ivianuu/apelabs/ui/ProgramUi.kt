@@ -39,6 +39,8 @@ import com.ivianuu.essentials.resource.flowAsResource
 import com.ivianuu.essentials.resource.get
 import com.ivianuu.essentials.resource.getOrNull
 import com.ivianuu.essentials.resource.map
+import com.ivianuu.essentials.time.hours
+import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.minutes
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.ui.common.VerticalList
@@ -57,15 +59,12 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 data class ProgramKey(val id: String) : Key<Unit>
 
 @Provide val programUi = ModelKeyUi<ProgramKey, ProgramModel> {
   Scaffold(
-    topBar = {
-      TopAppBar(title = { Text(id) })
-    },
+    topBar = { TopAppBar(title = { Text(id) }) },
     floatingActionButtonPosition = FabPosition.Center,
     floatingActionButton = {
       if (canAddItem)
@@ -173,7 +172,16 @@ private val FloatToDuration = mapOf(
   9f to 20.seconds,
   10f to 30.seconds,
   11f to 45.seconds,
-  12f to 1.minutes
+  12f to 1.minutes,
+  13f to 2.minutes,
+  14f to 3.minutes,
+  15f to 4.minutes,
+  16f to 5.minutes,
+  17f to 10.minutes,
+  18f to 20.minutes,
+  19f to 30.minutes,
+  20f to 45.minutes,
+  21f to 1.hours
 )
 
 private val DurationToFloat = FloatToDuration
