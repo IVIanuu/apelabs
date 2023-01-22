@@ -120,7 +120,7 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
   suspend fun flashLight(id: Int) {
     wapps.first().parForEach { wapp ->
       withWapp(wapp.address) {
-        write(byteArrayOf(72, 10) + id.toByteArray())
+        write(byteArrayOf(72, 10) + id.toByteArray().dropLast(1))
       }
     }
   }
@@ -130,7 +130,8 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
       withWapp(wapp.address) {
         write(
           byteArrayOf(82, 10) +
-              id.toByteArray() +
+              id.toByteArray()
+                .dropLast(1) +
               byteArrayOf((group - 1).toByte(), 1, 0, 2, 13, 10)
         )
         _groupLightsChangedEvents.tryEmit(GroupLightChangedEvent(group, id))
