@@ -4,12 +4,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.ivianuu.apelabs.data.Light
-import com.ivianuu.apelabs.data.lightIdOf
-import com.ivianuu.apelabs.data.toApeLabsLightId
 import com.ivianuu.essentials.AppScope
-import com.ivianuu.essentials.compose.stateFlow
 import com.ivianuu.essentials.compose.getValue
 import com.ivianuu.essentials.compose.setValue
+import com.ivianuu.essentials.compose.stateFlow
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.coroutines.share
@@ -39,7 +37,7 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
 ) {
   val lights: Flow<List<Light>> = stateFlow {
     var lights by remember { mutableStateOf(emptyList<Light>()) }
-    val lightRemovalJobs = remember { mutableMapOf<String, Job>() }
+    val lightRemovalJobs = remember { mutableMapOf<Int, Job>() }
 
     LaunchedEffect(true) {
       _groupLightsChangedEvents.collect { event ->
@@ -73,7 +71,7 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
             // -112 is the wapp
             message.getOrNull(1)?.toInt() != -112
           ) {
-            val id = lightIdOf(message[2], message[3])
+            val id = byteArrayOf(message[2], message[3], message[4], 0).toInt()
             val type = Light.Type.values().firstOrNull { it.id == message[1].toInt() }
             val light = Light(
               id = id,
@@ -117,22 +115,24 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
   private val _groupLightsChangedEvents = EventFlow<GroupLightChangedEvent>()
   val groupLightsChangedEvents get() = _groupLightsChangedEvents
 
-  data class GroupLightChangedEvent(val group: Int, val lightId: String?)
+  data class GroupLightChangedEvent(val group: Int, val lightId: Int?)
 
-  suspend fun flashLight(id: String) {
+  suspend fun flashLight(id: Int) {
     wapps.first().parForEach { wapp ->
       withWapp(wapp.address) {
-        val (id1, id2) = id.toApeLabsLightId()
-        write(byteArrayOf(72, 10, id1, id2, 0))
+        write(byteArrayOf(72, 10) + id.toByteArray())
       }
     }
   }
 
-  suspend fun regroupLight(id: String, group: Int) = withContext(context) {
+  suspend fun regroupLight(id: Int, group: Int) = withContext(context) {
     wapps.first().parForEach { wapp ->
       withWapp(wapp.address) {
-        val (id1, id2) = id.toApeLabsLightId()
-        write(byteArrayOf(82, 10, id1, id2, 0, (group - 1).toByte(), 1, 0, 2, 13, 10))
+        write(
+          byteArrayOf(82, 10) +
+              id.toByteArray() +
+              byteArrayOf((group - 1).toByte(), 1, 0, 2, 13, 10)
+        )
         _groupLightsChangedEvents.tryEmit(GroupLightChangedEvent(group, id))
       }
     }

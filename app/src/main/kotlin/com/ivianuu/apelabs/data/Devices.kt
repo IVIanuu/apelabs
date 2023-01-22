@@ -17,7 +17,7 @@ fun BluetoothDevice.debugName() = "[${alias ?: name} ~ $address]"
 fun Wapp.debugName() = "[$name ~ $address]"
 
 data class Light(
-  val id: String,
+  val id: Int,
   val group: Int,
   val battery: Float? = null,
   val type: Type?
@@ -26,7 +26,3 @@ data class Light(
     COIN(-96), LIGHTCAN(48)
   }
 }
-
-fun lightIdOf(id1: Byte, id2: Byte) = "$id1:$id2"
-
-fun String.toApeLabsLightId() = split(":").let { it[0].toByte() to it[1].toByte() }

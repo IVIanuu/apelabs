@@ -441,7 +441,7 @@ data class HomeModel(
   val updateBlackout: (Boolean) -> Unit,
   val wappState: Resource<WappState>,
   val lights: Resource<List<Light>>,
-  val selectedLights: Set<String>,
+  val selectedLights: Set<Int>,
   val toggleLightSelection: (Light) -> Unit,
   val regroupLights: () -> Unit,
   val colorPickerColor: ApeColor,
@@ -479,7 +479,7 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
   }
 
   val lights = lights.bindResource()
-  var selectedLights by remember { mutableStateOf(emptySet<String>()) }
+  var selectedLights by remember { mutableStateOf(emptySet<Int>()) }
 
   LaunchedEffect(selectedLights) {
     selectedLights.parForEach { lightId ->

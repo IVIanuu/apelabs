@@ -228,3 +228,15 @@ private fun Int.toGroupByte() = when (this) {
 }
 
 fun List<Int>.toGroupByte(): Byte = map { it.toGroupByte() }.sum().toByte()
+
+fun Int.toByteArray() = byteArrayOf(
+  (this shr 0).toByte(),
+  (this shr 8).toByte(),
+  (this shr 16).toByte(),
+  (this shr 24).toByte()
+)
+
+fun ByteArray.toInt() = (this[3].toInt() shl 24) or
+    (this[2].toInt() and 0xff shl 16) or
+    (this[1].toInt() and 0xff shl 8) or
+    (this[0].toInt() and 0xff)
