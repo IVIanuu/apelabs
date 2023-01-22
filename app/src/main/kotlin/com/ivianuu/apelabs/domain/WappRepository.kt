@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -56,24 +57,31 @@ context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManag
   val wappState: Flow<WappState>
     get() = wapps
       .flatMapLatest { wapps ->
-        if (wapps.isEmpty()) flowOf(WappState(false, null))
-        else callbackFlow<ByteArray> {
+        if (wapps.isEmpty()) flowOf(WappState(null, false, null))
+        else callbackFlow<Pair<Wapp, ByteArray>> {
           wapps.parForEach { wapp ->
+            trySend(wapp to byteArrayOf())
+
             withWapp(wapp.address) {
               messages.collect {
-                trySend(it)
+                trySend(wapp to it)
               }
             }
           }
-
           awaitClose()
         }
           .filter {
-            it.getOrNull(0)?.toInt() == 83 &&
-                it.getOrNull(1)?.toInt() == -112
+            it.second.isEmpty() ||
+                (it.second.getOrNull(0)?.toInt() == 83 &&
+                    it.second.getOrNull(1)?.toInt() == -112)
           }
-          .map { message -> WappState(true, message[6] / 100f) }
-          .onStart { emit(WappState(true, null)) }
+          .map { (wapp, message) ->
+            WappState(
+              wapp.id,
+              true,
+              message.getOrNull(6)?.let { it / 100f })
+          }
+          .onStart { emit(WappState(null, true, null)) }
       }
       .distinctUntilChanged()
 

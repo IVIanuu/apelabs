@@ -238,6 +238,10 @@ context(ResourceProvider) @Provide val homeUi
               Text(
                 buildString {
                   append("Wapp")
+
+                  if (wappState.id != null)
+                    append(" ${wappState.id}")
+
                   if (wappState.battery != null) {
                     if (wappState.battery < 0f) {
                       append(", charging")

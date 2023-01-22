@@ -2,11 +2,25 @@ package com.ivianuu.apelabs.data
 
 import android.bluetooth.BluetoothDevice
 
-data class Wapp(val address: String, val name: String)
+data class Wapp(
+  val id: Int,
+  val address: String,
+  val name: String
+)
 
-data class WappState(val isConnected: Boolean = false, val battery: Float? = null)
+data class WappState(
+  val id: Int? = null,
+  val isConnected: Boolean = false,
+  val battery: Float? = null
+)
 
-fun BluetoothDevice.toWapp() = Wapp(address, alias ?: name)
+fun BluetoothDevice.toWapp() = Wapp(
+  (alias ?: name).replaceBeforeLast("-", "")
+    .drop(1)
+    .toInt(),
+  address,
+  alias ?: name
+)
 
 fun BluetoothDevice.isWapp() = (alias ?: name).let {
   it?.startsWith("APE-") == true
