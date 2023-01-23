@@ -9,21 +9,24 @@ import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.ExitCase
 import com.ivianuu.essentials.coroutines.combine
 import com.ivianuu.essentials.coroutines.guarantee
+import com.ivianuu.essentials.coroutines.onCancel
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
-import com.ivianuu.essentials.time.Clock
+import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import java.util.UUID
 import kotlin.time.Duration
 
-context(ApeLabsPrefsContext, Clock, GroupConfigRepository, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
+context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
     @Provide fun apeLabsConfigApplier() = ScopeWorker<AppForegroundScope> {
   wapps.collectLatest { wapps ->
     if (wapps.isEmpty()) return@collectLatest
@@ -54,6 +57,7 @@ context(ApeLabsPrefsContext, Clock, GroupConfigRepository, Logger, LightReposito
               .onStart<Any?> { emit(Unit) }
               .map { groupConfigs }
           }
+          .debounce(75.milliseconds)
           .collectLatest { applyGroupConfig(it, cache) }
       }
     }
@@ -92,15 +96,14 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
         guarantee(
           block = {
             // cache and apply output
-            log { "apply start $tag $value for $groups" }
+            log { "apply $tag $value for $groups" }
             apply(value, groups)
             groups.forEach { cache[it] = value }
-            log { "apply complete $tag $value for $groups" }
           },
           finalizer = {
             if (it !is ExitCase.Completed) {
               // invalidate cache
-              log { "apply failed $tag for $groups" }
+              log { "apply failed cause of $it $tag for $groups" }
               groups.forEach { cache.remove(it) }
             }
           }
