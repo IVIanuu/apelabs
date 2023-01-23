@@ -136,7 +136,7 @@ class WappServer(
     )
 
   private val writeLock = Mutex()
-  private val writeLimiter = RateLimiter(1, 150.milliseconds)
+  private val writeLimiter = RateLimiter(1, 100.milliseconds)
 
   init {
     log { "${device.debugName()} init" }
@@ -156,8 +156,8 @@ class WappServer(
     writeLock.withLock {
       log { "${device.debugName()} write -> ${message.contentToString()}" }
       characteristic.value = message
-      writeLimiter.acquire()
       gatt.writeCharacteristic(characteristic)
+      writeLimiter.acquire()
     }
   }
 
