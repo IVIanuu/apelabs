@@ -136,24 +136,24 @@ class WappServer(
     )
 
   private val writeLock = Mutex()
-  private val writeLimiter = RateLimiter(1, 10.milliseconds)
+  private val writeLimiter = RateLimiter(1, 100.milliseconds)
 
   init {
     log { "${device.debugName()} init" }
   }
 
   suspend fun write(message: ByteArray) = withContext(context) {
-    val service = gatt.getService(APE_LABS_SERVICE_ID) ?: error(
-      "${device.debugName()} service not found ${
-        gatt.services.map {
-          it.uuid
-        }
-      }"
-    )
-    val characteristic = service.getCharacteristic(APE_LABS_WRITE_ID)
-      ?: error("${device.debugName()} characteristic not found")
-
     writeLock.withLock {
+      val service = gatt.getService(APE_LABS_SERVICE_ID) ?: error(
+        "${device.debugName()} service not found ${
+          gatt.services.map {
+            it.uuid
+          }
+        }"
+      )
+      val characteristic = service.getCharacteristic(APE_LABS_WRITE_ID)
+        ?: error("${device.debugName()} characteristic not found")
+
       log { "${device.debugName()} write -> ${message.contentToString()}" }
       characteristic.value = message
       gatt.writeCharacteristic(characteristic)

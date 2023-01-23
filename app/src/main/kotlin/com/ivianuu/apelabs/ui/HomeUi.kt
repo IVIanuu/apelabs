@@ -60,10 +60,12 @@ import com.ivianuu.essentials.ResourceProvider
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
+import com.ivianuu.essentials.coroutines.RateLimiter
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
+import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.ListKey
@@ -141,8 +143,11 @@ context(ResourceProvider) @Provide val homeUi
             controller = controller
           )
 
+          val colorPickerRateLimiter = remember { RateLimiter(1, 20.milliseconds) }
+
           LaunchedEffect(controller.selectedColor) {
             controller.selectedColor?.let {
+              colorPickerRateLimiter.acquire()
               updateColorPickerColor(it)
             }
           }
