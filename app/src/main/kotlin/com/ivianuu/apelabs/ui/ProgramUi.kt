@@ -234,10 +234,7 @@ context(GroupConfigRepository, ProgramRepository, PreviewRepository, KeyUiContex
     updateProgram(program.get().block())
   }
 
-  suspend fun updateItem(
-    itemIndex: Int,
-    block: Program.Item.() -> Program.Item
-  ) {
+  suspend fun updateItem(itemIndex: Int, block: Program.Item.() -> Program.Item) {
     val item = program.get().items[itemIndex].block()
     updateProgram {
       copy(
