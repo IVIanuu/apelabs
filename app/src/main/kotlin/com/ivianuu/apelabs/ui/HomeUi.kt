@@ -550,7 +550,7 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
     regroupLights = action {
       navigator.push(ListKey(items = GROUPS) { toString() })
         ?.let { group ->
-          selectedLights.parForEach { regroupLight(it, group) }
+          selectedLights.forEach { regroupLight(it, group) }
           selectedLights = emptySet()
         }
     },
