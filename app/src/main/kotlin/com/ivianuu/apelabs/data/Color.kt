@@ -2,18 +2,17 @@ package com.ivianuu.apelabs.data
 
 import androidx.compose.ui.graphics.Color
 import com.ivianuu.essentials.db.AbstractEntityDescriptor
+import com.ivianuu.essentials.db.Entity
 import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable
 
-@Serializable data class ApeColor(
+@Serializable @Entity data class ApeColor(
   @PrimaryKey val id: String = randomId(),
   val red: Float = 0f,
   val green: Float = 0f,
   val blue: Float = 0f,
   val white: Float = 0f
-) {
-  companion object : AbstractEntityDescriptor<ApeColor>("colors")
-}
+)
 
 fun ApeColor.toComposeColor() = Color(red, green, blue)
   .overlay(Color.White.copy(alpha = white))

@@ -1,6 +1,7 @@
 package com.ivianuu.apelabs.data
 
 import com.ivianuu.essentials.db.AbstractEntityDescriptor
+import com.ivianuu.essentials.db.Entity
 import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable
 
@@ -13,16 +14,14 @@ data class GroupConfig(
   val blackout: Boolean = false
 )
 
-@Serializable data class GroupConfigEntity(
+@Serializable @Entity data class GroupConfigEntity(
   @PrimaryKey val id: String,
   val program: String,
   val brightness: Float,
   val speed: Float,
   val musicMode: Boolean,
   val blackout: Boolean
-) {
-  companion object : AbstractEntityDescriptor<GroupConfigEntity>("group_configs")
-}
+)
 
 fun Collection<GroupConfig>.merge(): GroupConfig = when {
   isEmpty() -> GroupConfig()

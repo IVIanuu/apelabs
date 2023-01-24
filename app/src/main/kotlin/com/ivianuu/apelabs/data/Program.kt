@@ -3,6 +3,7 @@ package com.ivianuu.apelabs.data
 import androidx.compose.ui.graphics.Color
 import com.ivianuu.apelabs.domain.toGroupByte
 import com.ivianuu.essentials.db.AbstractEntityDescriptor
+import com.ivianuu.essentials.db.Entity
 import com.ivianuu.essentials.db.PrimaryKey
 import com.ivianuu.essentials.time.seconds
 import kotlinx.serialization.Serializable
@@ -43,7 +44,7 @@ data class Program(
   }
 }
 
-@Serializable data class ProgramEntity(
+@Serializable @Entity data class ProgramEntity(
   @PrimaryKey val id: String,
   val items: List<Item>
 ) {
@@ -52,6 +53,4 @@ data class Program(
     val fadeTime: Duration,
     val holdTime: Duration
   )
-
-  companion object : AbstractEntityDescriptor<ProgramEntity>("programs")
 }
