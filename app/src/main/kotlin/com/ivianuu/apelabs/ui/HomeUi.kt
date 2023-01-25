@@ -97,7 +97,18 @@ import kotlin.math.roundToInt
 context(ResourceProvider) @Provide val homeUi
   get() = ModelKeyUi<HomeKey, HomeModel> {
     Scaffold(
-      topBar = { TopAppBar(title = { Text("Ape labs") }) }
+      topBar = {
+        TopAppBar(
+          title = { Text("Ape labs") },
+          actions = {
+            PopupMenuButton {
+              PopupMenuItem(onSelected = saveColor) {
+                Text("Save color")
+              }
+            }
+          }
+        )
+      }
     ) {
       VerticalList {
         item {
@@ -550,9 +561,9 @@ data class HomeModel(
   val openColor: (ApeColor) -> Unit,
   val addColor: () -> Unit,
   val deleteColor: (ApeColor) -> Unit,
+  val saveColor: () -> Unit,
   val updateColorPickerColor: (Color) -> Unit,
   val builtInColors: List<ApeColor> = BuiltInColors,
-  val colorPickerColor: ApeColor,
   val userPrograms: Resource<List<Program>>,
   val updateProgram: (Program) -> Unit,
   val openProgram: (Program) -> Unit,
@@ -598,7 +609,7 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
 
   val colorPickerId = Program.colorPickerId(prefs.selectedGroups.toList())
 
-  val colorPickerColor = remember { program(colorPickerId) }
+  val colorPickerColor = remember(colorPickerId) { program(colorPickerId) }
     .collectAsState(null)
     .value
     ?.items
@@ -672,8 +683,19 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
         ?.let { navigator.push(ColorKey(createColor(it))) }
     },
     deleteColor = action { color -> deleteColor(color.id) },
-    userPrograms = userPrograms.bindResource(),
-    colorPickerColor = colorPickerColor,
+    saveColor = action {
+      navigator.push(TextInputKey(label = "Name.."))
+        ?.let { id ->
+          val color = colorPickerColor.copy(id = id)
+          updateColor(color)
+          color
+            .asProgram(colorPickerId)
+            .let {
+              updateProgram(it)
+              updateConfig { copy(program = it) }
+            }
+        }
+    },
     updateColorPickerColor = action { composeColor ->
       composeColor
         .toApeColor(colorPickerId)
@@ -688,6 +710,7 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
           updateConfig { copy(program = it) }
         }
     },
+    userPrograms = userPrograms.bindResource(),
     updateProgram = action { program -> updateConfig { copy(program = program) } },
     openProgram = action { program -> navigator.push(ProgramKey(program.id)) },
     addProgram = action {
