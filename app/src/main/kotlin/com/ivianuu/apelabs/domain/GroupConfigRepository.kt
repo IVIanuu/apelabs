@@ -45,10 +45,7 @@ context(ApeLabsPrefsContext, Db, ProgramRepository) @Provide class GroupConfigRe
     it?.toGroupConfig()
   }
 
-  suspend fun updateGroupConfig(
-    config: GroupConfig,
-    manageProgram: Boolean
-  ) = transaction {
+  suspend fun updateGroupConfig(config: GroupConfig, manageProgram: Boolean) = transaction {
     if (manageProgram) {
       selectById<GroupConfigEntity>(config.id).first()
         ?.program

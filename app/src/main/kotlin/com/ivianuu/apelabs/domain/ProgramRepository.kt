@@ -67,12 +67,6 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
 
   private suspend fun ProgramEntity.toProgram() = Program(
     id,
-    items
-      .map { item ->
-        Program.Item(
-          color(item.color)
-            .first() ?: ApeColor()
-        )
-      }
+    items.map { Program.Item(color(it.color).first() ?: ApeColor(), it.fadeTime, it.holdTime) }
   )
 }
