@@ -7,22 +7,20 @@ import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.GroupConfigEntity
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.isUUID
-import com.ivianuu.apelabs.data.randomId
 import com.ivianuu.essentials.db.Db
 import com.ivianuu.essentials.db.InsertConflictStrategy
 import com.ivianuu.essentials.db.deleteById
 import com.ivianuu.essentials.db.insert
 import com.ivianuu.essentials.db.selectById
+import com.ivianuu.essentials.db.selectTransform
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onEmpty
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
 
 context(ApeLabsPrefsContext, Db, ProgramRepository) @Provide class GroupConfigRepository {
   val groupConfigs: Flow<List<GroupConfig>>
@@ -34,28 +32,18 @@ context(ApeLabsPrefsContext, Db, ProgramRepository) @Provide class GroupConfigRe
       .distinctUntilChanged()
       .flatMapLatest { groupConfigs(it.map { it.toString() }) }
 
-  private fun groupConfigs(ids: List<String>): Flow<List<GroupConfig>> = combine(
-    ids
-      .map { id ->
-        groupConfig(id)
-          .onEach {
-            if (it == null) {
-              updateGroupConfig(
-                GroupConfig(
-                  id = id,
-                  program = createProgram(randomId())
-                ),
-                true
-              )
-            }
-          }
-          .filterNotNull()
-      }
-  ) { it.toList() }
-    .onEmpty { emit(emptyList()) }
+  private fun groupConfigs(ids: List<String>): Flow<List<GroupConfig>> = changes
+    .onStart { emit(null) }
+    .mapLatest {
+      ids
+        .map { selectById<GroupConfigEntity>(it).first() }
+        .mapNotNull { it?.toGroupConfig() }
+    }
+    .distinctUntilChanged()
 
-  fun groupConfig(id: String): Flow<GroupConfig?> = selectById<GroupConfigEntity>(id = id)
-    .mapEntity { it.toGroupConfig() }
+  fun groupConfig(id: String): Flow<GroupConfig?> = selectTransform<GroupConfigEntity, _>(id) {
+    it?.toGroupConfig()
+  }
 
   suspend fun updateGroupConfig(
     config: GroupConfig,
@@ -90,16 +78,13 @@ context(ApeLabsPrefsContext, Db, ProgramRepository) @Provide class GroupConfigRe
   private fun GroupConfig.toEntity() =
     GroupConfigEntity(id, program.id, brightness, speed, musicMode, blackout)
 
-  private fun GroupConfigEntity.toGroupConfig(): Flow<GroupConfig> =
-    program(program)
-      .map {
-        GroupConfig(
-          id,
-          it ?: Program(items = listOf(Program.Item(ApeColor(white = 1f)))),
-          brightness,
-          speed,
-          musicMode,
-          blackout
-        )
-      }
+  private suspend fun GroupConfigEntity.toGroupConfig() =
+    GroupConfig(
+      id,
+      program(program).first() ?: Program(items = listOf(Program.Item(ApeColor(white = 1f)))),
+      brightness,
+      speed,
+      musicMode,
+      blackout
+    )
 }

@@ -16,8 +16,8 @@ import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -57,7 +57,6 @@ context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, Pre
               .onStart<Any?> { emit(Unit) }
               .map { groupConfigs }
           }
-          .debounce(75.milliseconds)
           .collectLatest { applyGroupConfig(it, cache) }
       }
     }
@@ -75,6 +74,10 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
   configs: Map<Int, GroupConfig>,
   cache: Cache
 ) {
+  log { "apply $configs" }
+
+  val appliers = mutableMapOf<List<Int>, MutableList<suspend () -> Unit>>()
+
   suspend fun <T> applyIfChanged(
     tag: String,
     get: GroupConfig.() -> T,
@@ -93,21 +96,12 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
       // only apply if there any groups
       .filterValues { it.isNotEmpty() }
       .forEach { (value, groups) ->
-        guarantee(
-          block = {
-            // cache and apply output
-            log { "apply $tag $value for $groups" }
-            apply(value, groups)
-            groups.forEach { cache[it] = value }
-          },
-          finalizer = {
-            if (it !is ExitCase.Completed) {
-              // invalidate cache
-              log { "apply failed cause of $it $tag for $groups" }
-              groups.forEach { cache.remove(it) }
-            }
-          }
-        )
+        appliers.getOrPut(groups) { mutableListOf() } += {
+          // cache and apply output
+          log { "apply $tag $value for $groups" }
+          apply(value, groups)
+          groups.forEach { cache[it] = value }
+        }
       }
   }
 
@@ -211,6 +205,12 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
       )
     }
   )
+
+  appliers
+    .forEach { (groups, appliers) ->
+      appliers.forEach { it() }
+      delay(150.milliseconds)
+    }
 }
 
 private fun Duration.toDurationByte(): Byte = (inWholeMilliseconds / 1000f * 4).toInt().toByte()

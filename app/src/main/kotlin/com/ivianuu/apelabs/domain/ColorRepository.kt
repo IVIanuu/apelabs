@@ -7,24 +7,18 @@ import com.ivianuu.essentials.db.Db
 import com.ivianuu.essentials.db.InsertConflictStrategy
 import com.ivianuu.essentials.db.deleteById
 import com.ivianuu.essentials.db.insert
-import com.ivianuu.essentials.db.selectAll
-import com.ivianuu.essentials.db.selectById
+import com.ivianuu.essentials.db.selectAllTransform
+import com.ivianuu.essentials.db.selectTransform
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 
 context(Db) @Provide class ColorRepository {
   val userColors: Flow<List<ApeColor>>
-    get() = selectAll<ApeColor>()
-      .map { colors ->
-        colors
-          .filterNot { it.id.isUUID }
-      }
-      .distinctUntilChanged()
+    get() = selectAllTransform<ApeColor, _> { it?.takeUnless { it.id.isUUID } }
 
-  fun color(id: String) = selectById<ApeColor>(id = id)
-    .map { it ?: BuiltInColors.singleOrNull { it.id == id } }
+  fun color(id: String) = selectTransform<ApeColor, _>(id) {
+    it ?: BuiltInColors.singleOrNull { it.id == id }
+  }
 
   suspend fun updateColor(color: ApeColor) = transaction {
     insert(color, InsertConflictStrategy.REPLACE)

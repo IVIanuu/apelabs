@@ -8,23 +8,20 @@ import com.ivianuu.essentials.db.Db
 import com.ivianuu.essentials.db.InsertConflictStrategy
 import com.ivianuu.essentials.db.deleteById
 import com.ivianuu.essentials.db.insert
-import com.ivianuu.essentials.db.selectAll
+import com.ivianuu.essentials.db.selectAllTransform
 import com.ivianuu.essentials.db.selectById
+import com.ivianuu.essentials.db.selectTransform
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 
 context(GroupConfigRepository, Db) @Provide class SceneRepository {
   val userScenes: Flow<List<Scene>>
-    get() = selectAll<SceneEntity>()
-      .map { entities ->
-        entities
-          .filterNot { it.id.isUUID }
-      }
-      .mapEntities { it.toScene() }
+    get() = selectAllTransform<SceneEntity, Scene> {
+      it
+        ?.takeUnless { it.id.isUUID }
+        ?.toScene()
+    }
 
   suspend fun createScene(id: String): Scene = transaction {
     val scene = Scene(id)
@@ -32,8 +29,8 @@ context(GroupConfigRepository, Db) @Provide class SceneRepository {
     scene
   }
 
-  fun scene(id: String): Flow<Scene?> = selectById<SceneEntity>(id)
-    .mapEntity { it.toScene() }
+  fun scene(id: String): Flow<Scene?> =
+    selectTransform<SceneEntity, Scene>(id) { it?.toScene() }
 
   suspend fun updateScene(scene: Scene) = transaction {
     selectById<SceneEntity>(scene.id).first()
@@ -60,13 +57,14 @@ context(GroupConfigRepository, Db) @Provide class SceneRepository {
 
   private fun Scene.toEntity() = SceneEntity(id, groupConfigs.mapValues { it.value?.id })
 
-  private fun SceneEntity.toScene(): Flow<Scene> = combine(
+  private suspend fun SceneEntity.toScene() = Scene(
+    id,
     groupConfigs
-      .map { (group, groupConfigId) ->
+      .mapValues { (_, groupConfigId) ->
         groupConfigId?.let {
           groupConfig(groupConfigId)
-            .map { group to it }
-        } ?: flowOf(group to null)
+            .first()
+        }
       }
-  ) { Scene(id, it.toMap()) }
+  )
 }

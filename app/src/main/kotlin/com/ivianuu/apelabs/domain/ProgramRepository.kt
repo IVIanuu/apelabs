@@ -9,24 +9,21 @@ import com.ivianuu.essentials.db.Db
 import com.ivianuu.essentials.db.InsertConflictStrategy
 import com.ivianuu.essentials.db.deleteById
 import com.ivianuu.essentials.db.insert
-import com.ivianuu.essentials.db.selectAll
+import com.ivianuu.essentials.db.selectAllTransform
 import com.ivianuu.essentials.db.selectById
+import com.ivianuu.essentials.db.selectTransform
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 
 context(ColorRepository, Db) @Provide class ProgramRepository {
   val userPrograms: Flow<List<Program>>
-    get() = selectAll<ProgramEntity>()
-      .map { entities ->
-        entities
-          .filterNot { it.id.isUUID }
-      }
-      .mapEntities { it.toProgram() }
+    get() = selectAllTransform<ProgramEntity, Program> {
+      it
+        ?.takeUnless { it.id.isUUID }
+        ?.toProgram()
+    }
 
   suspend fun createProgram(id: String): Program = transaction {
     val color = ApeColor(white = 1f).also { updateColor(it) }
@@ -37,8 +34,7 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
 
   fun program(id: String): Flow<Program?> =
     if (id == Program.RAINBOW.id) flowOf(Program.RAINBOW)
-    else selectById<ProgramEntity>(id)
-      .mapEntity { it.toProgram() }
+    else selectTransform<ProgramEntity, _>(id) { it?.toProgram() }
 
   suspend fun updateProgram(program: Program) = transaction {
     selectById<ProgramEntity>(program.id).first()
@@ -69,11 +65,14 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
     ProgramEntity.Item(it.color.id, it.fadeTime, it.holdTime)
   })
 
-  private fun ProgramEntity.toProgram(): Flow<Program> = combine(
+  private suspend fun ProgramEntity.toProgram() = Program(
+    id,
     items
       .map { item ->
-        color(item.color)
-          .map { Program.Item(it ?: ApeColor()) }
+        Program.Item(
+          color(item.color)
+            .first() ?: ApeColor()
+        )
       }
-  ) { Program(id, it.toList()) }
+  )
 }

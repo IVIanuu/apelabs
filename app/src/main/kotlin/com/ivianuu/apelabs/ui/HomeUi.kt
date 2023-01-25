@@ -196,8 +196,7 @@ context(ResourceProvider) @Provide val homeUi
             onValueChangeFinished = updateBrightness,
             stepPolicy = incrementingStepPolicy(0.05f),
             title = { Text("Brightness") },
-            valueText = { Text("${(it * 100f).roundToInt()}") },
-            singleLine = true
+            valueText = { Text("${(it * 100f).roundToInt()}") }
           )
         }
 
@@ -207,8 +206,7 @@ context(ResourceProvider) @Provide val homeUi
             onValueChangeFinished = updateSpeed,
             stepPolicy = incrementingStepPolicy(0.05f),
             title = { Text("Speed") },
-            valueText = { Text("${(it * 100f).roundToInt()}") },
-            singleLine = true
+            valueText = { Text("${(it * 100f).roundToInt()}") }
           )
         }
 
