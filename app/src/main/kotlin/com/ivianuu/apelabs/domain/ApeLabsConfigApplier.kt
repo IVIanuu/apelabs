@@ -80,7 +80,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
 
   val appliers = mutableMapOf<List<Int>, MutableList<suspend () -> Unit>>()
 
-  fun <T> applyIfChanged(
+  suspend fun <T> applyIfChanged(
     tag: String,
     get: GroupConfig.() -> T,
     cache: MutableMap<Int, T>,
