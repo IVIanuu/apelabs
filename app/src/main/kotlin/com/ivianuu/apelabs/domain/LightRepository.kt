@@ -95,7 +95,7 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
           lightRemovalJobs.remove(light.id)?.cancel()
 
           lightRemovalJobs[light.id] = launch {
-            delay(30.seconds)
+            delay(17.seconds)
             log { "${light.id} remove light" }
             lights = lights
               .filter { it.id != light.id }
@@ -120,7 +120,7 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
   suspend fun flashLight(id: Int) {
     wapps.first().parForEach { wapp ->
       withWapp(wapp.address) {
-        write(byteArrayOf(72, 10) + id.toByteArray().dropLast(1))
+        write(byteArrayOf(72, 100) + id.toByteArray().dropLast(1))
       }
     }
   }
