@@ -16,6 +16,7 @@ import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import kotlin.time.Duration
 
@@ -78,7 +80,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
 
   val appliers = mutableMapOf<List<Int>, MutableList<suspend () -> Unit>>()
 
-  suspend fun <T> applyIfChanged(
+  fun <T> applyIfChanged(
     tag: String,
     get: GroupConfig.() -> T,
     cache: MutableMap<Int, T>,
@@ -207,8 +209,10 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
   )
 
   appliers
-    .forEach { (groups, appliers) ->
-      appliers.forEach { it() }
+    .forEach { (_, appliers) ->
+      appliers.forEach {
+        withContext(NonCancellable) { it() }
+      }
       delay(150.milliseconds)
     }
 }
