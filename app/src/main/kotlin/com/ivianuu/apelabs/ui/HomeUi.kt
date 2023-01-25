@@ -8,6 +8,7 @@ package com.ivianuu.apelabs.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -94,7 +95,8 @@ import kotlin.math.roundToInt
 
 @Provide object HomeKey : RootKey
 
-context(ResourceProvider) @Provide val homeUi
+context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
+@Provide val homeUi
   get() = ModelKeyUi<HomeKey, HomeModel> {
     Scaffold(
       topBar = {
@@ -111,9 +113,13 @@ context(ResourceProvider) @Provide val homeUi
       }
     ) {
       VerticalList {
-        item {
+        stickyHeader {
           FlowRow(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier
+              .fillMaxWidth()
+              .background(MaterialTheme.colors.surface)
+              .clickable { }
+              .padding(8.dp),
             mainAxisSpacing = 8.dp,
             crossAxisSpacing = 8.dp
           ) {
