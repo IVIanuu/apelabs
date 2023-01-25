@@ -1,7 +1,6 @@
 package com.ivianuu.apelabs.data
 
 import androidx.compose.ui.graphics.Color
-import com.ivianuu.essentials.db.AbstractEntityDescriptor
 import com.ivianuu.essentials.db.Entity
 import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable

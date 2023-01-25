@@ -2,22 +2,34 @@
  * Copyright 2022 Manuel Wrage. Use of this source code is governed by the Apache 2.0 license.
  */
 
+@file:OptIn(ExperimentalMaterialApi::class)
+
 package com.ivianuu.apelabs.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ContentAlpha
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.Icon
 import androidx.compose.material.LocalContentColor
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.MaterialTheme
@@ -25,8 +37,8 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
+import com.ivianuu.apelabs.R
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
@@ -58,10 +71,10 @@ import com.ivianuu.apelabs.domain.SceneRepository
 import com.ivianuu.apelabs.domain.WappRepository
 import com.ivianuu.essentials.ResourceProvider
 import com.ivianuu.essentials.compose.action
-import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
+import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.time.seconds
@@ -102,16 +115,16 @@ context(ResourceProvider) @Provide val homeUi
             mainAxisSpacing = 8.dp,
             crossAxisSpacing = 8.dp
           ) {
-          LongClickChip(
-            selected = groups.all { it in selectedGroups },
-            onClick = toggleAllGroupSelections,
-            onLongClick = null
-          ) {
-            Text("ALL")
-          }
-
-          groups.forEach { group ->
             LongClickChip(
+              selected = groups.all { it in selectedGroups },
+              onClick = toggleAllGroupSelections,
+              onLongClick = null
+            ) {
+              Text("ALL")
+            }
+
+            groups.forEach { group ->
+              LongClickChip(
               selected = group in selectedGroups,
               onClick = { toggleGroupSelection(group, false) },
               onLongClick = { toggleGroupSelection(group, true) }
@@ -180,20 +193,22 @@ context(ResourceProvider) @Provide val homeUi
         item {
           SliderListItem(
             value = groupConfig.brightness,
-            onValueChange = updateBrightness,
+            onValueChangeFinished = updateBrightness,
             stepPolicy = incrementingStepPolicy(0.05f),
             title = { Text("Brightness") },
-            valueText = { Text("${(it * 100f).roundToInt()}") }
+            valueText = { Text("${(it * 100f).roundToInt()}") },
+            singleLine = true
           )
         }
 
         item {
           SliderListItem(
             value = groupConfig.speed,
-            onValueChange = updateSpeed,
+            onValueChangeFinished = updateSpeed,
             stepPolicy = incrementingStepPolicy(0.05f),
             title = { Text("Speed") },
-            valueText = { Text("${(it * 100f).roundToInt()}") }
+            valueText = { Text("${(it * 100f).roundToInt()}") },
+            singleLine = true
           )
         }
 
@@ -214,145 +229,83 @@ context(ResourceProvider) @Provide val homeUi
         }
       }
 
-      val wappState = wappState.getOrElse { WappState() }
-      val lights = lights.getOrElse { emptyList() }
-
-      if (wappState.isConnected || lights.isNotEmpty()) {
-        item {
-          Subheader { Text("Devices") }
-        }
-
-        item {
-          FlowRow(
-            modifier = Modifier
-              .padding(16.dp),
-            mainAxisSpacing = 8.dp,
-            crossAxisSpacing = 8.dp,
-            crossAxisAlignment = FlowCrossAxisAlignment.Center
-          ) {
-            LongClickChip(
-              selected = false,
-              onClick = {},
-              onLongClick = null
-            ) {
-              Text(
-                buildString {
-                  append("Wapp")
-
-                  if (wappState.id != null)
-                    append(" ${wappState.id}")
-
-                  if (wappState.battery != null) {
-                    if (wappState.battery < 0f) {
-                      append(", charging")
-                    } else {
-                      append(", bat ${(wappState.battery * 100).toInt()}%")
-                    }
-                  }
-                }
-              )
-            }
-
-            lights
-              .groupBy { it.group }
-              .mapValues { it.value.sortedBy { it.id } }
-              .toList()
-              .sortedBy { it.first }
-              .forEach { (group, groupLights) ->
-                Text("#$group")
-                groupLights.forEach { light ->
-                  LongClickChip(
-                    selected = light.id in selectedLights,
-                    onClick = { toggleLightSelection(light) },
-                    onLongClick = { toggleLightSelection(light) }
-                  ) {
-                    Text(
-                      buildString {
-                        append(
-                          "${
-                            light.type?.name?.toLowerCase()?.capitalize() ?: "Light"
-                          } ${light.id}"
-                        )
-                        if (light.battery != null) {
-                          if (light.battery < 0f) {
-                            append(", charging")
-                          } else {
-                            append(", bat ${(light.battery * 100).toInt()}%")
-                          }
-                        }
-                      }
-                    )
-                  }
-                }
-              }
-          }
-        }
-
-        if (selectedLights.isNotEmpty()) {
-          item {
-            Button(
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-              onClick = regroupLights
-            ) { Text("REGROUP") }
-          }
-        }
-      }
-
       item {
         Subheader { Text("Programs") }
       }
 
       item {
-        ListItem(
-          modifier = Modifier.clickable(onClick = updateColor),
-          title = { Text("Color") },
-          leading = {
-            ColorListIcon(
-              modifier = Modifier.size(40.dp),
-              colors = listOf(colorPickerColor)
+        Row {
+          ListItem(
+            modifier = Modifier
+              .weight(0.5f)
+              .clickable(onClick = updateColor),
+            title = { Text("Color") },
+            leading = {
+              ColorListIcon(
+                modifier = Modifier.size(40.dp),
+                colors = listOf(colorPickerColor)
+              )
+            },
+            contentPadding = PaddingValues(
+              start = 16.dp,
+              end = 8.dp
+            ),
+          )
+
+          ListItem(
+            modifier = Modifier
+              .weight(0.5f)
+              .clickable { updateProgram(Program.RAINBOW) },
+            title = { Text("Rainbow") },
+            leading = {
+              ColorListIcon(
+                modifier = Modifier.size(40.dp),
+                program = Program.RAINBOW
+              )
+            },
+            contentPadding = PaddingValues(
+              start = 8.dp,
+              end = 16.dp
             )
-          }
-        )
+          )
+        }
       }
 
       val programs = programs.getOrElse { emptyList() }
-      programs
-        .sortedBy { it.id }
-        .forEach { program ->
-          item {
-            ListItem(
-              modifier = Modifier.clickable { updateProgram(program) },
-              title = { Text(program.id) },
-              leading = {
-                ColorListIcon(
-                  modifier = Modifier.size(40.dp),
-                  program = program
-                )
-              },
-              trailing = {
-                PopupMenuButton {
-                  PopupMenuItem(onSelected = { openProgram(program) }) { Text("Open") }
-                  PopupMenuItem(onSelected = { deleteProgram(program) }) { Text("Delete") }
+        programs
+          .sortedBy { it.id }
+          .chunked(2)
+          .forEach { row ->
+            item {
+              Row {
+                row.forEachIndexed { index, program ->
+                  ListItem(
+                    modifier = Modifier
+                      .weight(0.5f)
+                      .clickable { updateProgram(program) },
+                    title = { Text(program.id) },
+                    leading = {
+                      ColorListIcon(
+                        modifier = Modifier.size(40.dp),
+                        program = program
+                      )
+                    },
+                    trailing = {
+                      PopupMenuButton {
+                        PopupMenuItem(onSelected = { openProgram(program) }) { Text("Open") }
+                        PopupMenuItem(onSelected = { deleteProgram(program) }) { Text("Delete") }
+                      }
+                    },
+                    contentPadding = PaddingValues(
+                      start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
+                      end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
+                    ),
+                    textPadding = PaddingValues(start = 16.dp)
+                  )
                 }
               }
-            )
+            }
           }
-        }
-
-      item {
-        ListItem(
-          modifier = Modifier.clickable { updateProgram(Program.RAINBOW) },
-          title = { Text("Rainbow") },
-          leading = {
-            ColorListIcon(
-              modifier = Modifier.size(40.dp),
-              program = Program.RAINBOW
-            )
-          }
-        )
-      }
 
       item {
         Button(
@@ -381,18 +334,104 @@ context(ResourceProvider) @Provide val homeUi
                   PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
                 }
               }
-            )
+            ) u
           }
         }
 
-      item {
-        Button(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-          onClick = addScene
-        ) { Text("ADD SCENE") }
-      }
+        item {
+          Button(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            onClick = addScene
+          ) { Text("ADD SCENE") }
+        }
+
+        val wappState = wappState.getOrElse { WappState() }
+        val lights = lights.getOrElse { emptyList() }
+
+        if (wappState.isConnected || lights.isNotEmpty()) {
+          item {
+            Subheader { Text("Devices") }
+          }
+
+          if (selectedLights.isNotEmpty()) {
+            item {
+              Button(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                onClick = regroupLights
+              ) { Text("REGROUP") }
+            }
+          }
+
+          item {
+            FlowRow(
+              modifier = Modifier
+                .padding(16.dp),
+              mainAxisSpacing = 8.dp,
+              crossAxisSpacing = 8.dp,
+              crossAxisAlignment = FlowCrossAxisAlignment.Center
+            ) {
+              LongClickChip(
+                selected = false,
+                onClick = {},
+                onLongClick = null
+              ) {
+                Text(
+                  buildString {
+                    append("Wapp")
+
+                    if (wappState.id != null)
+                      append(" ${wappState.id}")
+
+                    if (wappState.battery != null) {
+                      if (wappState.battery < 0f) {
+                        append(", charging")
+                      } else {
+                        append(", bat ${(wappState.battery * 100).toInt()}%")
+                      }
+                    }
+                  }
+                )
+              }
+
+              lights
+                .groupBy { it.group }
+                .mapValues { it.value.sortedBy { it.id } }
+                .toList()
+                .sortedBy { it.first }
+                .forEach { (group, groupLights) ->
+                  Text("#$group")
+                  groupLights.forEach { light ->
+                    LongClickChip(
+                      selected = light.id in selectedLights,
+                      onClick = { toggleLightSelection(light) },
+                      onLongClick = { toggleLightSelection(light) }
+                    ) {
+                      Text(
+                        buildString {
+                          append(
+                            "${
+                              light.type?.name?.toLowerCase()?.capitalize() ?: "Light"
+                            } ${light.id}"
+                          )
+                          if (light.battery != null) {
+                            if (light.battery < 0f) {
+                              append(", charging")
+                            } else {
+                              append(", bat ${(light.battery * 100).toInt()}%")
+                            }
+                          }
+                        }
+                      )
+                    }
+                  }
+                }
+            }
+          }
+        }
     }
   }
 }
@@ -464,12 +503,12 @@ data class HomeModel(
 )
 
 context(ApeLabsPrefsContext, ColorRepository, GroupConfigRepository, LightRepository,
-Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
+KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     @Provide fun homeModel() = Model {
-  val prefs = pref.data.bind(ApeLabsPrefs())
+  val prefs by pref.data.collectAsState(ApeLabsPrefs())
 
-  val selectedGroupConfigs = selectedGroupConfigs
-    .bind(emptyList())
+  val selectedGroupConfigs by remember { selectedGroupConfigs }
+    .collectAsState(emptyList())
 
   val groupConfig = selectedGroupConfigs
     .merge()
@@ -496,8 +535,9 @@ Logger, KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepositor
 
   val colorPickerId = Program.colorPickerId(prefs.selectedGroups.toList())
 
-  val colorPickerColor = program(colorPickerId)
-    .bind(null, colorPickerId)
+  val colorPickerColor = remember { program(colorPickerId) }
+    .collectAsState(null)
+    .value
     ?.items
     ?.singleOrNull()
     ?.color

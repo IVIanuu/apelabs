@@ -1,5 +1,6 @@
 package com.ivianuu.apelabs.domain
 
+import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.essentials.AppScope
@@ -28,10 +29,12 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-context(Logger, NamedCoroutineScope<AppScope>)
+context(ApeLabsPrefsContext, Logger, NamedCoroutineScope<AppScope>)
 @Provide @Scoped<AppScope> class PreviewRepository {
   private val _previewProviders =
-    MutableStateFlow<List<suspend (suspend (List<GroupConfig>) -> Unit) -> Unit>>(emptyList())
+    MutableStateFlow<List<suspend (List<Int>, suspend (List<GroupConfig>) -> Unit) -> Unit>>(
+      emptyList()
+    )
   private val lock = Mutex()
 
   private val _previewsEnabled = MutableStateFlow(false)
@@ -44,9 +47,15 @@ context(Logger, NamedCoroutineScope<AppScope>)
     }
     .map { it.lastOrNull() }
     .flatMapLatest { provider ->
+      pref.data
+        .map { it.selectedGroups }
+        .distinctUntilChanged()
+        .map { it.toList() to provider }
+    }
+    .flatMapLatest { (groups, provider) ->
       if (provider == null) flowOf(emptyList())
       else callbackFlow {
-        provider {
+        provider(groups) {
           trySend(it)
         }
       }
@@ -59,7 +68,7 @@ context(Logger, NamedCoroutineScope<AppScope>)
   }
 
   suspend fun providePreviews(
-    block: suspend (suspend (List<GroupConfig>) -> Unit) -> Unit
+    block: suspend (List<Int>, suspend (List<GroupConfig>) -> Unit) -> Unit
   ): Nothing = bracket(
     acquire = {
       lock.withLock {

@@ -55,6 +55,7 @@ import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -215,7 +216,7 @@ context(GroupConfigRepository, ProgramRepository, PreviewRepository, KeyUiContex
     .collectAsState(Idle)
 
   LaunchedEffect(true) {
-    providePreviews { update ->
+    providePreviews { selectedGroups, update ->
       snapshotFlow { program }
         .map { it.getOrNull() }
         .flatMapLatest { program ->
@@ -223,6 +224,7 @@ context(GroupConfigRepository, ProgramRepository, PreviewRepository, KeyUiContex
           else groupConfigs
             .map { configs ->
               configs
+                .filter { it.id.toIntOrNull() in selectedGroups }
                 .map { config -> config.copy(program = program) }
             }
         }

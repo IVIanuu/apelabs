@@ -71,12 +71,13 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
     fun currentColor() = ApeColor(id, red, green, blue, white)
 
     LaunchedEffect(true) {
-      providePreviews { update ->
+      providePreviews { selectedGroups, update ->
         snapshotFlow { currentColor() }
           .flatMapLatest { color ->
             groupConfigs
               .map { configs ->
                 configs
+                  .filter { it.id.toIntOrNull() in selectedGroups }
                   .map { config -> config.copy(program = color.asProgram()) }
               }
           }

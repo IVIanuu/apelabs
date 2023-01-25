@@ -98,7 +98,7 @@ data class SceneKey(val id: String) : Key<Unit>
                 if (config != null) {
                   SliderListItem(
                     value = config.brightness,
-                    onValueChange = { updateBrightness(group, it) },
+                    onValueChangeFinished = { updateBrightness(group, it) },
                     stepPolicy = incrementingStepPolicy(0.05f),
                     title = { Text("Brightness") },
                     valueText = { Text("${(it * 100f).roundToInt()}") }
@@ -106,7 +106,7 @@ data class SceneKey(val id: String) : Key<Unit>
 
                   SliderListItem(
                     value = config.speed,
-                    onValueChange = { updateSpeed(group, it) },
+                    onValueChangeFinished = { updateSpeed(group, it) },
                     stepPolicy = incrementingStepPolicy(0.05f),
                     title = { Text("Speed") },
                     valueText = { Text("${(it * 100f).roundToInt()}") }
@@ -166,7 +166,7 @@ context(ProgramRepository, PreviewRepository, SceneRepository, KeyUiContext<Scen
     .collectAsState(Idle)
 
   LaunchedEffect(true) {
-    providePreviews { update ->
+    providePreviews { _, update ->
       snapshotFlow { scene }
         .map {
           scene.getOrNull()
