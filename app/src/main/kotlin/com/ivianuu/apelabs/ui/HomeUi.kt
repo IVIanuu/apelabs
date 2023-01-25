@@ -334,7 +334,7 @@ context(ResourceProvider) @Provide val homeUi
                   PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
                 }
               }
-            ) u
+            )
           }
         }
 
