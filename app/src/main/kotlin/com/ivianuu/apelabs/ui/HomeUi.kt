@@ -8,28 +8,21 @@ package com.ivianuu.apelabs.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ContentAlpha
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Icon
 import androidx.compose.material.LocalContentColor
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.MaterialTheme
@@ -49,10 +42,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
-import com.ivianuu.apelabs.R
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
+import com.ivianuu.apelabs.data.BuiltInColors
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
@@ -73,8 +66,6 @@ import com.ivianuu.essentials.ResourceProvider
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.parForEach
-import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.time.seconds
@@ -125,152 +116,163 @@ context(ResourceProvider) @Provide val homeUi
 
             groups.forEach { group ->
               LongClickChip(
-              selected = group in selectedGroups,
-              onClick = { toggleGroupSelection(group, false) },
-              onLongClick = { toggleGroupSelection(group, true) }
-            ) {
-              Text(group.toString())
+                selected = group in selectedGroups,
+                onClick = { toggleGroupSelection(group, false) },
+                onLongClick = { toggleGroupSelection(group, true) }
+              ) {
+                Text(group.toString())
+              }
             }
           }
         }
-      }
 
-      if (selectedGroups.isEmpty()) {
-        item {
-          Text(
-            modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
-            text = "Select a group to edit"
-          )
+        if (selectedGroups.isEmpty()) {
+          item {
+            Text(
+              modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
+              text = "Select a group to edit"
+            )
+          }
+        } else {
+          item {
+            val controller = remember { ColorPickerController() }
+
+            ImageColorPicker(
+              modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .padding(horizontal = 16.dp),
+              controller = controller
+            )
+
+            LaunchedEffect(controller.selectedColor) {
+              controller.selectedColor?.let {
+                updateColorPickerColor(it)
+              }
+            }
+
+            LaunchedEffect(groupConfig.program) {
+              if (groupConfig.program.id != Program.colorPickerId(selectedGroups.toList()))
+                controller.clear()
+            }
+          }
+
+          item {
+            val programName = when {
+              groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
+              groupConfig.program.id.isUUID ->
+                groupConfig.program.items.singleOrNull()
+                  ?.color
+                  ?.takeUnless { it.id.isUUID }
+                  ?.id
+                  ?: "Color"
+              else -> groupConfig.program.id
+            }
+
+            ListItem(
+              leading = {
+                ColorListIcon(
+                  modifier = Modifier.size(40.dp),
+                  program = groupConfig.program
+                )
+              },
+              title = { Text("Program") },
+              subtitle = { Text(programName) }
+            )
+          }
+
+          item {
+            SliderListItem(
+              value = groupConfig.brightness,
+              onValueChangeFinished = updateBrightness,
+              stepPolicy = incrementingStepPolicy(0.05f),
+              title = { Text("Brightness") },
+              valueText = { Text("${(it * 100f).roundToInt()}") }
+            )
+          }
+
+          item {
+            SliderListItem(
+              value = groupConfig.speed,
+              onValueChangeFinished = updateSpeed,
+              stepPolicy = incrementingStepPolicy(0.05f),
+              title = { Text("Speed") },
+              valueText = { Text("${(it * 100f).roundToInt()}") }
+            )
+          }
+
+          item {
+            SwitchListItem(
+              value = groupConfig.musicMode,
+              onValueChange = updateMusicMode,
+              title = { Text("Music mode") }
+            )
+          }
+
+          item {
+            SwitchListItem(
+              value = groupConfig.blackout,
+              onValueChange = updateBlackout,
+              title = { Text("Blackout") }
+            )
+          }
         }
-      } else {
-        item {
-          val controller = remember { ColorPickerController() }
 
-          ImageColorPicker(
+        item {
+          Subheader { Text("Custom colors") }
+        }
+
+        val userColors = userColors.getOrElse { emptyList() }
+        userColors
+          .sortedBy { it.id }
+          .chunked(2)
+          .forEach { row ->
+            item {
+              Row {
+                row.forEachIndexed { index, color ->
+                  ListItem(
+                    modifier = Modifier
+                      .weight(0.5f)
+                      .clickable { updateColor(color) },
+                    title = { Text(color.id) },
+                    leading = {
+                      ColorListIcon(
+                        modifier = Modifier.size(40.dp),
+                        colors = listOf(color)
+                      )
+                    },
+                    trailing = {
+                      PopupMenuButton {
+                        PopupMenuItem(onSelected = { openColor(color) }) { Text("Open") }
+                        PopupMenuItem(onSelected = { deleteColor(color) }) { Text("Delete") }
+                      }
+                    },
+                    contentPadding = PaddingValues(
+                      start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
+                      end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
+                    ),
+                    textPadding = PaddingValues(start = 16.dp)
+                  )
+                }
+              }
+            }
+          }
+
+        item {
+          Button(
             modifier = Modifier
               .fillMaxWidth()
-              .height(200.dp)
-              .padding(horizontal = 16.dp),
-            controller = controller
-          )
-
-          LaunchedEffect(controller.selectedColor) {
-            controller.selectedColor?.let {
-              updateColorPickerColor(it)
-            }
-          }
-
-          LaunchedEffect(groupConfig.program) {
-            if (groupConfig.program.id != Program.colorPickerId(selectedGroups.toList()))
-              controller.clear()
-          }
+              .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            onClick = addColor
+          ) { Text("ADD COLOR") }
         }
 
         item {
-          val programName = when {
-            groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
-            groupConfig.program.id.isUUID ->
-              groupConfig.program.items.singleOrNull()
-                ?.color
-                ?.takeUnless { it.id.isUUID }
-                ?.id
-                ?: "Color"
-            else -> groupConfig.program.id
-          }
-
-          ListItem(
-            leading = {
-              ColorListIcon(
-                modifier = Modifier.size(40.dp),
-                program = groupConfig.program
-              )
-            },
-            title = { Text("Program") },
-            subtitle = { Text(programName) }
-          )
+          Subheader { Text("Programs") }
         }
 
-        item {
-          SliderListItem(
-            value = groupConfig.brightness,
-            onValueChangeFinished = updateBrightness,
-            stepPolicy = incrementingStepPolicy(0.05f),
-            title = { Text("Brightness") },
-            valueText = { Text("${(it * 100f).roundToInt()}") }
-          )
-        }
-
-        item {
-          SliderListItem(
-            value = groupConfig.speed,
-            onValueChangeFinished = updateSpeed,
-            stepPolicy = incrementingStepPolicy(0.05f),
-            title = { Text("Speed") },
-            valueText = { Text("${(it * 100f).roundToInt()}") }
-          )
-        }
-
-        item {
-          SwitchListItem(
-            value = groupConfig.musicMode,
-            onValueChange = updateMusicMode,
-            title = { Text("Music mode") }
-          )
-        }
-
-        item {
-          SwitchListItem(
-            value = groupConfig.blackout,
-            onValueChange = updateBlackout,
-            title = { Text("Blackout") }
-          )
-        }
-      }
-
-      item {
-        Subheader { Text("Programs") }
-      }
-
-      item {
-        Row {
-          ListItem(
-            modifier = Modifier
-              .weight(0.5f)
-              .clickable(onClick = updateColor),
-            title = { Text("Color") },
-            leading = {
-              ColorListIcon(
-                modifier = Modifier.size(40.dp),
-                colors = listOf(colorPickerColor)
-              )
-            },
-            contentPadding = PaddingValues(
-              start = 16.dp,
-              end = 8.dp
-            ),
-          )
-
-          ListItem(
-            modifier = Modifier
-              .weight(0.5f)
-              .clickable { updateProgram(Program.RAINBOW) },
-            title = { Text("Rainbow") },
-            leading = {
-              ColorListIcon(
-                modifier = Modifier.size(40.dp),
-                program = Program.RAINBOW
-              )
-            },
-            contentPadding = PaddingValues(
-              start = 8.dp,
-              end = 16.dp
-            )
-          )
-        }
-      }
-
-      val programs = programs.getOrElse { emptyList() }
-        programs
+        val userPrograms = userPrograms.getOrElse { emptyList() }
+        userPrograms
           .sortedBy { it.id }
           .chunked(2)
           .forEach { row ->
@@ -305,36 +307,94 @@ context(ResourceProvider) @Provide val homeUi
             }
           }
 
-      item {
-        Button(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-          onClick = addProgram
-        ) { Text("ADD PROGRAM") }
-      }
-
-      item {
-        Subheader { Text("Scenes") }
-      }
-
-      val scenes = scenes.getOrElse { emptyList() }
-      scenes
-        .sortedBy { it.id }
-        .forEach { scene ->
-          item {
+        item {
+          Row {
             ListItem(
-              modifier = Modifier.clickable { applyScene(scene) },
-              title = { Text(scene.id) },
-              trailing = {
-                PopupMenuButton {
-                  PopupMenuItem(onSelected = { openScene(scene) }) { Text("Open") }
-                  PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
-                }
+              modifier = Modifier
+                .weight(0.5f)
+                .clickable { updateProgram(Program.RAINBOW) },
+              title = { Text("Rainbow") },
+              leading = {
+                ColorListIcon(
+                  modifier = Modifier.size(40.dp),
+                  program = Program.RAINBOW
+                )
               }
             )
           }
         }
+
+        item {
+          Button(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            onClick = addProgram
+          ) { Text("ADD PROGRAM") }
+        }
+
+        item { Subheader { Text("Built in colors") } }
+
+        builtInColors
+          .sortedBy { it.id }
+          .chunked(2)
+          .forEach { row ->
+            item {
+              Row {
+                row.forEachIndexed { index, color ->
+                  ListItem(
+                    modifier = Modifier
+                      .weight(0.5f)
+                      .clickable { updateColor(color) },
+                    title = { Text(color.id) },
+                    leading = {
+                      ColorListIcon(
+                        modifier = Modifier.size(40.dp),
+                        colors = listOf(color)
+                      )
+                    },
+                    contentPadding = PaddingValues(
+                      start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
+                      end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
+                    ),
+                    textPadding = PaddingValues(start = 16.dp)
+                  )
+                }
+              }
+            }
+          }
+
+        item { Subheader { Text("Scenes") } }
+
+        val scenes = scenes.getOrElse { emptyList() }
+        scenes
+          .sortedBy { it.id }
+          .chunked(2)
+          .forEach { row ->
+            item {
+              Row {
+                row.forEachIndexed { index, scene ->
+                  ListItem(
+                    modifier = Modifier
+                      .weight(0.5f)
+                      .clickable { applyScene(scene) },
+                    title = { Text(scene.id) },
+                    trailing = {
+                      PopupMenuButton {
+                        PopupMenuItem(onSelected = { openScene(scene) }) { Text("Open") }
+                        PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
+                      }
+                    },
+                    contentPadding = PaddingValues(
+                      start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
+                      end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
+                    ),
+                    textPadding = PaddingValues(start = 16.dp)
+                  )
+                }
+              }
+            }
+          }
 
         item {
           Button(
@@ -430,9 +490,9 @@ context(ResourceProvider) @Provide val homeUi
             }
           }
         }
+      }
     }
   }
-}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable private fun LongClickChip(
@@ -485,10 +545,15 @@ data class HomeModel(
   val selectedLights: Set<Int>,
   val toggleLightSelection: (Light) -> Unit,
   val regroupLights: () -> Unit,
-  val colorPickerColor: ApeColor,
-  val programs: Resource<List<Program>>,
+  val userColors: Resource<List<ApeColor>>,
+  val updateColor: (ApeColor) -> Unit,
+  val openColor: (ApeColor) -> Unit,
+  val addColor: () -> Unit,
+  val deleteColor: (ApeColor) -> Unit,
   val updateColorPickerColor: (Color) -> Unit,
-  val updateColor: () -> Unit,
+  val builtInColors: List<ApeColor> = BuiltInColors,
+  val colorPickerColor: ApeColor,
+  val userPrograms: Resource<List<Program>>,
   val updateProgram: (Program) -> Unit,
   val openProgram: (Program) -> Unit,
   val addProgram: () -> Unit,
@@ -592,7 +657,22 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
           selectedLights = emptySet()
         }
     },
-    programs = userPrograms.bindResource(),
+    userColors = userColors.bindResource(),
+    updateColor = action { color ->
+      color
+        .asProgram(colorPickerId)
+        .let {
+          updateProgram(it)
+          updateConfig { copy(program = it) }
+        }
+    },
+    openColor = action { color -> navigator.push(ColorKey(color)) },
+    addColor = action {
+      navigator.push(TextInputKey(label = "Name.."))
+        ?.let { navigator.push(ColorKey(createColor(it))) }
+    },
+    deleteColor = action { color -> deleteColor(color.id) },
+    userPrograms = userPrograms.bindResource(),
     colorPickerColor = colorPickerColor,
     updateColorPickerColor = action { composeColor ->
       composeColor
@@ -604,14 +684,6 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
         }
         .asProgram(colorPickerId)
         .let {
-          updateProgram(it)
-          updateConfig { copy(program = it) }
-        }
-    },
-    updateColor = action {
-      navigator.push(ColorKey(colorPickerColor.copy(id = colorPickerId)))
-        ?.asProgram(colorPickerId)
-        ?.let {
           updateProgram(it)
           updateConfig { copy(program = it) }
         }
