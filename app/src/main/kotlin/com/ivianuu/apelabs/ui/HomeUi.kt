@@ -526,7 +526,7 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     selectedLights.parForEach { lightId ->
       while (coroutineContext.isActive) {
         flashLight(lightId)
-        delay(1.seconds)
+        delay(2.seconds)
       }
     }
   }
