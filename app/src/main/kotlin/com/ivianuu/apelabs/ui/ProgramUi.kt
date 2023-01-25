@@ -55,7 +55,6 @@ import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
 import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
