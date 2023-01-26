@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -236,81 +237,61 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
         }
 
         item {
-          Subheader { Text("Custom colors") }
+          Subheader { Text("Custom") }
         }
 
         val userColors = userColors.getOrElse { emptyList() }
-        userColors
-          .sortedBy { it.id }
-          .chunked(2)
-          .forEach { row ->
-            item {
-              Row {
-                row.forEachIndexed { index, color ->
-                  ListItem(
-                    modifier = Modifier
-                      .weight(0.5f)
-                      .clickable { updateColor(color) },
-                    title = { Text(color.id) },
-                    leading = {
-                      ColorListIcon(
-                        modifier = Modifier.size(40.dp),
-                        colors = listOf(color)
-                      )
-                    },
-                    trailing = {
-                      PopupMenuButton {
-                        PopupMenuItem(onSelected = { openColor(color) }) { Text("Open") }
-                        PopupMenuItem(onSelected = { deleteColor(color) }) { Text("Delete") }
-                      }
-                    },
-                    contentPadding = PaddingValues(
-                      start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
-                      end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
-                    ),
-                    textPadding = PaddingValues(start = 16.dp)
-                  )
-                }
-              }
-            }
-          }
-
-        item {
-          Button(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            onClick = addColor
-          ) { Text("ADD COLOR") }
-        }
-
-        item {
-          Subheader { Text("Programs") }
-        }
-
         val userPrograms = userPrograms.getOrElse { emptyList() }
-        userPrograms
-          .sortedBy { it.id }
+
+        (userColors.map { it.id to it } + userPrograms.map { it.id to it })
+          .sortedBy { it.first }
           .chunked(2)
           .forEach { row ->
             item {
               Row {
-                row.forEachIndexed { index, program ->
+                row.forEachIndexed { index, (id, item) ->
+                  fun <T> Any.map(
+                    color: (ApeColor) -> T,
+                    program: (Program) -> T
+                  ) = when (this) {
+                    is ApeColor -> color(this)
+                    is Program -> program(this)
+                    else -> throw AssertionError()
+                  }
+
                   ListItem(
                     modifier = Modifier
                       .weight(0.5f)
-                      .clickable { updateProgram(program) },
-                    title = { Text(program.id) },
+                      .clickable {
+                        item.map(
+                          color = { updateColor(it) },
+                          program = { updateProgram(it) }
+                        )
+                      },
+                    title = { Text(id) },
                     leading = {
                       ColorListIcon(
                         modifier = Modifier.size(40.dp),
-                        program = program
+                        colors = item.map(
+                          color = { listOf(it) },
+                          program = { it.items.map { it.color } }
+                        )
                       )
                     },
                     trailing = {
                       PopupMenuButton {
-                        PopupMenuItem(onSelected = { openProgram(program) }) { Text("Open") }
-                        PopupMenuItem(onSelected = { deleteProgram(program) }) { Text("Delete") }
+                        PopupMenuItem(onSelected = {
+                          item.map(
+                            color = { openColor(it) },
+                            program = { openProgram(it) }
+                          )
+                        }) { Text("Open") }
+                        PopupMenuItem(onSelected = {
+                          item.map(
+                            color = { deleteColor(it) },
+                            program = { deleteProgram(it) }
+                          )
+                        }) { Text("Delete") }
                       }
                     },
                     contentPadding = PaddingValues(
@@ -323,6 +304,25 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
               }
             }
           }
+
+        item {
+          Row(
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+          ) {
+            Button(
+              modifier = Modifier.weight(0.5f),
+              onClick = addColor
+            ) { Text("ADD COLOR") }
+
+            Button(
+              modifier = Modifier.weight(0.5f),
+              onClick = addProgram
+            ) { Text("ADD PROGRAM") }
+          }
+        }
+
+        item { Subheader { Text("Built in") } }
 
         item {
           Row {
@@ -340,17 +340,6 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
             )
           }
         }
-
-        item {
-          Button(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            onClick = addProgram
-          ) { Text("ADD PROGRAM") }
-        }
-
-        item { Subheader { Text("Built in colors") } }
 
         builtInColors
           .sortedBy { it.id }
