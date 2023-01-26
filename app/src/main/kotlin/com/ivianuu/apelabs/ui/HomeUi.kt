@@ -424,17 +424,6 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
           Subheader { Text("Devices") }
         }
 
-        if (selectedLights.isNotEmpty()) {
-          item {
-            Button(
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-              onClick = regroupLights
-            ) { Text("REGROUP") }
-          }
-        }
-
         item {
           FlowRow(
             modifier = Modifier
@@ -499,6 +488,16 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
                 }
               }
           }
+        }
+
+        item {
+          Button(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            enabled = selectedLights.isNotEmpty(),
+            onClick = regroupLights
+          ) { Text("REGROUP") }
         }
       }
     }
