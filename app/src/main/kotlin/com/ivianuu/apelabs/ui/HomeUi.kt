@@ -97,408 +97,407 @@ import kotlin.math.roundToInt
 @Provide object HomeKey : RootKey
 
 context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
-@Provide val homeUi
-  get() = ModelKeyUi<HomeKey, HomeModel> {
-    Scaffold(
-      topBar = {
-        TopAppBar(
-          title = { Text("Ape labs") },
-          actions = {
-            PopupMenuButton {
-              PopupMenuItem(onSelected = saveColor) {
-                Text("Save color")
-              }
+@Provide fun homeUi() = ModelKeyUi<HomeKey, HomeModel> {
+  Scaffold(
+    topBar = {
+      TopAppBar(
+        title = { Text("Ape labs") },
+        actions = {
+          PopupMenuButton {
+            PopupMenuItem(onSelected = saveColor) {
+              Text("Save color")
             }
           }
-        )
+        }
+      )
+    }
+  ) {
+    VerticalList {
+      stickyHeader {
+        FlowRow(
+          modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colors.surface)
+            .clickable { }
+            .padding(8.dp),
+          mainAxisSpacing = 8.dp,
+          crossAxisSpacing = 8.dp
+        ) {
+          LongClickChip(
+            selected = groups.all { it in selectedGroups },
+            onClick = toggleAllGroupSelections,
+            onLongClick = null
+          ) {
+            Text("ALL")
+          }
+
+          groups.forEach { group ->
+            LongClickChip(
+              selected = group in selectedGroups,
+              onClick = { toggleGroupSelection(group, false) },
+              onLongClick = { toggleGroupSelection(group, true) }
+            ) {
+              Text(group.toString())
+            }
+          }
+        }
       }
-    ) {
-      VerticalList {
-        stickyHeader {
-          FlowRow(
+
+      if (selectedGroups.isEmpty()) {
+        item {
+          Text(
+            modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
+            text = "Select a group to edit"
+          )
+        }
+      } else {
+        item {
+          val controller = remember { ColorPickerController() }
+
+          ImageColorPicker(
             modifier = Modifier
               .fillMaxWidth()
-              .background(MaterialTheme.colors.surface)
-              .clickable { }
-              .padding(8.dp),
-            mainAxisSpacing = 8.dp,
-            crossAxisSpacing = 8.dp
-          ) {
-            LongClickChip(
-              selected = groups.all { it in selectedGroups },
-              onClick = toggleAllGroupSelections,
-              onLongClick = null
-            ) {
-              Text("ALL")
-            }
+              .height(200.dp)
+              .padding(horizontal = 16.dp),
+            controller = controller
+          )
 
-            groups.forEach { group ->
-              LongClickChip(
-                selected = group in selectedGroups,
-                onClick = { toggleGroupSelection(group, false) },
-                onLongClick = { toggleGroupSelection(group, true) }
-              ) {
-                Text(group.toString())
+          LaunchedEffect(controller.selectedColor) {
+            controller.selectedColor?.let {
+              updateColorPickerColor(it)
+            }
+          }
+
+          LaunchedEffect(groupConfig.program) {
+            if (groupConfig.program.id != Program.colorPickerId(selectedGroups.toList()))
+              controller.clear()
+          }
+        }
+
+        item {
+          val programName = when {
+            groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
+            groupConfig.program.id.isUUID ->
+              groupConfig.program.items.singleOrNull()
+                ?.color
+                ?.takeUnless { it.id.isUUID }
+                ?.id
+                ?: "Color"
+            else -> groupConfig.program.id
+          }
+
+          ListItem(
+            leading = {
+              ColorListIcon(
+                modifier = Modifier.size(40.dp),
+                program = groupConfig.program
+              )
+            },
+            title = { Text("Program") },
+            subtitle = { Text(programName) }
+          )
+        }
+
+        item {
+          SliderListItem(
+            value = groupConfig.brightness,
+            onValueChangeFinished = updateBrightness,
+            stepPolicy = incrementingStepPolicy(0.05f),
+            title = { Text("Brightness") },
+            valueText = { Text("${(it * 100f).roundToInt()}") }
+          )
+        }
+
+        item {
+          SliderListItem(
+            value = groupConfig.speed,
+            onValueChangeFinished = updateSpeed,
+            stepPolicy = incrementingStepPolicy(0.05f),
+            title = { Text("Speed") },
+            valueText = { Text("${(it * 100f).roundToInt()}") }
+          )
+        }
+
+        item {
+          SwitchListItem(
+            value = groupConfig.musicMode,
+            onValueChange = updateMusicMode,
+            title = { Text("Music mode") }
+          )
+        }
+
+        item {
+          SwitchListItem(
+            value = groupConfig.blackout,
+            onValueChange = updateBlackout,
+            title = { Text("Blackout") }
+          )
+        }
+      }
+
+      item {
+        Subheader { Text("Custom") }
+      }
+
+      val userColors = userColors.getOrElse { emptyList() }
+      val userPrograms = userPrograms.getOrElse { emptyList() }
+
+      (userColors.map { it.id to it } + userPrograms.map { it.id to it })
+        .sortedBy { it.first }
+        .chunked(2)
+        .forEach { row ->
+          item {
+            Row {
+              row.forEachIndexed { index, (id, item) ->
+                fun <T> Any.map(
+                  color: (ApeColor) -> T,
+                  program: (Program) -> T
+                ) = when (this) {
+                  is ApeColor -> color(this)
+                  is Program -> program(this)
+                  else -> throw AssertionError()
+                }
+
+                ListItem(
+                  modifier = Modifier
+                    .weight(0.5f)
+                    .clickable {
+                      item.map(
+                        color = { updateColor(it) },
+                        program = { updateProgram(it) }
+                      )
+                    },
+                  title = { Text(id) },
+                  leading = {
+                    ColorListIcon(
+                      modifier = Modifier.size(40.dp),
+                      colors = item.map(
+                        color = { listOf(it) },
+                        program = { it.items.map { it.color } }
+                      )
+                    )
+                  },
+                  trailing = {
+                    PopupMenuButton {
+                      PopupMenuItem(onSelected = {
+                        item.map(
+                          color = { openColor(it) },
+                          program = { openProgram(it) }
+                        )
+                      }) { Text("Open") }
+                      PopupMenuItem(onSelected = {
+                        item.map(
+                          color = { deleteColor(it) },
+                          program = { deleteProgram(it) }
+                        )
+                      }) { Text("Delete") }
+                    }
+                  },
+                  contentPadding = PaddingValues(
+                    start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
+                    end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
+                  ),
+                  textPadding = PaddingValues(start = 16.dp)
+                )
               }
             }
           }
         }
 
-        if (selectedGroups.isEmpty()) {
-          item {
-            Text(
-              modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
-              text = "Select a group to edit"
-            )
-          }
-        } else {
-          item {
-            val controller = remember { ColorPickerController() }
+      item {
+        Row(
+          modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+          horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+        ) {
+          Button(
+            modifier = Modifier.weight(0.5f),
+            onClick = addColor
+          ) { Text("ADD COLOR") }
 
-            ImageColorPicker(
+          Button(
+            modifier = Modifier.weight(0.5f),
+            onClick = addProgram
+          ) { Text("ADD PROGRAM") }
+        }
+      }
+
+      item { Subheader { Text("Built in") } }
+
+      item {
+        Row {
+          ListItem(
+            modifier = Modifier
+              .weight(0.5f)
+              .clickable { updateProgram(Program.RAINBOW) },
+            title = { Text("Rainbow") },
+            leading = {
+              ColorListIcon(
+                modifier = Modifier.size(40.dp),
+                program = Program.RAINBOW
+              )
+            }
+          )
+        }
+      }
+
+      builtInColors
+        .sortedBy { it.id }
+        .chunked(2)
+        .forEach { row ->
+          item {
+            Row {
+              row.forEachIndexed { index, color ->
+                ListItem(
+                  modifier = Modifier
+                    .weight(0.5f)
+                    .clickable { updateColor(color) },
+                  title = { Text(color.id) },
+                  leading = {
+                    ColorListIcon(
+                      modifier = Modifier.size(40.dp),
+                      colors = listOf(color)
+                    )
+                  },
+                  contentPadding = PaddingValues(
+                    start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
+                    end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
+                  ),
+                  textPadding = PaddingValues(start = 16.dp)
+                )
+              }
+            }
+          }
+        }
+
+      item { Subheader { Text("Scenes") } }
+
+      val scenes = scenes.getOrElse { emptyList() }
+      scenes
+        .sortedBy { it.id }
+        .chunked(2)
+        .forEach { row ->
+          item {
+            Row {
+              row.forEachIndexed { index, scene ->
+                ListItem(
+                  modifier = Modifier
+                    .weight(0.5f)
+                    .clickable { applyScene(scene) },
+                  title = { Text(scene.id) },
+                  trailing = {
+                    PopupMenuButton {
+                      PopupMenuItem(onSelected = { openScene(scene) }) { Text("Open") }
+                      PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
+                    }
+                  },
+                  contentPadding = PaddingValues(
+                    start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
+                    end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
+                  ),
+                  textPadding = PaddingValues(start = 16.dp)
+                )
+              }
+            }
+          }
+        }
+
+      item {
+        Button(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+          onClick = addScene
+        ) { Text("ADD SCENE") }
+      }
+
+      val wappState = wappState.getOrElse { WappState() }
+      val lights = lights.getOrElse { emptyList() }
+
+      if (wappState.isConnected || lights.isNotEmpty()) {
+        item {
+          Subheader { Text("Devices") }
+        }
+
+        if (selectedLights.isNotEmpty()) {
+          item {
+            Button(
               modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
-                .padding(horizontal = 16.dp),
-              controller = controller
-            )
-
-            LaunchedEffect(controller.selectedColor) {
-              controller.selectedColor?.let {
-                updateColorPickerColor(it)
-              }
-            }
-
-            LaunchedEffect(groupConfig.program) {
-              if (groupConfig.program.id != Program.colorPickerId(selectedGroups.toList()))
-                controller.clear()
-            }
-          }
-
-          item {
-            val programName = when {
-              groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
-              groupConfig.program.id.isUUID ->
-                groupConfig.program.items.singleOrNull()
-                  ?.color
-                  ?.takeUnless { it.id.isUUID }
-                  ?.id
-                  ?: "Color"
-              else -> groupConfig.program.id
-            }
-
-            ListItem(
-              leading = {
-                ColorListIcon(
-                  modifier = Modifier.size(40.dp),
-                  program = groupConfig.program
-                )
-              },
-              title = { Text("Program") },
-              subtitle = { Text(programName) }
-            )
-          }
-
-          item {
-            SliderListItem(
-              value = groupConfig.brightness,
-              onValueChangeFinished = updateBrightness,
-              stepPolicy = incrementingStepPolicy(0.05f),
-              title = { Text("Brightness") },
-              valueText = { Text("${(it * 100f).roundToInt()}") }
-            )
-          }
-
-          item {
-            SliderListItem(
-              value = groupConfig.speed,
-              onValueChangeFinished = updateSpeed,
-              stepPolicy = incrementingStepPolicy(0.05f),
-              title = { Text("Speed") },
-              valueText = { Text("${(it * 100f).roundToInt()}") }
-            )
-          }
-
-          item {
-            SwitchListItem(
-              value = groupConfig.musicMode,
-              onValueChange = updateMusicMode,
-              title = { Text("Music mode") }
-            )
-          }
-
-          item {
-            SwitchListItem(
-              value = groupConfig.blackout,
-              onValueChange = updateBlackout,
-              title = { Text("Blackout") }
-            )
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+              onClick = regroupLights
+            ) { Text("REGROUP") }
           }
         }
 
         item {
-          Subheader { Text("Custom") }
-        }
-
-        val userColors = userColors.getOrElse { emptyList() }
-        val userPrograms = userPrograms.getOrElse { emptyList() }
-
-        (userColors.map { it.id to it } + userPrograms.map { it.id to it })
-          .sortedBy { it.first }
-          .chunked(2)
-          .forEach { row ->
-            item {
-              Row {
-                row.forEachIndexed { index, (id, item) ->
-                  fun <T> Any.map(
-                    color: (ApeColor) -> T,
-                    program: (Program) -> T
-                  ) = when (this) {
-                    is ApeColor -> color(this)
-                    is Program -> program(this)
-                    else -> throw AssertionError()
-                  }
-
-                  ListItem(
-                    modifier = Modifier
-                      .weight(0.5f)
-                      .clickable {
-                        item.map(
-                          color = { updateColor(it) },
-                          program = { updateProgram(it) }
-                        )
-                      },
-                    title = { Text(id) },
-                    leading = {
-                      ColorListIcon(
-                        modifier = Modifier.size(40.dp),
-                        colors = item.map(
-                          color = { listOf(it) },
-                          program = { it.items.map { it.color } }
-                        )
-                      )
-                    },
-                    trailing = {
-                      PopupMenuButton {
-                        PopupMenuItem(onSelected = {
-                          item.map(
-                            color = { openColor(it) },
-                            program = { openProgram(it) }
-                          )
-                        }) { Text("Open") }
-                        PopupMenuItem(onSelected = {
-                          item.map(
-                            color = { deleteColor(it) },
-                            program = { deleteProgram(it) }
-                          )
-                        }) { Text("Delete") }
-                      }
-                    },
-                    contentPadding = PaddingValues(
-                      start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
-                      end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
-                    ),
-                    textPadding = PaddingValues(start = 16.dp)
-                  )
-                }
-              }
-            }
-          }
-
-        item {
-          Row(
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-          ) {
-            Button(
-              modifier = Modifier.weight(0.5f),
-              onClick = addColor
-            ) { Text("ADD COLOR") }
-
-            Button(
-              modifier = Modifier.weight(0.5f),
-              onClick = addProgram
-            ) { Text("ADD PROGRAM") }
-          }
-        }
-
-        item { Subheader { Text("Built in") } }
-
-        item {
-          Row {
-            ListItem(
-              modifier = Modifier
-                .weight(0.5f)
-                .clickable { updateProgram(Program.RAINBOW) },
-              title = { Text("Rainbow") },
-              leading = {
-                ColorListIcon(
-                  modifier = Modifier.size(40.dp),
-                  program = Program.RAINBOW
-                )
-              }
-            )
-          }
-        }
-
-        builtInColors
-          .sortedBy { it.id }
-          .chunked(2)
-          .forEach { row ->
-            item {
-              Row {
-                row.forEachIndexed { index, color ->
-                  ListItem(
-                    modifier = Modifier
-                      .weight(0.5f)
-                      .clickable { updateColor(color) },
-                    title = { Text(color.id) },
-                    leading = {
-                      ColorListIcon(
-                        modifier = Modifier.size(40.dp),
-                        colors = listOf(color)
-                      )
-                    },
-                    contentPadding = PaddingValues(
-                      start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
-                      end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
-                    ),
-                    textPadding = PaddingValues(start = 16.dp)
-                  )
-                }
-              }
-            }
-          }
-
-        item { Subheader { Text("Scenes") } }
-
-        val scenes = scenes.getOrElse { emptyList() }
-        scenes
-          .sortedBy { it.id }
-          .chunked(2)
-          .forEach { row ->
-            item {
-              Row {
-                row.forEachIndexed { index, scene ->
-                  ListItem(
-                    modifier = Modifier
-                      .weight(0.5f)
-                      .clickable { applyScene(scene) },
-                    title = { Text(scene.id) },
-                    trailing = {
-                      PopupMenuButton {
-                        PopupMenuItem(onSelected = { openScene(scene) }) { Text("Open") }
-                        PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
-                      }
-                    },
-                    contentPadding = PaddingValues(
-                      start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
-                      end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
-                    ),
-                    textPadding = PaddingValues(start = 16.dp)
-                  )
-                }
-              }
-            }
-          }
-
-        item {
-          Button(
+          FlowRow(
             modifier = Modifier
-              .fillMaxWidth()
-              .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            onClick = addScene
-          ) { Text("ADD SCENE") }
-        }
-
-        val wappState = wappState.getOrElse { WappState() }
-        val lights = lights.getOrElse { emptyList() }
-
-        if (wappState.isConnected || lights.isNotEmpty()) {
-          item {
-            Subheader { Text("Devices") }
-          }
-
-          if (selectedLights.isNotEmpty()) {
-            item {
-              Button(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                onClick = regroupLights
-              ) { Text("REGROUP") }
-            }
-          }
-
-          item {
-            FlowRow(
-              modifier = Modifier
-                .padding(16.dp),
-              mainAxisSpacing = 8.dp,
-              crossAxisSpacing = 8.dp,
-              crossAxisAlignment = FlowCrossAxisAlignment.Center
+              .padding(16.dp),
+            mainAxisSpacing = 8.dp,
+            crossAxisSpacing = 8.dp,
+            crossAxisAlignment = FlowCrossAxisAlignment.Center
+          ) {
+            LongClickChip(
+              selected = false,
+              onClick = {},
+              onLongClick = null
             ) {
-              LongClickChip(
-                selected = false,
-                onClick = {},
-                onLongClick = null
-              ) {
-                Text(
-                  buildString {
-                    append("Wapp")
+              Text(
+                buildString {
+                  append("Wapp")
 
-                    if (wappState.id != null)
-                      append(" ${wappState.id}")
+                  if (wappState.id != null)
+                    append(" ${wappState.id}")
 
-                    if (wappState.battery != null) {
-                      if (wappState.battery < 0f) {
-                        append(", charging")
-                      } else {
-                        append(", bat ${(wappState.battery * 100).toInt()}%")
-                      }
+                  if (wappState.battery != null) {
+                    if (wappState.battery < 0f) {
+                      append(", charging")
+                    } else {
+                      append(", bat ${(wappState.battery * 100).toInt()}%")
                     }
                   }
-                )
-              }
+                }
+              )
+            }
 
-              lights
-                .groupBy { it.group }
-                .mapValues { it.value.sortedBy { it.id } }
-                .toList()
-                .sortedBy { it.first }
-                .forEach { (group, groupLights) ->
-                  Text("#$group")
-                  groupLights.forEach { light ->
-                    LongClickChip(
-                      selected = light.id in selectedLights,
-                      onClick = { toggleLightSelection(light) },
-                      onLongClick = { toggleLightSelection(light) }
-                    ) {
-                      Text(
-                        buildString {
-                          append(
-                            "${
-                              light.type?.name?.toLowerCase()?.capitalize() ?: "Light"
-                            } ${light.id}"
-                          )
-                          if (light.battery != null) {
-                            if (light.battery < 0f) {
-                              append(", charging")
-                            } else {
-                              append(", bat ${(light.battery * 100).toInt()}%")
-                            }
+            lights
+              .groupBy { it.group }
+              .mapValues { it.value.sortedBy { it.id } }
+              .toList()
+              .sortedBy { it.first }
+              .forEach { (group, groupLights) ->
+                Text("#$group")
+                groupLights.forEach { light ->
+                  LongClickChip(
+                    selected = light.id in selectedLights,
+                    onClick = { toggleLightSelection(light) },
+                    onLongClick = { toggleLightSelection(light) }
+                  ) {
+                    Text(
+                      buildString {
+                        append(
+                          "${
+                            light.type?.name?.toLowerCase()?.capitalize() ?: "Light"
+                          } ${light.id}"
+                        )
+                        if (light.battery != null) {
+                          if (light.battery < 0f) {
+                            append(", charging")
+                          } else {
+                            append(", bat ${(light.battery * 100).toInt()}%")
                           }
                         }
-                      )
-                    }
+                      }
+                    )
                   }
                 }
-            }
+              }
           }
         }
       }
     }
   }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable private fun LongClickChip(
