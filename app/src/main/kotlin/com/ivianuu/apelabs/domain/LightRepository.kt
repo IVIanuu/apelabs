@@ -95,8 +95,8 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
           lightRemovalJobs.remove(light.id)?.cancel()
 
           lightRemovalJobs[light.id] = launch {
-            // lights to ping every 8 seconds we wait 2 * 8 + 1
-            delay(17.seconds)
+            // lights to ping every 8 seconds we wait 3 * 8 + 1
+            delay(25.seconds)
             log { "${light.id} remove light" }
             lights = lights
               .filter { it.id != light.id }
