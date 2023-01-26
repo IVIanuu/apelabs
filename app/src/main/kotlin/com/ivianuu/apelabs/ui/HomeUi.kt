@@ -57,6 +57,7 @@ import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.asProgram
 import com.ivianuu.apelabs.data.isUUID
 import com.ivianuu.apelabs.data.merge
+import com.ivianuu.apelabs.data.randomId
 import com.ivianuu.apelabs.data.toApeColor
 import com.ivianuu.apelabs.domain.ColorRepository
 import com.ivianuu.apelabs.domain.GroupConfigRepository
@@ -91,6 +92,8 @@ import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
 
@@ -106,6 +109,9 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
           PopupMenuButton {
             PopupMenuItem(onSelected = saveColor) {
               Text("Save color")
+            }
+            PopupMenuItem(onSelected = saveScene) {
+              Text("Save scene")
             }
           }
         }
@@ -567,7 +573,8 @@ data class HomeModel(
   val applyScene: (Scene) -> Unit,
   val openScene: (Scene) -> Unit,
   val addScene: () -> Unit,
-  val deleteScene: (Scene) -> Unit
+  val deleteScene: (Scene) -> Unit,
+  val saveScene: () -> Unit
 )
 
 context(ApeLabsPrefsContext, ColorRepository, GroupConfigRepository, LightRepository,
@@ -726,6 +733,23 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
       navigator.push(TextInputKey(label = "Name.."))
         ?.let { navigator.push(SceneKey(createScene(it).id)) }
     },
-    deleteScene = action { scene -> deleteScene(scene.id) }
+    deleteScene = action { scene -> deleteScene(scene.id) },
+    saveScene = action {
+      navigator.push(TextInputKey(label = "Name.."))
+        ?.let { id ->
+          updateScene(
+            Scene(
+              id = id,
+              groupConfigs = groupConfigs
+                .first()
+                .map {
+                  if (!it.program.id.isUUID) it
+                  else it.copy(program = it.program.copy(id = randomId()))
+                }
+                .associate { it.id.toInt() to it.copy(id = randomId()) }
+            )
+          )
+        }
+    }
   )
 }
