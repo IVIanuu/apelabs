@@ -13,37 +13,44 @@ import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.coroutines.share
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
-import com.ivianuu.essentials.time.seconds
+import com.ivianuu.essentials.time.milliseconds
+import com.ivianuu.essentials.time.minutes
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
+import com.ivianuu.injekt.inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
-@Provide @Scoped<AppScope> class LightRepository(
-  private val context: IOContext
-) {
-  val lights: Flow<List<Light>> = stateFlow {
-    var lights by remember { mutableStateOf(emptyList<Light>()) }
+@Provide
+@Scoped<AppScope>
+class LightRepository(private val context: IOContext) {
+  val lights: SharedFlow<List<Light>> = stateFlow {
+    var lights by remember {
+      mutableStateOf(
+        inject<LightRepository>().lights.replayCache.firstOrNull() ?: emptyList()
+      )
+    }
     val lightRemovalJobs = remember { mutableMapOf<Int, Job>() }
 
     LaunchedEffect(true) {
       _groupLightsChangedEvents.collect { event ->
         lights = lights
           .map {
-            if (it.id == event.lightId) it.copy(group = event.group)
+            if (it.id in event.lightIds) it.copy(group = event.group)
             else it
           }
       }
@@ -65,7 +72,6 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
           }
         }
         .mapNotNull { message ->
-          log { "on message ${message.contentToString()}" }
           if ((message.getOrNull(0)?.toInt() == 82 ||
                 message.getOrNull(0)?.toInt() == 83) &&
             // -112 is the wapp
@@ -81,10 +87,13 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
             )
 
             val oldLight = lights.singleOrNull { it.id == id }
-            if ((message[0].toInt() == 82 && oldLight == null) ||
-              (oldLight != null && light.group != oldLight.group)
-            )
-              _groupLightsChangedEvents.tryEmit(GroupLightChangedEvent(light.group, light.id))
+            if (message[0].toInt() == 82 && oldLight == null)
+              _groupLightsChangedEvents.tryEmit(
+                GroupLightsChangedEvent(
+                  light.group,
+                  listOf(light.id)
+                )
+              )
 
             light
           } else null
@@ -95,8 +104,7 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
           lightRemovalJobs.remove(light.id)?.cancel()
 
           lightRemovalJobs[light.id] = launch {
-            // lights to ping every 8 seconds we wait 3 * 8 + 1
-            delay(25.seconds)
+            delay(1.minutes)
             log { "${light.id} remove light" }
             lights = lights
               .filter { it.id != light.id }
@@ -110,33 +118,47 @@ context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
     lights
       .sortedBy { it.id }
   }
-    .share(SharingStarted.WhileSubscribed(), 1)
     .distinctUntilChanged()
+    .share(SharingStarted.WhileSubscribed(2000), 1)
 
-  private val _groupLightsChangedEvents = EventFlow<GroupLightChangedEvent>()
+  private val _groupLightsChangedEvents = EventFlow<GroupLightsChangedEvent>()
   val groupLightsChangedEvents get() = _groupLightsChangedEvents
 
-  data class GroupLightChangedEvent(val group: Int, val lightId: Int?)
+  data class GroupLightsChangedEvent(val group: Int, val lightIds: List<Int>)
 
-  suspend fun flashLight(id: Int) {
+  suspend fun flashLights(ids: List<Int>) {
+    if (ids.isEmpty()) return
+
     wapps.first().parForEach { wapp ->
       withWapp(wapp.address) {
-        write(byteArrayOf(72, 100) + id.toByteArray().dropLast(1))
+        while (coroutineContext.isActive) {
+          ids
+            .shuffled()
+            .forEach { id ->
+              write(byteArrayOf(72, 100) + id.toByteArray().dropLast(1))
+              delay(100.milliseconds)
+            }
+        }
       }
     }
   }
 
-  suspend fun regroupLight(id: Int, group: Int) = withContext(context) {
+  suspend fun regroupLights(ids: List<Int>, group: Int) = withContext(context) {
     wapps.first().parForEach { wapp ->
       withWapp(wapp.address) {
-        write(
-          byteArrayOf(82, 10) +
-              id.toByteArray()
-                .dropLast(1) +
-              byteArrayOf((group - 1).toByte(), 1, 0, 2, 13, 10)
-        )
-        _groupLightsChangedEvents.tryEmit(GroupLightChangedEvent(group, id))
+        ids.forEach { id ->
+          repeat(2) {
+            write(
+              byteArrayOf(82, 10) +
+                  id.toByteArray()
+                    .dropLast(1) +
+                  byteArrayOf((group - 1).toByte(), 1, 0, 2, 13, 10)
+            )
+          }
+        }
       }
     }
+
+    _groupLightsChangedEvents.tryEmit(GroupLightsChangedEvent(group, ids))
   }
 }

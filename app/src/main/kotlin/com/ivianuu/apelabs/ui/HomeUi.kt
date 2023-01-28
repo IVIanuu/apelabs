@@ -66,8 +66,10 @@ import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
 import com.ivianuu.apelabs.domain.WappRepository
 import com.ivianuu.essentials.ResourceProvider
+import com.ivianuu.essentials.app.AppForegroundState
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bindResource
+import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
@@ -93,7 +95,7 @@ import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
 
@@ -576,7 +578,7 @@ data class HomeModel(
   val saveScene: () -> Unit
 )
 
-context(ApeLabsPrefsContext, ColorRepository, GroupConfigRepository, LightRepository,
+context(ApeLabsPrefsContext, AppForegroundState.Provider, ColorRepository, GroupConfigRepository, LightRepository,
 KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     @Provide fun homeModel() = Model {
   val prefs by pref.data.collectAsState(ApeLabsPrefs())
@@ -595,16 +597,16 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     )
   }
 
-  val lights = lights.bindResource()
+  val lights = appForegroundState
+    .flatMapLatest {
+      if (it == AppForegroundState.FOREGROUND) lights
+      else infiniteEmptyFlow()
+    }
+    .bindResource()
   var selectedLights by remember { mutableStateOf(emptySet<Int>()) }
 
   LaunchedEffect(selectedLights) {
-    selectedLights.parForEach { lightId ->
-      while (coroutineContext.isActive) {
-        flashLight(lightId)
-        delay(2.seconds)
-      }
-    }
+    flashLights(selectedLights.toList())
   }
 
   val colorPickerId = Program.colorPickerId(prefs.selectedGroups.toList())
@@ -652,7 +654,13 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     updateBlackout = action { value ->
       updateConfig { copy(blackout = value) }
     },
-    wappState = wappState.bindResource(),
+    wappState = remember {
+      appForegroundState
+        .flatMapLatest {
+          if (it == AppForegroundState.FOREGROUND) wappState
+          else infiniteEmptyFlow()
+        }
+    }.bindResource(),
     lights = lights,
     selectedLights = selectedLights,
     toggleLightSelection = action { light ->
@@ -664,8 +672,9 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     regroupLights = action {
       navigator.push(ListKey(items = GROUPS) { toString() })
         ?.let { group ->
-          selectedLights.forEach { regroupLight(it, group) }
-          selectedLights = emptySet()
+          regroupLights(selectedLights.toList()
+            .also { selectedLights = emptySet() }, group
+          )
         }
     },
     userColors = userColors.bindResource(),

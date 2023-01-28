@@ -22,9 +22,11 @@ import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
+import com.ivianuu.injekt.inject
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -39,6 +41,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.time.Duration.Companion.seconds
 
 context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManager, WappRemote)
 @Provide @Scoped<AppScope> class WappRepository(context: IOContext) {
@@ -54,36 +57,38 @@ context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManag
   private val foundWapps = mutableSetOf<Wapp>()
   private val wappsLock = Mutex()
 
-  val wappState: Flow<WappState>
-    get() = wapps
-      .flatMapLatest { wapps ->
-        if (wapps.isEmpty()) flowOf(WappState(null, false, null))
-        else callbackFlow<Pair<Wapp, ByteArray>> {
-          wapps.parForEach { wapp ->
-            trySend(wapp to byteArrayOf())
-
-            withWapp(wapp.address) {
-              messages.collect {
-                trySend(wapp to it)
-              }
+  val wappState: SharedFlow<WappState> = wapps
+    .flatMapLatest { wapps ->
+      if (wapps.isEmpty()) flowOf(WappState(null, false, null))
+      else callbackFlow<Pair<Wapp, ByteArray>> {
+        wapps.parForEach { wapp ->
+          withWapp(wapp.address) {
+            messages.collect {
+              trySend(wapp to it)
             }
           }
-          awaitClose()
         }
-          .filter {
-            it.second.isEmpty() ||
-                (it.second.getOrNull(0)?.toInt() == 83 &&
-                    it.second.getOrNull(1)?.toInt() == -112)
-          }
-          .map { (wapp, message) ->
-            WappState(
-              wapp.id,
-              true,
-              message.getOrNull(6)?.let { it / 100f })
-          }
-          .onStart { emit(WappState(null, true, null)) }
+        awaitClose()
       }
-      .distinctUntilChanged()
+        .filter {
+          it.second.getOrNull(0)?.toInt() == 83 &&
+              it.second.getOrNull(1)?.toInt() == -112
+        }
+        .map { (wapp, message) ->
+          WappState(
+            wapp.id,
+            true,
+            message.getOrNull(6)?.let { it / 100f })
+        }
+        .onStart {
+          emit(
+            inject<WappRepository>().wappState.replayCache.firstOrNull()
+              ?: WappState(null, true, null)
+          )
+        }
+    }
+    .distinctUntilChanged()
+    .share(SharingStarted.WhileSubscribed(2000), 1)
 
   @SuppressLint("MissingPermission")
   private fun bleWapps(): Flow<List<Wapp>> = callbackFlow {
