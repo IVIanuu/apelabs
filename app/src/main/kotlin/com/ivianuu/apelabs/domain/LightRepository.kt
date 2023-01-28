@@ -15,6 +15,7 @@ import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.minutes
+import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
@@ -97,19 +98,19 @@ class LightRepository(private val context: IOContext) {
                 )
               )
 
-            light
+            light to false
           } else null
         }
-        .onEach { log { "${it.id} ping" } }
+        .onEach { log { "${it.first.id} ping" } }
         .onStart {
           // ensure that we launch a light removal job for existing lights
-          lights.forEach { emit(it) }
+          lights.forEach { emit(it to true) }
         }
-        .collect { light ->
+        .collect { (light, fromCache) ->
           lightRemovalJobs.remove(light.id)?.cancel()
 
           lightRemovalJobs[light.id] = launch {
-            delay(1.minutes)
+            delay(if (fromCache) 17.seconds else 1.minutes)
             log { "${light.id} remove light" }
             lights = lights
               .filter { it.id != light.id }
