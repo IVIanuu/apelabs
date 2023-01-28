@@ -30,6 +30,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -98,9 +100,12 @@ class LightRepository(private val context: IOContext) {
             light
           } else null
         }
+        .onEach { log { "${it.id} ping" } }
+        .onStart {
+          // ensure that we launch a light removal job for existing lights
+          lights.forEach { emit(it) }
+        }
         .collect { light ->
-          log { "${light.id} ping" }
-
           lightRemovalJobs.remove(light.id)?.cancel()
 
           lightRemovalJobs[light.id] = launch {
