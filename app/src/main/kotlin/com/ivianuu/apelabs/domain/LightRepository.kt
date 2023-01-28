@@ -147,6 +147,7 @@ class LightRepository(private val context: IOContext) {
     wapps.first().parForEach { wapp ->
       withWapp(wapp.address) {
         ids.forEach { id ->
+          // works more reliable if we send it twice:D
           repeat(2) {
             write(
               byteArrayOf(82, 10) +
