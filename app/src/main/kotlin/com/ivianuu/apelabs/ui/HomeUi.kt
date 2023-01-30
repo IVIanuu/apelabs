@@ -423,7 +423,7 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
 
       if (wappState.isConnected || lights.isNotEmpty()) {
         item {
-          Subheader { Text("Devices") }
+          Subheader { Text("Devices ${lights.size}") }
         }
 
         item {
