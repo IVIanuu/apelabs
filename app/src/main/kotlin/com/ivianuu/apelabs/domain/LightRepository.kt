@@ -74,6 +74,7 @@ class LightRepository(private val context: IOContext) {
             awaitClose()
           }
         }
+        .onEach { log { "on message ${it.contentToString()}" } }
         .mapNotNull { message ->
           if ((message.getOrNull(0)?.toInt() == 82 ||
                 message.getOrNull(0)?.toInt() == 83) &&
