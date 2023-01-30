@@ -159,30 +159,32 @@ data class ProgramKey(val id: String) : Key<Unit>
   }
 }
 
-private val FloatToDuration = mapOf(
-  0f to Duration.ZERO,
-  1f to 250.milliseconds,
-  2f to 500.milliseconds,
-  3f to 1.seconds,
-  4f to 2.seconds,
-  5f to 3.seconds,
-  6f to 4.seconds,
-  7f to 5.seconds,
-  8f to 10.seconds,
-  9f to 20.seconds,
-  10f to 30.seconds,
-  11f to 45.seconds,
-  12f to 1.minutes,
-  13f to 2.minutes,
-  14f to 3.minutes,
-  15f to 4.minutes,
-  16f to 5.minutes,
-  17f to 10.minutes,
-  18f to 20.minutes,
-  19f to 30.minutes,
-  20f to 45.minutes,
-  21f to 1.hours
+private val FloatToDuration = listOf(
+  Duration.ZERO,
+  250.milliseconds,
+  500.milliseconds,
+  1.seconds,
+  2.seconds,
+  3.seconds,
+  4.seconds,
+  5.seconds,
+  10.seconds,
+  20.seconds,
+  30.seconds,
+  45.seconds,
+  1.minutes,
+  2.minutes,
+  3.minutes,
+  4.minutes,
+  5.minutes,
+  10.minutes,
+  20.minutes,
+  30.minutes,
+  45.minutes,
+  1.hours
 )
+  .mapIndexed { index, duration -> index.toFloat() to duration }
+  .toMap()
 
 private val DurationToFloat = FloatToDuration
   .map { it.value to it.key }
