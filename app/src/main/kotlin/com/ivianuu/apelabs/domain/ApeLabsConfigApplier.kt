@@ -1,5 +1,6 @@
 package com.ivianuu.apelabs.domain
 
+import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
@@ -10,69 +11,97 @@ import com.ivianuu.essentials.coroutines.ExitCase
 import com.ivianuu.essentials.coroutines.combine
 import com.ivianuu.essentials.coroutines.guarantee
 import com.ivianuu.essentials.coroutines.onCancel
+import com.ivianuu.essentials.coroutines.par
 import com.ivianuu.essentials.coroutines.parForEach
+import com.ivianuu.essentials.coroutines.timer
 import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
+import com.ivianuu.essentials.time.seconds
+import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.injekt.Provide
+import com.ivianuu.injekt.coroutines.NamedCoroutineContext
+import com.ivianuu.injekt.coroutines.NamedCoroutineScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import kotlin.random.Random
 import kotlin.time.Duration
 
-context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository, PreviewRepository, WappRemote, WappRepository)
-    @Provide fun apeLabsConfigApplier() = ScopeWorker<AppForegroundScope> {
-  wapps.collectLatest { wapps ->
-    if (wapps.isEmpty()) return@collectLatest
+context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository,
+NamedCoroutineScope<UiScope>, PreviewRepository, WappRemote, WappRepository)
+    @Provide
+fun apeLabsConfigApplier(audioEvents: Flow<AudioEvent>) = ScopeWorker<UiScope> {
+  par(
+    { audioEvents.collect() },
+    {
+      wapps.collectLatest { wapps ->
+        if (wapps.isEmpty()) return@collectLatest
 
-    wapps.parForEach { wapp ->
-      val cache = Cache()
+        wapps.parForEach { wapp ->
+          val cache = Cache()
 
-      withWapp(wapp.address) {
-        combine(groupConfigs, previewGroupConfigs)
-          .map { (groupConfigs, previewGroupConfigs) ->
-            GROUPS
-              .associateWith { group ->
-                previewGroupConfigs.singleOrNull { it.id == group.toString() }
-                  ?: groupConfigs.single { it.id == group.toString() }
+          withWapp(wapp.address) {
+            combine(groupConfigs, previewGroupConfigs)
+              .map { (groupConfigs, previewGroupConfigs) ->
+                GROUPS
+                  .associateWith { group ->
+                    previewGroupConfigs.singleOrNull { it.id == group.toString() }
+                      ?: groupConfigs.single { it.id == group.toString() }
+                  }
               }
-          }
-          .distinctUntilChanged()
-          .flatMapLatest { groupConfigs ->
-            groupLightsChangedEvents
-              .map { it.group }
-              .onEach { changedGroup ->
-                log { "force reapply for $changedGroup" }
-                cache.lastProgram.remove(changedGroup)
-                cache.lastBrightness.remove(changedGroup)
-                cache.lastSpeed.remove(changedGroup)
-                cache.lastMusicMode.remove(changedGroup)
+              .distinctUntilChanged()
+              .flatMapLatest { groupConfigs ->
+                groupLightsChangedEvents
+                  .map { it.group }
+                  .onEach { changedGroup ->
+                    log { "force reapply for $changedGroup" }
+                    cache.lastProgram.remove(changedGroup)
+                    cache.lastBrightness.remove(changedGroup)
+                    cache.lastSpeed.remove(changedGroup)
+                    cache.lastMusicMode.remove(changedGroup)
+                  }
+                  .onStart<Any?> { emit(Unit) }
+                  .map { groupConfigs }
               }
-              .onStart<Any?> { emit(Unit) }
-              .map { groupConfigs }
+              .collectLatest { applyGroupConfig(audioEvents, it, cache) }
           }
-          .collectLatest { applyGroupConfig(it, cache) }
+        }
       }
     }
-  }
+  )
 }
 
 private class Cache {
-  val lastProgram = mutableMapOf<Int, Program>()
+  val lastProgram = mutableMapOf<Int, Pair<Program, Boolean>>()
+  var lastProgramJob = mutableMapOf<Int, Job?>()
   val lastBrightness = mutableMapOf<Int, Float>()
   val lastSpeed = mutableMapOf<Int, Float>()
   val lastMusicMode = mutableMapOf<Int, Boolean>()
 }
 
-context(Logger, WappServer) private suspend fun applyGroupConfig(
+context(CoroutineScope, Logger, WappServer) private suspend fun applyGroupConfig(
+  audioEvents: Flow<AudioEvent>,
   configs: Map<Int, GroupConfig>,
   cache: Cache
 ) {
@@ -112,21 +141,24 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
     get = {
       // erase ids here to make caching work correctly
       // there could be the same program just with different ids
-      if (program == Program.RAINBOW) program
+      if (program == Program.RAINBOW) program to false
       else program.copy(
         id = "",
         items = program.items
           .map { it.copy(color = it.color.copy(id = "")) }
-      )
+      ) to strobe
     },
     cache = cache.lastProgram,
-    apply = { value, groups ->
+    apply = { (program, strobe), groups ->
+      groups.forEach { cache.lastProgramJob[it]?.cancel() }
+
       when {
-        value.id == Program.RAINBOW.id -> {
+        program.id == Program.RAINBOW.id -> {
           write(byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0))
         }
-        value.items.size == 1 -> {
-          val color = value.items.single().color
+
+        program.items.size == 1 -> {
+          val color = program.items.single().color
           write(
             byteArrayOf(
               68,
@@ -142,23 +174,63 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
           )
         }
         else -> {
-          value.items.forEachIndexed { index, item ->
-            write(
-              byteArrayOf(
-                81,
-                index.toByte(),
-                value.items.size.toByte(),
-                item.color.red.toColorByte(),
-                item.color.green.toColorByte(),
-                item.color.blue.toColorByte(),
-                item.color.white.toColorByte(),
-                0,
-                item.fadeTime.toDurationByte(),
-                0,
-                item.holdTime.toDurationByte(),
-                groups.toGroupByte()
+          if (strobe) {
+            groups.forEach { group ->
+              cache.lastProgramJob[group] = launch {
+                var lastColor: ApeColor? = null
+                audioEvents
+                  .conflate()
+                  .filter {
+                    Random(System.currentTimeMillis()).nextInt(1, 4)
+                      .also { log { "change colors ? $it" } } == 1
+                  }
+                  .onStart<Any?> { emit(Unit) }
+                  .map {
+                    program.items
+                      .map { it.color }
+                      .shuffled()
+                      .first { it != lastColor }
+                  }
+                  .collect { color ->
+                    write(
+                      byteArrayOf(
+                        68,
+                        68,
+                        listOf(group).toGroupByte(),
+                        4,
+                        30,
+                        color.red.toColorByte(),
+                        color.green.toColorByte(),
+                        color.blue.toColorByte(),
+                        color.white.toColorByte()
+                      )
+                    )
+
+                    lastColor = color
+
+                    delay(2.seconds)
+                  }
+              }
+            }
+          } else {
+            program.items.forEachIndexed { index, item ->
+              write(
+                byteArrayOf(
+                  81,
+                  index.toByte(),
+                  program.items.size.toByte(),
+                  item.color.red.toColorByte(),
+                  item.color.green.toColorByte(),
+                  item.color.blue.toColorByte(),
+                  item.color.white.toColorByte(),
+                  0,
+                  item.fadeTime.toDurationByte(),
+                  0,
+                  item.holdTime.toDurationByte(),
+                  groups.toGroupByte()
+                )
               )
-            )
+            }
           }
         }
       }

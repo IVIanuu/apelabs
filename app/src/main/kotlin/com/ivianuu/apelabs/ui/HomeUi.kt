@@ -236,6 +236,14 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
 
         item {
           SwitchListItem(
+            value = groupConfig.strobe,
+            onValueChange = updateStrobe,
+            title = { Text("Strobe") }
+          )
+        }
+
+        item {
+          SwitchListItem(
             value = groupConfig.blackout,
             onValueChange = updateBlackout,
             title = { Text("Blackout") }
@@ -551,6 +559,7 @@ data class HomeModel(
   val updateBrightness: (Float) -> Unit,
   val updateSpeed: (Float) -> Unit,
   val updateMusicMode: (Boolean) -> Unit,
+  val updateStrobe: (Boolean) -> Unit,
   val updateBlackout: (Boolean) -> Unit,
   val wappState: Resource<WappState>,
   val lights: Resource<List<Light>>,
@@ -650,6 +659,9 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     },
     updateMusicMode = action { value ->
       updateConfig { copy(musicMode = value) }
+    },
+    updateStrobe = action { value ->
+      updateConfig { copy(strobe = value) }
     },
     updateBlackout = action { value ->
       updateConfig { copy(blackout = value) }
