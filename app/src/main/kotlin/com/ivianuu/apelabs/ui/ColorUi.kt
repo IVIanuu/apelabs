@@ -71,6 +71,9 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
     Dialog(
       applyContentPadding = false,
       content = {
+        val userColors = userColors
+          .bind(emptyList())
+
         VerticalList(
           modifier = Modifier.padding(horizontal = 8.dp)
         ) {
@@ -151,6 +154,69 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
               color = Color.White
             )
           }
+
+          @Composable fun ColorList(
+            colors: List<ApeColor>,
+            deletable: Boolean,
+            title: String
+          ) {
+            Subheader { Text(title) }
+
+            FlowRow {
+              colors
+                .toList()
+                .sortedBy { it.id.lowercase() }
+                .forEach { color ->
+                  Chip(
+                    modifier = Modifier
+                      .padding(start = 16.dp),
+                    onClick = {
+                      id = color.id
+                      red = color.red
+                      green = color.green
+                      blue = color.blue
+                      white = color.white
+                    },
+                    colors = ChipDefaults.chipColors(
+                      backgroundColor = color.toComposeColor(),
+                      contentColor = guessingContentColorFor(color.toComposeColor())
+                    )
+                  ) {
+                    Text(color.id)
+
+                    if (deletable) {
+                      Spacer(Modifier.padding(start = 8.dp))
+
+                      Box(modifier = Modifier.requiredSize(18.dp)) {
+                        PopupMenuButton {
+                          PopupMenuItem(
+                            onSelected = action { deleteColor(color.id) }
+                          ) { Text("Delete") }
+                        }
+                      }
+                    }
+                  }
+                }
+            }
+          }
+
+          if (userColors.isNotEmpty()) {
+            item {
+              ColorList(
+                userColors,
+                true,
+                "Custom"
+              )
+            }
+          }
+
+          item {
+            ColorList(
+              BuiltInColors,
+              false,
+              "Built in"
+            )
+          }
         }
       },
       buttons = {
@@ -165,11 +231,20 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
           )
         }
 
+        OutlinedButton(
+          onClick = action {
+            navigator.push(TextInputKey(label = "Name.."))
+              ?.let {
+                id = it
+                updateColor(currentColor())
+              }
+          }
+        ) { Text("SAVE") }
+
         Button(onClick = action {
-          updateColor(currentColor())
           navigator.pop(key, currentColor())
         }) {
-          Text("SAVE")
+          Text("OK")
         }
       }
     )
