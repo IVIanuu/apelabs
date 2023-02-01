@@ -9,10 +9,10 @@ import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
 import com.ivianuu.essentials.coroutines.share
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.logging.Logger
+import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.onFailure
 import com.ivianuu.essentials.onSuccess
 import com.ivianuu.essentials.time.Clock
-import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.util.BroadcastsFactory
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.common.Scoped
@@ -29,19 +29,21 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.serialization.Serializable
 import kotlin.math.abs
 import kotlin.math.sqrt
+import kotlin.random.Random
 
 context(BroadcastsFactory, Logger, NamedCoroutineScope<AppScope>)
     @Provide
-fun audioEvents(audioSessionPref: DataStore<AudioSessionPrefs>): @Scoped<AppScope> Flow<AudioEvent> =
-  audioSessions(audioSessionPref)
+fun audioEvents(sessions: Flow<List<Int>>): @Scoped<AppScope> Flow<AudioEvent> =
+  sessions
     .flatMapLatest {
       if (it.isEmpty()) infiniteEmptyFlow()
-      else audioEvents(it.last(), 120)
+      else audioEvents(it.last(), listOf(80))
     }
     .share(SharingStarted.WhileSubscribed(), 0)
 
-context(BroadcastsFactory)
-    private fun audioSessions(audioSessionPref: DataStore<AudioSessionPrefs>) =
+context(BroadcastsFactory, NamedCoroutineScope<AppScope>)
+    @Provide
+fun audioSessions(pref: DataStore<AudioSessionPrefs>): @Scoped<AppScope> Flow<List<Int>> =
   callbackFlow<List<Int>> {
     val audioSessions = mutableListOf<Int>()
 
@@ -57,7 +59,7 @@ context(BroadcastsFactory)
         } to it.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION, -1)
       }
       .onStart {
-        audioSessionPref.data.first().knownAudioSessions.forEach {
+        pref.data.first().knownAudioSessions.forEach {
           emit(AudioSessionEvent.START to it)
         }
       }
@@ -67,14 +69,14 @@ context(BroadcastsFactory)
         when (event) {
           AudioSessionEvent.START -> {
             audioSessions += sessionId
-            audioSessionPref.updateData {
+            pref.updateData {
               copy(
                 knownAudioSessions = knownAudioSessions.toMutableSet().apply { add(sessionId) })
             }
           }
 
           AudioSessionEvent.STOP -> {
-            audioSessionPref.updateData {
+            pref.updateData {
               copy(
                 knownAudioSessions = knownAudioSessions.toMutableSet()
                   .apply { remove(sessionId) })
@@ -85,6 +87,7 @@ context(BroadcastsFactory)
         send(audioSessions.toList())
       }
   }.distinctUntilChanged()
+    .share(SharingStarted.WhileSubscribed(), 1)
 
 private enum class AudioSessionEvent {
   START, STOP
@@ -98,11 +101,11 @@ data class AudioSessionPrefs(val knownAudioSessions: Set<Int> = emptySet()) {
   }
 }
 
-data class AudioEvent(val power: Double)
+object AudioEvent
 
 context(Clock, Logger) fun audioEvents(
   sessionId: Int,
-  frequency: Int
+  frequencies: List<Int>
 ) = callbackFlow<AudioEvent> {
   var visualizer: Visualizer? = null
   var attempt = 0
@@ -114,10 +117,9 @@ context(Clock, Logger) fun audioEvents(
     attempt++
   }
 
-  var runningSoundAvg = 0.0
-  var currentAvgEnergy = 0.0
-  var samplesPerSecond = 0
-  var lastTimestamp = now()
+  val windowRMS = 16
+  val window = mutableListOf<Double>()
+  val sensitivity = 2f
 
   val captureListener: Visualizer.OnDataCaptureListener = object :
     Visualizer.OnDataCaptureListener {
@@ -133,40 +135,77 @@ context(Clock, Logger) fun audioEvents(
       bytes: ByteArray,
       samplingRate: Int
     ) {
-      catch { visualizer.samplingRate }.onFailure { return }
+      catch { visualizer.samplingRate }.onFailure {
+        it.printStackTrace()
+        return
+      }
 
-      var energySum = abs(bytes[0].toInt())
-
+      var energySum = 0
+      var totalPower = 0.0
       var k = 2
-
-      val captureSize = (visualizer.captureSize / 2).toDouble()
-
+      val captureSize = visualizer.captureSize / 2.0
       val sampleRate = visualizer.samplingRate / 2000
 
       var nextFrequency = k / 2 * sampleRate / captureSize
 
-      while (nextFrequency < frequency) {
+      energySum += abs(bytes[0].toInt())
+      while (nextFrequency <= 300) {
         energySum += sqrt(
-          (bytes[k] * bytes[k] * (bytes[k + 1] * bytes[k + 1])).toDouble()
+          (bytes[k] * bytes[k]
+              * (bytes[k + 1] * bytes[k + 1])).toDouble()
         ).toInt()
         k += 2
         nextFrequency = k / 2 * sampleRate / captureSize
       }
 
-      val sampleAvgAudioEnergy = energySum.toDouble() / (k * 1.0 / 2.0)
-      runningSoundAvg += sampleAvgAudioEnergy
+      var sampleAvgAudioEnergy = energySum.toDouble() / (k * 1.0 / 2.0)
+      val lowPower = sampleAvgAudioEnergy
+      totalPower += lowPower
 
-      if (sampleAvgAudioEnergy > currentAvgEnergy && currentAvgEnergy > 0)
-        trySend(AudioEvent(sampleAvgAudioEnergy))
+      while (nextFrequency < 2500) {
+        energySum += sqrt(
+          (bytes[k] * bytes[k]
+              * (bytes[k + 1] * bytes[k + 1])).toDouble()
+        ).toInt()
+        k += 2
+        nextFrequency = k / 2 * sampleRate / captureSize
+      }
+      sampleAvgAudioEnergy = energySum.toDouble() / (k * 1.0 / 2.0)
+      val medPower = sampleAvgAudioEnergy
+      //totalPower += medPower
 
-      samplesPerSecond++
+      energySum = abs(bytes[1].toInt())
+      while (nextFrequency < 10000 && k < bytes.size) {
+        energySum += sqrt(
+          (bytes[k] * bytes[k]
+              * (bytes[k + 1] * bytes[k + 1])).toDouble()
+        ).toInt()
+        k += 2
+        nextFrequency = k / 2 * sampleRate / captureSize
+      }
+      sampleAvgAudioEnergy = energySum.toDouble() / (k * 1.0 / 2.0)
+      val highPower = sampleAvgAudioEnergy
+      //totalPower += highPower
 
-      val now = now()
-      if (now - lastTimestamp > 1.seconds) {
-        currentAvgEnergy = (runningSoundAvg / samplesPerSecond)
-        samplesPerSecond = 0
-        runningSoundAvg = 0.0
-        lastTimestamp = now
+      window.add(totalPower)
+
+      if (window.size > windowRMS) {
+        window.removeAt(0)
+
+        val totalAverage = window.average()
+        val current = totalPower
+
+        if (current >= totalAverage * sensitivity) {
+          trySend(AudioEvent)
+
+          log { "beat yes $current $totalAverage" }
+
+          repeat(window.size) {
+            window[it] = current * sensitivity * 2f
+          }
+        } else {
+          log { "beat nop $current $totalAverage" }
+        }
       }
     }
   }

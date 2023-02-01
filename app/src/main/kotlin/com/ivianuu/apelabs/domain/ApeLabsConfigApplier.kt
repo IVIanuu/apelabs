@@ -5,55 +5,49 @@ import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
-import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
-import com.ivianuu.essentials.coroutines.ExitCase
 import com.ivianuu.essentials.coroutines.combine
-import com.ivianuu.essentials.coroutines.guarantee
-import com.ivianuu.essentials.coroutines.onCancel
 import com.ivianuu.essentials.coroutines.par
 import com.ivianuu.essentials.coroutines.parForEach
-import com.ivianuu.essentials.coroutines.timer
 import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.ui.UiScope
+import com.ivianuu.essentials.unlerp
 import com.ivianuu.injekt.Provide
-import com.ivianuu.injekt.coroutines.NamedCoroutineContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.UUID
-import kotlin.random.Random
+import kotlin.math.absoluteValue
 import kotlin.time.Duration
 
 context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository,
 NamedCoroutineScope<UiScope>, PreviewRepository, WappRemote, WappRepository)
     @Provide
-fun apeLabsConfigApplier(audioEvents: Flow<AudioEvent>) = ScopeWorker<UiScope> {
+fun apeLabsConfigApplier(
+  audioEvents: Flow<AudioEvent>,
+  audioSessions: Flow<List<Int>>
+) = ScopeWorker<UiScope> {
   par(
-    { audioEvents.collect() },
+    { audioSessions.collect() },
     {
       wapps.collectLatest { wapps ->
         if (wapps.isEmpty()) return@collectLatest
@@ -178,12 +172,9 @@ context(CoroutineScope, Logger, WappServer) private suspend fun applyGroupConfig
             groups.forEach { group ->
               cache.lastProgramJob[group] = launch {
                 var lastColor: ApeColor? = null
+
                 audioEvents
                   .conflate()
-                  .filter {
-                    Random(System.currentTimeMillis()).nextInt(1, 4)
-                      .also { log { "change colors ? $it" } } == 1
-                  }
                   .onStart<Any?> { emit(Unit) }
                   .map {
                     program.items
@@ -192,6 +183,10 @@ context(CoroutineScope, Logger, WappServer) private suspend fun applyGroupConfig
                       .first { it != lastColor }
                   }
                   .collect { color ->
+                    delay(400.milliseconds)
+
+                    log { "color switch $color" }
+
                     write(
                       byteArrayOf(
                         68,
@@ -203,12 +198,11 @@ context(CoroutineScope, Logger, WappServer) private suspend fun applyGroupConfig
                         color.green.toColorByte(),
                         color.blue.toColorByte(),
                         color.white.toColorByte()
-                      )
+                      ),
+                      true
                     )
 
                     lastColor = color
-
-                    delay(2.seconds)
                   }
               }
             }
