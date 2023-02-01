@@ -70,10 +70,8 @@ import com.ivianuu.essentials.app.AppForegroundState
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
-import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
-import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.ListKey
 import com.ivianuu.essentials.ui.dialog.TextInputKey
@@ -93,10 +91,8 @@ import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
 
 @Provide object HomeKey : RootKey
@@ -231,14 +227,6 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
             value = groupConfig.musicMode,
             onValueChange = updateMusicMode,
             title = { Text("Music mode") }
-          )
-        }
-
-        item {
-          SwitchListItem(
-            value = groupConfig.strobe,
-            onValueChange = updateStrobe,
-            title = { Text("Strobe") }
           )
         }
 
@@ -559,7 +547,6 @@ data class HomeModel(
   val updateBrightness: (Float) -> Unit,
   val updateSpeed: (Float) -> Unit,
   val updateMusicMode: (Boolean) -> Unit,
-  val updateStrobe: (Boolean) -> Unit,
   val updateBlackout: (Boolean) -> Unit,
   val wappState: Resource<WappState>,
   val lights: Resource<List<Light>>,
@@ -659,9 +646,6 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     },
     updateMusicMode = action { value ->
       updateConfig { copy(musicMode = value) }
-    },
-    updateStrobe = action { value ->
-      updateConfig { copy(strobe = value) }
     },
     updateBlackout = action { value ->
       updateConfig { copy(blackout = value) }

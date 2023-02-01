@@ -29,17 +29,10 @@ class ApeLabsLocationPermission : RuntimePermission(
   title = "Location"
 )
 
-@Provide
-class ApeLabsRecordAudioPermission : RuntimePermission(
-  permissionName = Manifest.permission.RECORD_AUDIO,
-  title = "Record audio"
-)
-
 val apeLabsPermissionKeys = listOf(
   typeKeyOf<ApeLabsBluetoothConnectPermission>(),
   typeKeyOf<ApeLabsBluetoothScanPermission>(),
-  typeKeyOf<ApeLabsLocationPermission>(),
-  typeKeyOf<ApeLabsRecordAudioPermission>()
+  typeKeyOf<ApeLabsLocationPermission>()
 )
 
 // always request permissions when launching the ui

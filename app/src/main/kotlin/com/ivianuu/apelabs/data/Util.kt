@@ -1,6 +1,6 @@
 package com.ivianuu.apelabs.data
 
-import java.util.*
+import java.util.UUID
 import java.util.regex.Pattern
 
 private val UUIDPattern =

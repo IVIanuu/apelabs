@@ -49,7 +49,6 @@ android {
 
 dependencies {
   implementation(Deps.Essentials.android)
-  implementation(Deps.Essentials.foreground)
   implementation(Deps.Essentials.permission)
   implementation(Deps.Essentials.rubik)
 }

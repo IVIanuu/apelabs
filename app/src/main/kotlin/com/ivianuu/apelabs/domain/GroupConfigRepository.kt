@@ -73,7 +73,7 @@ context(ApeLabsPrefsContext, Db, ProgramRepository) @Provide class GroupConfigRe
   }
 
   private fun GroupConfig.toEntity() =
-    GroupConfigEntity(id, program.id, brightness, speed, musicMode, strobe, blackout)
+    GroupConfigEntity(id, program.id, brightness, speed, musicMode, blackout)
 
   private suspend fun GroupConfigEntity.toGroupConfig() =
     GroupConfig(
@@ -82,7 +82,6 @@ context(ApeLabsPrefsContext, Db, ProgramRepository) @Provide class GroupConfigRe
       brightness,
       speed,
       musicMode,
-      strobe,
       blackout
     )
 }
