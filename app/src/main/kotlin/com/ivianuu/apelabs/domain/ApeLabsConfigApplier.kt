@@ -4,6 +4,7 @@ import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
+import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.combine
 import com.ivianuu.essentials.coroutines.parForEach
@@ -11,7 +12,6 @@ import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
-import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -27,14 +27,17 @@ import kotlin.time.Duration
 context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository,
 PreviewRepository, WappRemote, WappRepository)
     @Provide
-fun apeLabsConfigApplier() = ScopeWorker<UiScope> {
+fun apeLabsConfigApplier() = ScopeWorker<AppForegroundScope> {
   wapps.collectLatest { wapps ->
+    log { "wapps $wapps" }
     if (wapps.isEmpty()) return@collectLatest
 
     wapps.parForEach { wapp ->
       val cache = Cache()
 
       withWapp(wapp.address) {
+        log { "apply for wapp $wapp" }
+
         combine(groupConfigs, previewGroupConfigs)
           .map { (groupConfigs, previewGroupConfigs) ->
             GROUPS
