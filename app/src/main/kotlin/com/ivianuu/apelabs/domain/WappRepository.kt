@@ -18,7 +18,6 @@ import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.permission.PermissionManager
 import com.ivianuu.injekt.Provide
-import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
@@ -35,13 +34,11 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.time.Duration.Companion.seconds
 
 context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManager, WappRemote)
 @Provide @Scoped<AppScope> class WappRepository(context: IOContext) {
