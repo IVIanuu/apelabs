@@ -60,6 +60,12 @@ class LightRepository(private val context: IOContext) {
     }
 
     LaunchedEffect(true) {
+      refreshes.collect {
+        lights = emptyList()
+      }
+    }
+
+    LaunchedEffect(true) {
       wapps
         .flatMapLatest { wapps ->
           callbackFlow {
@@ -132,6 +138,12 @@ class LightRepository(private val context: IOContext) {
   val groupLightsChangedEvents get() = _groupLightsChangedEvents
 
   data class GroupLightsChangedEvent(val group: Int, val lightIds: List<Int>)
+
+  private val refreshes = EventFlow<Unit>()
+
+  suspend fun refreshLights() {
+    refreshes.emit(Unit)
+  }
 
   suspend fun flashLights(ids: List<Int>) {
     if (ids.isEmpty()) return

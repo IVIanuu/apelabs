@@ -489,13 +489,23 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
         }
 
         item {
-          Button(
+          Row(
             modifier = Modifier
               .fillMaxWidth()
               .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            enabled = selectedLights.isNotEmpty(),
-            onClick = regroupLights
-          ) { Text("REGROUP") }
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+          ) {
+            Button(
+              modifier = Modifier.weight(1f),
+              onClick = refreshLights
+            ) { Text("REFRESH") }
+
+            Button(
+              modifier = Modifier.weight(1f),
+              enabled = selectedLights.isNotEmpty(),
+              onClick = regroupLights
+            ) { Text("REGROUP") }
+          }
         }
       }
     }
@@ -550,6 +560,7 @@ data class HomeModel(
   val updateBlackout: (Boolean) -> Unit,
   val wappState: Resource<WappState>,
   val lights: Resource<List<Light>>,
+  val refreshLights: () -> Unit,
   val selectedLights: Set<Int>,
   val toggleLightSelection: (Light) -> Unit,
   val regroupLights: () -> Unit,
@@ -658,6 +669,7 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
         }
     }.bindResource(),
     lights = lights,
+    refreshLights = action { refreshLights() },
     selectedLights = selectedLights,
     toggleLightSelection = action { light ->
       selectedLights = selectedLights.toMutableSet().apply {
