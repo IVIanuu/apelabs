@@ -156,29 +156,6 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
         }
       } else {
         item {
-          val controller = remember { ColorPickerController() }
-
-          ImageColorPicker(
-            modifier = Modifier
-              .fillMaxWidth()
-              .height(200.dp)
-              .padding(horizontal = 16.dp),
-            controller = controller
-          )
-
-          LaunchedEffect(controller.selectedColor) {
-            controller.selectedColor?.let {
-              updateColorPickerColor(it)
-            }
-          }
-
-          LaunchedEffect(groupConfig.program) {
-            if (groupConfig.program.id != Program.colorPickerId(selectedGroups.toList()))
-              controller.clear()
-          }
-        }
-
-        item {
           val programName = when {
             groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
             groupConfig.program.id.isUUID ->
@@ -200,6 +177,29 @@ context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
             title = { Text("Program") },
             subtitle = { Text(programName) }
           )
+        }
+
+        item {
+          val controller = remember { ColorPickerController() }
+
+          ImageColorPicker(
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(200.dp)
+              .padding(horizontal = 16.dp),
+            controller = controller
+          )
+
+          LaunchedEffect(controller.selectedColor) {
+            controller.selectedColor?.let {
+              updateColorPickerColor(it)
+            }
+          }
+
+          LaunchedEffect(groupConfig.program) {
+            if (groupConfig.program.id != Program.colorPickerId(selectedGroups.toList()))
+              controller.clear()
+          }
         }
 
         item {
