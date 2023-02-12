@@ -18,10 +18,12 @@ import com.ivianuu.essentials.coroutines.RefCountedResource
 import com.ivianuu.essentials.coroutines.race
 import com.ivianuu.essentials.coroutines.withResource
 import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.log
+import com.ivianuu.essentials.logging.invoke
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.seconds
+import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
+import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
@@ -36,19 +38,22 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.*
 
-context(AppContext, BluetoothManager, Logger, NamedCoroutineScope<AppScope>)
 @Provide @Scoped<AppScope> class WappRemote(
-  private val context: IOContext
+  private val appContext: AppContext,
+  private val bluetoothManager: @SystemService BluetoothManager,
+  private val context: IOContext,
+  private val logger: Logger,
+  private val scope: NamedCoroutineScope<AppScope>
 ) {
   private val servers = RefCountedResource<String, WappServer>(
     timeout = 5.seconds,
-    create = { WappServer(it, context) },
+    create = { WappServer(it) },
     release = { _, server -> server.close() }
   )
 
   suspend fun <R> withWapp(
     address: String,
-    block: suspend context(WappServer) () -> R
+    block: suspend WappServer.() -> R
   ): R? = withContext(context) {
     servers.withResource(address) {
       race(
@@ -59,18 +64,21 @@ context(AppContext, BluetoothManager, Logger, NamedCoroutineScope<AppScope>)
         {
           it.serviceChanges.first()
           it.connectionState.first { !it }
-          log { "${it.device.debugName()} cancel with wapp" }
+          logger { "${it.device.debugName()} cancel with wapp" }
         }
       ) as? R
     }
   }
 }
 
-context(AppContext, BluetoothManager, CoroutineScope, Logger)
 @SuppressLint("MissingPermission")
 class WappServer(
   address: String,
-  private val context: IOContext
+  @Inject private val appContext: AppContext,
+  @Inject private val bluetoothManager: @SystemService BluetoothManager,
+  @Inject private val context: IOContext,
+  @Inject private val logger: Logger,
+  @Inject private val scope: CoroutineScope
 ) {
   val connectionState = MutableSharedFlow<Boolean>(
     replay = 1,
@@ -83,11 +91,11 @@ class WappServer(
     onBufferOverflow = BufferOverflow.SUSPEND
   )
 
-  val device = adapter.getRemoteDevice(address)
+  val device = bluetoothManager.adapter.getRemoteDevice(address)
 
   val messages = EventFlow<ByteArray>()
 
-  private val gatt = adapter
+  private val gatt = bluetoothManager.adapter
     .getRemoteDevice(address)
     .connectGatt(
       inject(),
@@ -96,7 +104,7 @@ class WappServer(
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
           super.onConnectionStateChange(gatt, status, newState)
           val isConnected = newState == BluetoothProfile.STATE_CONNECTED
-          log { "${device.debugName()} connection state changed $newState" }
+          logger { "${device.debugName()} connection state changed $newState" }
           connectionState.tryEmit(isConnected)
           if (isConnected)
             gatt.discoverServices()
@@ -104,9 +112,9 @@ class WappServer(
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
           super.onServicesDiscovered(gatt, status)
-          log { "${device.debugName()} services discovered" }
+          logger { "${device.debugName()} services discovered" }
 
-          launch {
+          scope.launch {
             val readCharacteristic = gatt
               .getService(APE_LABS_SERVICE_ID)
               .getCharacteristic(APE_LABS_READ_ID)
@@ -139,7 +147,7 @@ class WappServer(
   private val writeLimiter = RateLimiter(1, 100.milliseconds)
 
   init {
-    log { "${device.debugName()} init" }
+    logger { "${device.debugName()} init" }
   }
 
   suspend fun write(message: ByteArray) = withContext(context) {
@@ -154,7 +162,7 @@ class WappServer(
       ?: error("${device.debugName()} characteristic not found")
 
     writeLock.withLock {
-      log { "${device.debugName()} write -> ${message.contentToString()}" }
+      logger { "${device.debugName()} write -> ${message.contentToString()}" }
       characteristic.value = message
       writeLimiter.acquire()
       gatt.writeCharacteristic(characteristic)
@@ -162,7 +170,7 @@ class WappServer(
   }
 
   suspend fun close() = withContext(context) {
-    log { "${device.debugName()} close" }
+    logger { "${device.debugName()} close" }
     catch { gatt.disconnect() }
     catch { gatt.close() }
   }

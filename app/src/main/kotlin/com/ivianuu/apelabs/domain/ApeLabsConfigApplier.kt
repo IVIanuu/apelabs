@@ -1,6 +1,6 @@
 package com.ivianuu.apelabs.domain
 
-import com.ivianuu.apelabs.data.ApeLabsPrefsContext
+import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
@@ -8,10 +8,12 @@ import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.combine
 import com.ivianuu.essentials.coroutines.parForEach
+import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.log
+import com.ivianuu.essentials.logging.invoke
 import com.ivianuu.essentials.time.milliseconds
+import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -24,21 +26,26 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration
 
-context(ApeLabsPrefsContext, GroupConfigRepository, Logger, LightRepository,
-PreviewRepository, WappRemote, WappRepository)
-    @Provide
-fun apeLabsConfigApplier() = ScopeWorker<AppForegroundScope> {
-  wapps.collectLatest { wapps ->
-    log { "wapps $wapps" }
+@Provide fun apeLabsConfigApplier(
+  prefs: DataStore<ApeLabsPrefs>,
+  groupConfigRepository: GroupConfigRepository,
+  logger: Logger,
+  lightRepository: LightRepository,
+  previewRepository: PreviewRepository,
+  wappRemote: WappRemote,
+  wappRepository: WappRepository
+) = ScopeWorker<AppForegroundScope> {
+  wappRepository.wapps.collectLatest { wapps ->
+    logger { "wapps $wapps" }
     if (wapps.isEmpty()) return@collectLatest
 
     wapps.parForEach { wapp ->
       val cache = Cache()
 
-      withWapp(wapp.address) {
-        log { "apply for wapp $wapp" }
+      wappRemote.withWapp(wapp.address) {
+        logger { "apply for wapp $wapp" }
 
-        combine(groupConfigs, previewGroupConfigs)
+        combine(groupConfigRepository.groupConfigs, previewRepository.previewGroupConfigs)
           .map { (groupConfigs, previewGroupConfigs) ->
             GROUPS
               .associateWith { group ->
@@ -48,10 +55,10 @@ fun apeLabsConfigApplier() = ScopeWorker<AppForegroundScope> {
           }
           .distinctUntilChanged()
           .flatMapLatest { groupConfigs ->
-            groupLightsChangedEvents
+            lightRepository.groupLightsChangedEvents
               .map { it.group }
               .onEach { changedGroup ->
-                log { "force reapply for $changedGroup" }
+                logger { "force reapply for $changedGroup" }
                 cache.lastProgram.remove(changedGroup)
                 cache.lastBrightness.remove(changedGroup)
                 cache.lastSpeed.remove(changedGroup)
@@ -73,11 +80,12 @@ private class Cache {
   val lastMusicMode = mutableMapOf<Int, Boolean>()
 }
 
-context(Logger, WappServer) private suspend fun applyGroupConfig(
+private suspend fun WappServer.applyGroupConfig(
   configs: Map<Int, GroupConfig>,
-  cache: Cache
+  cache: Cache,
+  @Inject logger: Logger
 ) {
-  log { "apply $configs" }
+  logger { "apply $configs" }
 
   val appliers = mutableMapOf<List<Int>, MutableList<suspend () -> Unit>>()
 
@@ -101,7 +109,7 @@ context(Logger, WappServer) private suspend fun applyGroupConfig(
       .forEach { (value, groups) ->
         appliers.getOrPut(groups) { mutableListOf() } += {
           // cache and apply output
-          log { "apply $tag $value for $groups" }
+          logger { "apply $tag $value for $groups" }
           apply(value, groups)
           groups.forEach { cache[it] = value }
         }

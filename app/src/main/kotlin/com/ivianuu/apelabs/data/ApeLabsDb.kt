@@ -12,18 +12,19 @@ import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.inject
 
-context(AppContext) @Provide fun apeLabsDb(ioContext: IOContext): @Scoped<AppScope> Db = AndroidDb(
-  context = inject(),
-  name = "ape_labs.db",
-  schema = Schema(
-    version = 3,
-    entities = listOf(
-      EntityDescriptor<ApeColor>("colors"),
-      EntityDescriptor<ProgramEntity>("programs"),
-      EntityDescriptor<GroupConfigEntity>("group_configs"),
-      EntityDescriptor<SceneEntity>("scenes")
-    ),
-    migrations = listOf(
+@Provide fun apeLabsDb(appContext: AppContext, ioContext: IOContext): @Scoped<AppScope> Db =
+  AndroidDb(
+    context = appContext,
+    name = "ape_labs.db",
+    schema = Schema(
+      version = 3,
+      entities = listOf(
+        EntityDescriptor<ApeColor>("colors"),
+        EntityDescriptor<ProgramEntity>("programs"),
+        EntityDescriptor<GroupConfigEntity>("group_configs"),
+        EntityDescriptor<SceneEntity>("scenes")
+      ),
+      migrations = listOf(
       Migration(1, 2) { db, _, _ ->
         db.execute("ALTER TABLE 'programs' ADD COLUMN 'strobe' INTEGER NOT NULL DEFAULT 0", null)
       },

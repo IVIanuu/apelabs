@@ -13,25 +13,25 @@ import com.ivianuu.essentials.db.selectTransform
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
 
-context(Db) @Provide class ColorRepository {
+@Provide class ColorRepository(private val db: Db) {
   val userColors: Flow<List<ApeColor>>
-    get() = selectAllTransform<ApeColor, _> { it?.takeUnless { it.id.isUUID } }
+    get() = db.selectAllTransform<ApeColor, _> { it?.takeUnless { it.id.isUUID } }
 
-  suspend fun createColor(id: String): ApeColor = transaction {
+  suspend fun createColor(id: String): ApeColor = db.transaction {
     val color = ApeColor(id = id, white = 1f)
     updateColor(color)
     color
   }
 
-  fun color(id: String) = selectTransform<ApeColor, _>(id) {
+  fun color(id: String) = db.selectTransform<ApeColor, _>(id) {
     it ?: BuiltInColors.singleOrNull { it.id == id }
   }
 
-  suspend fun updateColor(color: ApeColor) = transaction {
-    insert(color, InsertConflictStrategy.REPLACE)
+  suspend fun updateColor(color: ApeColor) = db.transaction {
+    db.insert(color, InsertConflictStrategy.REPLACE)
   }
 
-  suspend fun deleteColor(id: String) = transaction {
-    deleteById<ApeColor>(id)
+  suspend fun deleteColor(id: String) = db.transaction {
+    db.deleteById<ApeColor>(id)
   }
 }

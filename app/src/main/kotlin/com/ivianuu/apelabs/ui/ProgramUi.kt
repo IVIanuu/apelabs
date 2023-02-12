@@ -205,24 +205,28 @@ data class ProgramModel(
     get() = program.getOrNull()?.items?.size?.let { it < Program.ITEM_RANGE.last } == true
 }
 
-context(GroupConfigRepository, ProgramRepository, PreviewRepository, KeyUiContext<ProgramKey>)
-    @Provide fun programModel() = Model {
-  val id = key.id
+@Provide fun programModel(
+  ctx: KeyUiContext<ProgramKey>,
+  groupConfigRepository: GroupConfigRepository,
+  programRepository: ProgramRepository,
+  previewRepository: PreviewRepository
+) = Model {
+  val id = ctx.key.id
 
   val program by remember {
-    program(id)
+    programRepository.program(id)
       .flowAsResource()
       .map { it.map { it!! } }
   }
     .collectAsState(Idle)
 
   LaunchedEffect(true) {
-    providePreviews { selectedGroups, update ->
+    previewRepository.providePreviews { selectedGroups, update ->
       snapshotFlow { program }
         .map { it.getOrNull() }
         .flatMapLatest { program ->
           if (program == null) flowOf(emptyList())
-          else groupConfigs
+          else groupConfigRepository.groupConfigs
             .map { configs ->
               configs
                 .filter { it.id.toIntOrNull() in selectedGroups }
@@ -234,7 +238,7 @@ context(GroupConfigRepository, ProgramRepository, PreviewRepository, KeyUiContex
   }
 
   suspend fun updateProgram(block: Program.() -> Program) {
-    updateProgram(program.get().block())
+    programRepository.updateProgram(program.get().block())
   }
 
   suspend fun updateItem(itemIndex: Int, block: Program.Item.() -> Program.Item) {
@@ -252,7 +256,7 @@ context(GroupConfigRepository, ProgramRepository, PreviewRepository, KeyUiContex
     program = program,
     addItem = action { updateProgram { copy(items = items + Program.Item(color = ApeColor())) } },
     updateColor = action { itemIndex ->
-      navigator.push(ColorKey(program.get().items.get(itemIndex).color.copy(id = randomId())))
+      ctx.navigator.push(ColorKey(program.get().items.get(itemIndex).color.copy(id = randomId())))
         ?.let { updateItem(itemIndex) { copy(color = it) } }
     },
     updateFade = action { itemIndex, fade ->
@@ -264,7 +268,7 @@ context(GroupConfigRepository, ProgramRepository, PreviewRepository, KeyUiContex
     deleteItem = action { itemIndex ->
       updateProgram { copy(items = items.toMutableList().apply { removeAt(itemIndex) }) }
     },
-    previewsEnabled = previewsEnabled.bind(),
-    updatePreviewsEnabled = action { value -> updatePreviewsEnabled(value) }
+    previewsEnabled = previewRepository.previewsEnabled.bind(),
+    updatePreviewsEnabled = action { value -> previewRepository.updatePreviewsEnabled(value) }
   )
 }

@@ -36,7 +36,7 @@ val apeLabsPermissionKeys = listOf(
 )
 
 // always request permissions when launching the ui
-context(PermissionManager)
-    @Provide fun apeLabsPermissionRequestWorker() = ScopeWorker<AppForegroundScope> {
-  requestPermissions(apeLabsPermissionKeys)
-}
+@Provide fun apeLabsPermissionRequestWorker(permissionManager: PermissionManager) =
+  ScopeWorker<AppForegroundScope> {
+    permissionManager.requestPermissions(apeLabsPermissionKeys)
+  }

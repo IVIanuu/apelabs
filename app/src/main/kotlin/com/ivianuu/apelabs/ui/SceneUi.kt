@@ -1,5 +1,6 @@
 package com.ivianuu.apelabs.ui
 
+import android.telecom.CallScreeningService
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -154,19 +155,23 @@ data class SceneModel(
   val updatePreviewsEnabled: (Boolean) -> Unit
 )
 
-context(ProgramRepository, PreviewRepository, SceneRepository, KeyUiContext<SceneKey>)
-    @Provide fun sceneModel() = Model {
-  val id = key.id
+@Provide fun sceneModel(
+  ctx: KeyUiContext<SceneKey>,
+  programRepository: ProgramRepository,
+  previewRepository: PreviewRepository,
+  sceneRepository: SceneRepository
+) = Model {
+  val id = ctx.key.id
 
   val scene by remember {
-    scene(id)
+    sceneRepository.scene(id)
       .flowAsResource()
       .map { it.map { it!! } }
   }
     .collectAsState(Idle)
 
   LaunchedEffect(true) {
-    providePreviews { _, update ->
+    previewRepository.providePreviews { _, update ->
       snapshotFlow { scene }
         .map {
           scene.getOrNull()
@@ -181,7 +186,7 @@ context(ProgramRepository, PreviewRepository, SceneRepository, KeyUiContext<Scen
   }
 
   suspend fun updateScene(block: Scene.() -> Scene) {
-    updateScene(scene.get().block())
+    sceneRepository.updateScene(scene.get().block())
   }
 
   suspend fun updateGroupConfig(
@@ -201,22 +206,22 @@ context(ProgramRepository, PreviewRepository, SceneRepository, KeyUiContext<Scen
     id = id,
     scene = scene,
     updateProgram = action { group, config ->
-      navigator.push(
+      ctx.navigator.push(
         ListKey<Pair<String, Program?>>(
           buildList<Pair<String, Program?>> {
             add("Color" to null)
             addAll(
-              userPrograms.first()
+              programRepository.userPrograms.first()
                 .sortedBy { it.id.toLowerCase() }
                 .map { it.id to it }
             )
             add("Rainbow" to null)
           }
-        ) { first }
+        ) { it.first }
       )
         ?.let { (id, program) ->
           val finalProgram = when (id) {
-            "Color" -> navigator.push(
+            "Color" -> ctx.navigator.push(
               ColorKey(
                 config?.program?.items?.singleOrNull()?.color?.copy(id = randomId()) ?: ApeColor()
               )
@@ -244,7 +249,7 @@ context(ProgramRepository, PreviewRepository, SceneRepository, KeyUiContext<Scen
         })
       }
     },
-    previewsEnabled = previewsEnabled.bind(),
-    updatePreviewsEnabled = action { value -> updatePreviewsEnabled(value) }
+    previewsEnabled = previewRepository.previewsEnabled.bind(),
+    updatePreviewsEnabled = action { value -> previewRepository.updatePreviewsEnabled(value) }
   )
 }

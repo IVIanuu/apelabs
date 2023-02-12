@@ -10,9 +10,8 @@ import com.ivianuu.essentials.compose.setValue
 import com.ivianuu.essentials.compose.stateFlow
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.parForEach
-import com.ivianuu.essentials.coroutines.share
 import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.log
+import com.ivianuu.essentials.logging.invoke
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.minutes
 import com.ivianuu.essentials.time.seconds
@@ -21,6 +20,7 @@ import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
 import com.ivianuu.injekt.inject
+import kotlinx.coroutines.GlobalScope.coroutineContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -33,14 +33,18 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-context(Logger, NamedCoroutineScope<AppScope>, WappRemote, WappRepository)
-@Provide
-@Scoped<AppScope>
-class LightRepository(private val context: IOContext) {
+@Provide @Scoped<AppScope> class LightRepository(
+  private val context: IOContext,
+  private val logger: Logger,
+  private val scope: NamedCoroutineScope<AppScope>,
+  private val wappRemote: WappRemote,
+  private val wappRepository: WappRepository
+) {
   val lights: SharedFlow<List<Light>> = stateFlow {
     var lights by remember {
       mutableStateOf(
@@ -66,11 +70,11 @@ class LightRepository(private val context: IOContext) {
     }
 
     LaunchedEffect(true) {
-      wapps
+      wappRepository.wapps
         .flatMapLatest { wapps ->
           callbackFlow {
             wapps.parForEach { wapp ->
-              withWapp(wapp.address) {
+              wappRemote.withWapp(wapp.address) {
                 messages.collect {
                   trySend(it)
                 }
@@ -80,7 +84,7 @@ class LightRepository(private val context: IOContext) {
             awaitClose()
           }
         }
-        .onEach { log { "on message ${it.contentToString()}" } }
+        .onEach { logger { "on message ${it.contentToString()}" } }
         .mapNotNull { message ->
           if ((message.getOrNull(0)?.toInt() == 82 ||
                 message.getOrNull(0)?.toInt() == 83) &&
@@ -108,7 +112,7 @@ class LightRepository(private val context: IOContext) {
             light to false
           } else null
         }
-        .onEach { log { "${it.first.id} ping" } }
+        .onEach { logger { "${it.first.id} ping" } }
         .onStart {
           // ensure that we launch a light removal job for existing lights
           lights.forEach { emit(it to true) }
@@ -118,7 +122,7 @@ class LightRepository(private val context: IOContext) {
 
           lightRemovalJobs[light.id] = launch {
             delay(if (fromCache) 17.seconds else 1.minutes)
-            log { "${light.id} remove light" }
+            logger { "${light.id} remove light" }
             lights = lights
               .filter { it.id != light.id }
           }
@@ -132,7 +136,7 @@ class LightRepository(private val context: IOContext) {
       .sortedBy { it.id }
   }
     .distinctUntilChanged()
-    .share(SharingStarted.WhileSubscribed(2000), 1)
+    .shareIn(scope, SharingStarted.WhileSubscribed(2000), 1)
 
   private val _groupLightsChangedEvents = EventFlow<GroupLightsChangedEvent>()
   val groupLightsChangedEvents get() = _groupLightsChangedEvents
@@ -148,8 +152,8 @@ class LightRepository(private val context: IOContext) {
   suspend fun flashLights(ids: List<Int>) {
     if (ids.isEmpty()) return
 
-    wapps.first().parForEach { wapp ->
-      withWapp(wapp.address) {
+    wappRepository.wapps.first().parForEach { wapp ->
+      wappRemote.withWapp(wapp.address) {
         while (coroutineContext.isActive) {
           ids
             .shuffled()
@@ -163,8 +167,8 @@ class LightRepository(private val context: IOContext) {
   }
 
   suspend fun regroupLights(ids: List<Int>, group: Int) = withContext(context) {
-    wapps.first().parForEach { wapp ->
-      withWapp(wapp.address) {
+    wappRepository.wapps.first().parForEach { wapp ->
+      wappRemote.withWapp(wapp.address) {
         ids.forEach { id ->
           // works more reliable if we send it twice:D
           repeat(2) {

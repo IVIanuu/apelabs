@@ -10,5 +10,3 @@ import kotlinx.serialization.Serializable
     @Provide val prefModule = DataStoreModule("apelabs_prefs") { ApeLabsPrefs() }
   }
 }
-
-@Provide @JvmInline value class ApeLabsPrefsContext(val pref: DataStore<ApeLabsPrefs>)

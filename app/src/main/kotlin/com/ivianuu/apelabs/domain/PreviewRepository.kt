@@ -1,11 +1,10 @@
 package com.ivianuu.apelabs.domain
 
-import com.ivianuu.apelabs.data.ApeLabsPrefsContext
-import com.ivianuu.apelabs.data.GROUPS
+import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.bracket
-import com.ivianuu.essentials.coroutines.share
+import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.injekt.Provide
@@ -22,13 +21,17 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-context(ApeLabsPrefsContext, Logger, NamedCoroutineScope<AppScope>)
-@Provide @Scoped<AppScope> class PreviewRepository {
+@Provide @Scoped<AppScope> class PreviewRepository(
+  private val logger: Logger,
+  private val pref: DataStore<ApeLabsPrefs>,
+  private val scope: NamedCoroutineScope<AppScope>
+) {
   private val _previewProviders =
     MutableStateFlow<List<suspend (List<Int>, suspend (List<GroupConfig>) -> Unit) -> Unit>>(
       emptyList()
@@ -58,7 +61,7 @@ context(ApeLabsPrefsContext, Logger, NamedCoroutineScope<AppScope>)
         }
       }
     }
-    .share(SharingStarted.WhileSubscribed(), 1)
+    .shareIn(scope, SharingStarted.WhileSubscribed(), 1)
     .distinctUntilChanged()
 
   suspend fun updatePreviewsEnabled(value: Boolean) {

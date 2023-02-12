@@ -13,11 +13,11 @@ import com.ivianuu.apelabs.data.toWapp
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.onCancel
 import com.ivianuu.essentials.coroutines.parForEach
-import com.ivianuu.essentials.coroutines.share
 import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.log
+import com.ivianuu.essentials.logging.invoke
 import com.ivianuu.essentials.permission.PermissionManager
 import com.ivianuu.injekt.Provide
+import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
@@ -35,20 +35,27 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManager, WappRemote)
-@Provide @Scoped<AppScope> class WappRepository(context: IOContext) {
-  val wapps: Flow<List<Wapp>> = permissionState(apeLabsPermissionKeys)
+@Provide @Scoped<AppScope> class WappRepository(
+  private val bluetoothManager: @SystemService BluetoothManager,
+  context: IOContext,
+  private val logger: Logger,
+  private val permissionManager: PermissionManager,
+  private val scope: NamedCoroutineScope<AppScope>,
+  private val wappRemote: WappRemote
+) {
+  val wapps: Flow<List<Wapp>> = permissionManager.permissionState(apeLabsPermissionKeys)
     .flatMapLatest {
       if (!it) flowOf(emptyList())
       else bleWapps()
     }
     .flowOn(context)
-    .share(SharingStarted.WhileSubscribed(2000), 1)
+    .shareIn(scope, SharingStarted.WhileSubscribed(2000), 1)
     .distinctUntilChanged()
 
   private val foundWapps = mutableSetOf<Wapp>()
@@ -59,7 +66,7 @@ context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManag
       if (wapps.isEmpty()) flowOf(WappState(null, false, null))
       else callbackFlow<Pair<Wapp, ByteArray>> {
         wapps.parForEach { wapp ->
-          withWapp(wapp.address) {
+          wappRemote.withWapp(wapp.address) {
             messages.collect {
               trySend(wapp to it)
             }
@@ -85,7 +92,7 @@ context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManag
         }
     }
     .distinctUntilChanged()
-    .share(SharingStarted.WhileSubscribed(2000), 1)
+    .shareIn(scope, SharingStarted.WhileSubscribed(2000), 1)
 
   @SuppressLint("MissingPermission")
   private fun bleWapps(): Flow<List<Wapp>> = callbackFlow {
@@ -100,12 +107,12 @@ context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManag
             return@launch
         }
 
-        withWapp(wapp.address) {
+        wappRemote.withWapp(wapp.address) {
           wappsLock.withLock {
             if (wapp in wapps)
               return@withWapp
 
-            log { "${wapp.debugName()} add wapp" }
+            logger { "${wapp.debugName()} add wapp" }
 
             wapps += wapp
             trySend(wapps.toList())
@@ -113,7 +120,7 @@ context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManag
 
           onCancel(block = { awaitCancellation() }) {
             if (coroutineContext.isActive) {
-              log { "${wapp.debugName()} remove wapp" }
+              logger { "${wapp.debugName()} remove wapp" }
               wappsLock.withLock {
                 wapps.remove(wapp)
                 trySend(wapps.toList())
@@ -124,7 +131,7 @@ context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManag
       }
     }
 
-    getConnectedDevices(BluetoothProfile.GATT)
+    bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)
       .filter { it.isWapp() }
       .forEach { handleWapp(it.toWapp()) }
 
@@ -138,11 +145,11 @@ context(BluetoothManager, Logger, NamedCoroutineScope<AppScope>, PermissionManag
       }
     }
 
-    log { "start scan" }
-    adapter.bluetoothLeScanner.startScan(callback)
+    logger { "start scan" }
+    bluetoothManager.adapter.bluetoothLeScanner.startScan(callback)
     awaitClose {
-      log { "stop scan" }
-      adapter.bluetoothLeScanner.stopScan(callback)
+      logger { "stop scan" }
+      bluetoothManager.adapter.bluetoothLeScanner.stopScan(callback)
     }
   }
 }

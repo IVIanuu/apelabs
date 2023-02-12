@@ -46,7 +46,6 @@ import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefs
-import com.ivianuu.apelabs.data.ApeLabsPrefsContext
 import com.ivianuu.apelabs.data.BuiltInColors
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
@@ -64,12 +63,14 @@ import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
+import com.ivianuu.apelabs.domain.WappRemote
 import com.ivianuu.apelabs.domain.WappRepository
-import com.ivianuu.essentials.ResourceProvider
+import com.ivianuu.essentials.Resources
 import com.ivianuu.essentials.app.AppForegroundState
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
+import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.ui.common.VerticalList
@@ -91,14 +92,15 @@ import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlin.math.roundToInt
 
 @Provide object HomeKey : RootKey
 
-context(ResourceProvider) @OptIn(ExperimentalFoundationApi::class)
-@Provide fun homeUi() = ModelKeyUi<HomeKey, HomeModel> {
+@OptIn(ExperimentalFoundationApi::class)
+@Provide fun homeUi(resources: Resources) = ModelKeyUi<HomeKey, HomeModel> {
   Scaffold(
     topBar = {
       TopAppBar(
@@ -585,19 +587,27 @@ data class HomeModel(
   val saveScene: () -> Unit
 )
 
-context(ApeLabsPrefsContext, AppForegroundState.Provider, ColorRepository, GroupConfigRepository, LightRepository,
-KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
-    @Provide fun homeModel() = Model {
+@Provide fun homeModel(
+  appForegroundState: Flow<AppForegroundState>,
+  colorRepository: ColorRepository,
+  ctx: KeyUiContext<HomeKey>,
+  groupConfigRepository: GroupConfigRepository,
+  lightRepository: LightRepository,
+  programRepository: ProgramRepository,
+  sceneRepository: SceneRepository,
+  wappRepository: WappRepository,
+  pref: DataStore<ApeLabsPrefs>
+) = Model {
   val prefs by pref.data.collectAsState(ApeLabsPrefs())
 
-  val selectedGroupConfigs by remember { selectedGroupConfigs }
+  val selectedGroupConfigs by remember { groupConfigRepository.selectedGroupConfigs }
     .collectAsState(emptyList())
 
   val groupConfig = selectedGroupConfigs
     .merge()
 
   suspend fun updateConfig(block: GroupConfig.() -> GroupConfig) {
-    updateGroupConfigs(
+    groupConfigRepository.updateGroupConfigs(
       selectedGroupConfigs
         .map { it.block() },
       false
@@ -606,19 +616,19 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
 
   val lights = appForegroundState
     .flatMapLatest {
-      if (it == AppForegroundState.FOREGROUND) lights
+      if (it == AppForegroundState.FOREGROUND) lightRepository.lights
       else infiniteEmptyFlow()
     }
     .bindResource()
   var selectedLights by remember { mutableStateOf(emptySet<Int>()) }
 
   LaunchedEffect(selectedLights) {
-    flashLights(selectedLights.toList())
+    lightRepository.flashLights(selectedLights.toList())
   }
 
   val colorPickerId = Program.colorPickerId(prefs.selectedGroups.toList())
 
-  val colorPickerColor = remember(colorPickerId) { program(colorPickerId) }
+  val colorPickerColor = remember(colorPickerId) { programRepository.program(colorPickerId) }
     .collectAsState(null)
     .value
     ?.items
@@ -664,12 +674,12 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
     wappState = remember {
       appForegroundState
         .flatMapLatest {
-          if (it == AppForegroundState.FOREGROUND) wappState
+          if (it == AppForegroundState.FOREGROUND) wappRepository.wappState
           else infiniteEmptyFlow()
         }
     }.bindResource(),
     lights = lights,
-    refreshLights = action { refreshLights() },
+    refreshLights = action { lightRepository.refreshLights() },
     selectedLights = selectedLights,
     toggleLightSelection = action { light ->
       selectedLights = selectedLights.toMutableSet().apply {
@@ -678,37 +688,38 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
       }
     },
     regroupLights = action {
-      navigator.push(ListKey(items = GROUPS) { toString() })
+      ctx.navigator.push(ListKey(items = GROUPS) { it.toString() })
         ?.let { group ->
-          regroupLights(selectedLights.toList()
-            .also { selectedLights = emptySet() }, group
+          lightRepository.regroupLights(
+            selectedLights.toList()
+              .also { selectedLights = emptySet() }, group
           )
         }
     },
-    userColors = userColors.bindResource(),
+    userColors = colorRepository.userColors.bindResource(),
     updateColor = action { color ->
       color
         .asProgram(colorPickerId)
         .let {
-          updateProgram(it)
+          programRepository.updateProgram(it)
           updateConfig { copy(program = it) }
         }
     },
-    openColor = action { color -> navigator.push(ColorKey(color)) },
+    openColor = action { color -> ctx.navigator.push(ColorKey(color)) },
     addColor = action {
-      navigator.push(TextInputKey(label = "Name.."))
-        ?.let { navigator.push(ColorKey(createColor(it))) }
+      ctx.navigator.push(TextInputKey(label = "Name.."))
+        ?.let { ctx.navigator.push(ColorKey(colorRepository.createColor(it))) }
     },
-    deleteColor = action { color -> deleteColor(color.id) },
+    deleteColor = action { color -> colorRepository.deleteColor(color.id) },
     saveColor = action {
-      navigator.push(TextInputKey(label = "Name.."))
+      ctx.navigator.push(TextInputKey(label = "Name.."))
         ?.let { id ->
           val color = colorPickerColor.copy(id = id)
-          updateColor(color)
+          colorRepository.updateColor(color)
           color
             .asProgram(colorPickerId)
             .let {
-              updateProgram(it)
+              programRepository.updateProgram(it)
               updateConfig { copy(program = it) }
             }
         }
@@ -723,40 +734,40 @@ KeyUiContext<HomeKey>, ProgramRepository, SceneRepository, WappRepository)
         }
         .asProgram(colorPickerId)
         .let {
-          updateProgram(it)
+          programRepository.updateProgram(it)
           updateConfig { copy(program = it) }
         }
     },
-    userPrograms = userPrograms.bindResource(),
+    userPrograms = programRepository.userPrograms.bindResource(),
     updateProgram = action { program -> updateConfig { copy(program = program) } },
-    openProgram = action { program -> navigator.push(ProgramKey(program.id)) },
+    openProgram = action { program -> ctx.navigator.push(ProgramKey(program.id)) },
     addProgram = action {
-      navigator.push(TextInputKey(label = "Name.."))
-        ?.let { navigator.push(ProgramKey(createProgram(it).id)) }
+      ctx.navigator.push(TextInputKey(label = "Name.."))
+        ?.let { ctx.navigator.push(ProgramKey(programRepository.createProgram(it).id)) }
     },
-    deleteProgram = action { program -> deleteProgram(program.id) },
-    scenes = userScenes.bindResource(),
+    deleteProgram = action { program -> programRepository.deleteProgram(program.id) },
+    scenes = sceneRepository.userScenes.bindResource(),
     applyScene = action { scene ->
-      updateGroupConfigs(
+      groupConfigRepository.updateGroupConfigs(
         scene.groupConfigs
           .filterValues { it != null }
           .map { it.value!!.copy(id = it.key.toString()) },
         false
       )
     },
-    openScene = action { scene -> navigator.push(SceneKey(scene.id)) },
+    openScene = action { scene -> ctx.navigator.push(SceneKey(scene.id)) },
     addScene = action {
-      navigator.push(TextInputKey(label = "Name.."))
-        ?.let { navigator.push(SceneKey(createScene(it).id)) }
+      ctx.navigator.push(TextInputKey(label = "Name.."))
+        ?.let { ctx.navigator.push(SceneKey(sceneRepository.createScene(it).id)) }
     },
-    deleteScene = action { scene -> deleteScene(scene.id) },
+    deleteScene = action { scene -> sceneRepository.deleteScene(scene.id) },
     saveScene = action {
-      navigator.push(TextInputKey(label = "Name.."))
+      ctx.navigator.push(TextInputKey(label = "Name.."))
         ?.let { id ->
-          updateScene(
+          sceneRepository.updateScene(
             Scene(
               id = id,
-              groupConfigs = groupConfigs
+              groupConfigs = groupConfigRepository.groupConfigs
                 .first()
                 .map {
                   if (!it.program.id.isUUID) it

@@ -57,23 +57,28 @@ import kotlinx.coroutines.flow.map
 
 data class ColorKey(val initial: ApeColor) : PopupKey<ApeColor>
 
-context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<ColorKey>)
-    @OptIn(ExperimentalMaterialApi::class)
-    @Provide fun colorUi() = SimpleKeyUi<ColorKey> {
+@OptIn(ExperimentalMaterialApi::class)
+@Provide
+fun colorUi(
+  ctx: KeyUiContext<ColorKey>,
+  colorRepository: ColorRepository,
+  groupConfigRepository: GroupConfigRepository,
+  previewRepository: PreviewRepository
+) = SimpleKeyUi<ColorKey> {
   DialogScaffold {
-    var id by remember { mutableStateOf(key.initial.id) }
-    var red by remember { mutableStateOf(key.initial.red) }
-    var green by remember { mutableStateOf(key.initial.green) }
-    var blue by remember { mutableStateOf(key.initial.blue) }
-    var white by remember { mutableStateOf(key.initial.white) }
+    var id by remember { mutableStateOf(ctx.key.initial.id) }
+    var red by remember { mutableStateOf(ctx.key.initial.red) }
+    var green by remember { mutableStateOf(ctx.key.initial.green) }
+    var blue by remember { mutableStateOf(ctx.key.initial.blue) }
+    var white by remember { mutableStateOf(ctx.key.initial.white) }
 
     fun currentColor() = ApeColor(id, red, green, blue, white)
 
     LaunchedEffect(true) {
-      providePreviews { selectedGroups, update ->
+      previewRepository.providePreviews { selectedGroups, update ->
         snapshotFlow { currentColor() }
           .flatMapLatest { color ->
-            groupConfigs
+            groupConfigRepository.groupConfigs
               .map { configs ->
                 configs
                   .filter { it.id.toIntOrNull() in selectedGroups }
@@ -87,7 +92,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
     Dialog(
       applyContentPadding = false,
       content = {
-        val userColors = userColors
+        val userColors = colorRepository.userColors
           .bind(emptyList())
 
         VerticalList(
@@ -131,7 +136,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
             ColorSlider(
               value = red,
               onValueChange = {
-                id = key.initial.id
+                id = ctx.key.initial.id
                 red = it
               },
               color = Color.Red
@@ -142,7 +147,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
             ColorSlider(
               value = green,
               onValueChange = {
-                id = key.initial.id
+                id = ctx.key.initial.id
                 green = it
               },
               color = Color.Green
@@ -153,7 +158,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
             ColorSlider(
               value = blue,
               onValueChange = {
-                id = key.initial.id
+                id = ctx.key.initial.id
                 blue = it
               },
               color = Color.Blue
@@ -164,7 +169,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
             ColorSlider(
               value = white,
               onValueChange = {
-                id = key.initial.id
+                id = ctx.key.initial.id
                 white = it
               },
               color = Color.White
@@ -206,7 +211,7 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
                       Box(modifier = Modifier.requiredSize(18.dp)) {
                         PopupMenuButton {
                           PopupMenuItem(
-                            onSelected = action { deleteColor(color.id) }
+                            onSelected = action { colorRepository.deleteColor(color.id) }
                           ) { Text("Delete") }
                         }
                       }
@@ -242,23 +247,23 @@ context(ColorRepository, GroupConfigRepository, PreviewRepository, KeyUiContext<
           Spacer(Modifier.width(8.dp))
 
           Switch(
-            checked = previewsEnabled.bind(),
-            onCheckedChange = action { value -> updatePreviewsEnabled(value) },
+            checked = previewRepository.previewsEnabled.bind(),
+            onCheckedChange = action { value -> previewRepository.updatePreviewsEnabled(value) },
           )
         }
 
         OutlinedButton(
           onClick = action {
-            navigator.push(TextInputKey(label = "Name.."))
+            ctx.navigator.push(TextInputKey(label = "Name.."))
               ?.let {
                 id = it
-                updateColor(currentColor())
+                colorRepository.updateColor(currentColor())
               }
           }
         ) { Text("SAVE") }
 
         Button(onClick = action {
-          navigator.pop(key, currentColor())
+          ctx.navigator.pop(ctx.key, currentColor())
         }) {
           Text("OK")
         }

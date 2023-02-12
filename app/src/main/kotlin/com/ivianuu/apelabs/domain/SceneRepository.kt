@@ -15,42 +15,45 @@ import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
-context(GroupConfigRepository, Db) @Provide class SceneRepository {
+@Provide class SceneRepository(
+  private val groupConfigRepository: GroupConfigRepository,
+  private val db: Db
+) {
   val userScenes: Flow<List<Scene>>
-    get() = selectAllTransform<SceneEntity, Scene> {
+    get() = db.selectAllTransform<SceneEntity, Scene> {
       it
         ?.takeUnless { it.id.isUUID }
         ?.toScene()
     }
 
-  suspend fun createScene(id: String): Scene = transaction {
+  suspend fun createScene(id: String): Scene = db.transaction {
     val scene = Scene(id)
     updateScene(scene)
     scene
   }
 
   fun scene(id: String): Flow<Scene?> =
-    selectTransform<SceneEntity, Scene>(id) { it?.toScene() }
+    db.selectTransform<SceneEntity, Scene>(id) { it?.toScene() }
 
-  suspend fun updateScene(scene: Scene) = transaction {
-    selectById<SceneEntity>(scene.id).first()
+  suspend fun updateScene(scene: Scene) = db.transaction {
+    db.selectById<SceneEntity>(scene.id).first()
       ?.groupConfigs
       ?.filter { it.value != null && scene.groupConfigs[it.key]?.id != it.value }
-      ?.forEach { deleteGroupConfig(it.value!!) }
+      ?.forEach { groupConfigRepository.deleteGroupConfig(it.value!!) }
 
     scene.groupConfigs
       .values
       .filterNotNull()
-      .parForEach { updateGroupConfig(it, true) }
+      .parForEach { groupConfigRepository.updateGroupConfig(it, true) }
 
-    insert(scene.toEntity(), InsertConflictStrategy.REPLACE)
+    db.insert(scene.toEntity(), InsertConflictStrategy.REPLACE)
   }
 
-  suspend fun deleteScene(id: String) = transaction {
+  suspend fun deleteScene(id: String) = db.transaction {
     selectById<SceneEntity>(id).first()
       ?.groupConfigs
       ?.mapNotNull { it.value }
-      ?.forEach { deleteGroupConfig(it) }
+      ?.forEach { groupConfigRepository.deleteGroupConfig(it) }
 
     deleteById<SceneEntity>(id)
   }
@@ -62,7 +65,7 @@ context(GroupConfigRepository, Db) @Provide class SceneRepository {
     groupConfigs
       .mapValues { (_, groupConfigId) ->
         groupConfigId?.let {
-          groupConfig(groupConfigId)
+          groupConfigRepository.groupConfig(groupConfigId)
             .first()
         }
       }

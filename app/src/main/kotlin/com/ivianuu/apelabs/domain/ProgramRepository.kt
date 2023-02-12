@@ -17,16 +17,19 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 
-context(ColorRepository, Db) @Provide class ProgramRepository {
+@Provide class ProgramRepository(
+  private val colorRepository: ColorRepository,
+  private val db: Db
+) {
   val userPrograms: Flow<List<Program>>
-    get() = selectAllTransform<ProgramEntity, Program> {
+    get() = db.selectAllTransform<ProgramEntity, Program> {
       it
         ?.takeUnless { it.id.isUUID }
         ?.toProgram()
     }
 
-  suspend fun createProgram(id: String): Program = transaction {
-    val color = ApeColor(white = 1f).also { updateColor(it) }
+  suspend fun createProgram(id: String): Program = db.transaction {
+    val color = ApeColor(white = 1f).also { colorRepository.updateColor(it) }
     val program = Program(id = id, listOf(Program.Item(color)))
     updateProgram(program)
     program
@@ -34,29 +37,29 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
 
   fun program(id: String): Flow<Program?> =
     if (id == Program.RAINBOW.id) flowOf(Program.RAINBOW)
-    else selectTransform<ProgramEntity, _>(id) { it?.toProgram() }
+    else db.selectTransform<ProgramEntity, _>(id) { it?.toProgram() }
 
-  suspend fun updateProgram(program: Program) = transaction {
+  suspend fun updateProgram(program: Program) = db.transaction {
     selectById<ProgramEntity>(program.id).first()
       ?.items
       ?.map { it.color }
       ?.filter { it.isUUID && it !in program.items.map { it.color.id } }
-      ?.parForEach { deleteColor(it) }
+      ?.parForEach { colorRepository.deleteColor(it) }
 
     program.items
       .map { it.color }
       .filter { it.id.isUUID }
-      .parForEach { updateColor(it) }
+      .parForEach { colorRepository.updateColor(it) }
 
     insert(program.toEntity(), InsertConflictStrategy.REPLACE)
   }
 
-  suspend fun deleteProgram(id: String) = transaction {
+  suspend fun deleteProgram(id: String) = db.transaction {
     selectById<ProgramEntity>(id).first()
       ?.items
       ?.map { it.color }
       ?.filter { it.isUUID }
-      ?.parForEach { deleteColor(it) }
+      ?.parForEach { colorRepository.deleteColor(it) }
 
     deleteById<ProgramEntity>(id)
   }
@@ -67,6 +70,11 @@ context(ColorRepository, Db) @Provide class ProgramRepository {
 
   private suspend fun ProgramEntity.toProgram() = Program(
     id,
-    items.map { Program.Item(color(it.color).first() ?: ApeColor(), it.fadeTime, it.holdTime) }
+    items.map {
+      Program.Item(
+        colorRepository.color(it.color).first()
+          ?: ApeColor(), it.fadeTime, it.holdTime
+      )
+    }
   )
 }

@@ -18,10 +18,11 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.scale
 import com.ivianuu.apelabs.R
-import com.ivianuu.essentials.ResourceProvider
+import com.ivianuu.essentials.Resources
 import com.ivianuu.essentials.compose.getValue
 import com.ivianuu.essentials.compose.setValue
 import com.ivianuu.essentials.ui.image.toImageBitmap
+import com.ivianuu.injekt.Inject
 
 @Composable fun ImageColorPicker(
   modifier: Modifier,
@@ -59,8 +60,8 @@ import com.ivianuu.essentials.ui.image.toImageBitmap
   }
 }
 
-context(ResourceProvider) class ColorPickerController {
-  var palette by mutableStateOf(loadResource<ImageBitmap>(R.drawable.color_picker))
+class ColorPickerController(@Inject private val resources: Resources) {
+  var palette by mutableStateOf(resources<ImageBitmap>(R.drawable.color_picker))
 
   var position by mutableStateOf<Offset?>(null)
     private set
@@ -78,7 +79,7 @@ context(ResourceProvider) class ColorPickerController {
   fun updateSize(size: IntSize) {
     if (this.size != size) {
       this.size = size
-      palette = loadResource<ImageBitmap>(R.drawable.color_picker)
+      palette = resources<ImageBitmap>(R.drawable.color_picker)
         .asAndroidBitmap()
         .scale(size.width, size.height)
         .toImageBitmap()
