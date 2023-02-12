@@ -1,5 +1,7 @@
 package com.ivianuu.apelabs.domain
 
+import androidx.compose.ui.graphics.Color
+import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
@@ -7,34 +9,50 @@ import com.ivianuu.apelabs.data.Program
 import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
 import com.ivianuu.essentials.coroutines.combine
+import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.data.DataStore
+import com.ivianuu.essentials.err
 import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.invoke
+import com.ivianuu.essentials.time.Clock
 import com.ivianuu.essentials.time.milliseconds
+import com.ivianuu.essentials.time.seconds
+import com.ivianuu.essentials.ui.UiScope
+import com.ivianuu.essentials.util.BroadcastsFactory
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import kotlin.time.Duration
 
 @Provide fun apeLabsConfigApplier(
-  prefs: DataStore<ApeLabsPrefs>,
+  broadcastsFactory: BroadcastsFactory,
   groupConfigRepository: GroupConfigRepository,
   logger: Logger,
   lightRepository: LightRepository,
   previewRepository: PreviewRepository,
   wappRemote: WappRemote,
   wappRepository: WappRepository
-) = ScopeWorker<AppForegroundScope> {
+) = ScopeWorker<UiScope> {
   wappRepository.wapps.collectLatest { wapps ->
     logger { "wapps $wapps" }
     if (wapps.isEmpty()) return@collectLatest
@@ -67,7 +85,11 @@ import kotlin.time.Duration
               .onStart<Any?> { emit(Unit) }
               .map { groupConfigs }
           }
-          .collectLatest { applyGroupConfig(it, cache) }
+          .collectLatest {
+            coroutineScope {
+              applyGroupConfig(it, cache)
+            }
+          }
       }
     }
   }
@@ -78,11 +100,15 @@ private class Cache {
   val lastBrightness = mutableMapOf<Int, Float>()
   val lastSpeed = mutableMapOf<Int, Float>()
   val lastMusicMode = mutableMapOf<Int, Boolean>()
+  val jobs = mutableMapOf<Int, Job>()
 }
 
 private suspend fun WappServer.applyGroupConfig(
   configs: Map<Int, GroupConfig>,
   cache: Cache,
+  @Inject broadcastsFactory: BroadcastsFactory,
+  @Inject clock: Clock,
+  @Inject coroutineScope: CoroutineScope,
   @Inject logger: Logger
 ) {
   logger { "apply $configs" }
@@ -152,23 +178,63 @@ private suspend fun WappServer.applyGroupConfig(
           )
         }
         else -> {
-          value.items.forEachIndexed { index, item ->
-            write(
-              byteArrayOf(
-                81,
-                index.toByte(),
-                value.items.size.toByte(),
-                item.color.red.toColorByte(),
-                item.color.green.toColorByte(),
-                item.color.blue.toColorByte(),
-                item.color.white.toColorByte(),
-                0,
-                item.fadeTime.toDurationByte(),
-                0,
-                item.holdTime.toDurationByte(),
-                groups.toGroupByte()
-              )
-            )
+          groups.forEach { group ->
+            cache.jobs[group]?.cancel()
+            cache.jobs[group] = coroutineScope.launch {
+              var lastColor: ApeColor? = null
+
+              broadcastsFactory(
+                "track_meta"
+              ).transformLatest { intent ->
+                val playbackState =
+                  Json.decodeFromString<PlaybackState?>(intent.getStringExtra("playback_state")!!)
+                val audioAnalysis =
+                  Json.decodeFromString<ApiAudioAnalysis?>(intent.getStringExtra("audio_analysis")!!)
+                logger {
+                  "received $playbackState ${audioAnalysis?.beats?.size} ${audioAnalysis?.bars?.size} " +
+                      "${audioAnalysis?.segments?.size} ${audioAnalysis?.sections?.size}"
+                }
+                if (playbackState?.isPlaying != true || audioAnalysis == null) return@transformLatest
+
+                while (coroutineContext.isActive) {
+                  val currentPosition = playbackState.currentPosition()
+                  val nextSection = audioAnalysis.bars
+                    .chunked(4)
+                    .firstOrNull { it.last().start.seconds > currentPosition }
+                    ?.last()
+                    ?.start
+                    ?.seconds
+                    ?: break
+
+                  logger { "position ${currentPosition.inWholeSeconds} delay ${nextSection - currentPosition}" }
+                  delay(nextSection - currentPosition + 1.seconds)
+
+                  logger { "change color" }
+                  emit(Unit)
+                }
+              }
+                .onStart { emit(Unit) }
+                .collect {
+                  val color = value.items.shuffled().firstOrNull { it.color != lastColor }?.color
+                    ?: value.items.first().color
+                  lastColor = color
+
+                  write(
+                    byteArrayOf(
+                      68,
+                      68,
+                      groups.toGroupByte(),
+                      4,
+                      30,
+                      color.red.toColorByte(),
+                      color.green.toColorByte(),
+                      color.blue.toColorByte(),
+                      color.white.toColorByte()
+                    ),
+                    true
+                  )
+                }
+            }
           }
         }
       }

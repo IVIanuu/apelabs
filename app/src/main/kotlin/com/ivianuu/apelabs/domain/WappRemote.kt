@@ -150,7 +150,7 @@ class WappServer(
     logger { "${device.debugName()} init" }
   }
 
-  suspend fun write(message: ByteArray) = withContext(context) {
+  suspend fun write(message: ByteArray, fast: Boolean = false) = withContext(context) {
     val service = gatt.getService(APE_LABS_SERVICE_ID) ?: error(
       "${device.debugName()} service not found ${
         gatt.services.map {
@@ -164,7 +164,7 @@ class WappServer(
     writeLock.withLock {
       logger { "${device.debugName()} write -> ${message.contentToString()}" }
       characteristic.value = message
-      writeLimiter.acquire()
+      if (!fast) writeLimiter.acquire()
       gatt.writeCharacteristic(characteristic)
     }
   }
