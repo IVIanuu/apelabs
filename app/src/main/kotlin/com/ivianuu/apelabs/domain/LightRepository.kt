@@ -20,9 +20,9 @@ import com.ivianuu.injekt.common.Scoped
 import com.ivianuu.injekt.coroutines.IOContext
 import com.ivianuu.injekt.coroutines.NamedCoroutineScope
 import com.ivianuu.injekt.inject
-import kotlinx.coroutines.GlobalScope.coroutineContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -154,7 +154,7 @@ import kotlinx.coroutines.withContext
 
     wappRepository.wapps.first().parForEach { wapp ->
       wappRemote.withWapp(wapp.address) {
-        while (coroutineContext.isActive) {
+        while (currentCoroutineContext().isActive) {
           ids
             .shuffled()
             .forEach { id ->
