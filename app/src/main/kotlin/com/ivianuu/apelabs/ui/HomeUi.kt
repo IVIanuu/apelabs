@@ -67,6 +67,7 @@ import com.ivianuu.apelabs.domain.WappRemote
 import com.ivianuu.apelabs.domain.WappRepository
 import com.ivianuu.essentials.Resources
 import com.ivianuu.essentials.app.AppForegroundState
+import com.ivianuu.essentials.backup.BackupAndRestoreKey
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
@@ -112,6 +113,9 @@ import kotlin.math.roundToInt
             }
             PopupMenuItem(onSelected = saveScene) {
               Text("Save scene")
+            }
+            PopupMenuItem(onSelected = openBackupRestore) {
+              Text("Backup and restore")
             }
           }
         }
@@ -584,7 +588,8 @@ data class HomeModel(
   val openScene: (Scene) -> Unit,
   val addScene: () -> Unit,
   val deleteScene: (Scene) -> Unit,
-  val saveScene: () -> Unit
+  val saveScene: () -> Unit,
+  val openBackupRestore: () -> Unit
 )
 
 @Provide fun homeModel(
@@ -777,6 +782,7 @@ data class HomeModel(
             )
           )
         }
-    }
+    },
+    openBackupRestore = action { ctx.navigator.push(BackupAndRestoreKey()) }
   )
 }
