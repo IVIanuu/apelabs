@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
@@ -46,11 +47,12 @@ import kotlin.time.Duration
         logger { "apply for wapp $wapp" }
 
         combine(groupConfigRepository.groupConfigs, previewRepository.previewGroupConfigs)
-          .map { (groupConfigs, previewGroupConfigs) ->
+          .mapNotNull { (groupConfigs, previewGroupConfigs) ->
             GROUPS
               .associateWith { group ->
                 previewGroupConfigs.singleOrNull { it.id == group.toString() }
-                  ?: groupConfigs.single { it.id == group.toString() }
+                  ?: groupConfigs.singleOrNull { it.id == group.toString() }
+                  ?: return@mapNotNull null
               }
           }
           .distinctUntilChanged()
