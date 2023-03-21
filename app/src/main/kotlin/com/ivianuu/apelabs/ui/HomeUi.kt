@@ -76,6 +76,7 @@ import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
+import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.ListKey
 import com.ivianuu.essentials.ui.dialog.TextInputKey
@@ -95,6 +96,7 @@ import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -200,6 +202,7 @@ import kotlin.math.roundToInt
 
           LaunchedEffect(controller.selectedColor) {
             controller.selectedColor?.let {
+              delay(20.milliseconds)
               updateColorPickerColor(it)
             }
           }
