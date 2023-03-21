@@ -5,6 +5,7 @@ import com.ivianuu.essentials.db.Entity
 import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable
 
+
 @Serializable @Entity data class ApeColor(
   @PrimaryKey val id: String = randomId(),
   val red: Float = 0f,
@@ -13,20 +14,27 @@ import kotlinx.serialization.Serializable
   val white: Float = 0f
 )
 
-fun ApeColor.toComposeColor() = Color(red, green, blue)
-  .overlay(Color.White.copy(alpha = white))
+fun ApeColor.toComposeColor(): Color {
+  val red = red * 255f
+  val blue = blue * 255f
+  val green = green * 255f
+  val white = white * 255f
+
+  if (red == 0f && green == 0f && blue == 0f && white == 0f) return Color.Transparent
+
+  val r2 = red + (255 - red) * 0.33 * white / 255
+  val g2 = green + (255 - green) * 0.33 * white / 255
+  val b2 = blue + (255 - blue) * 0.33 * white / 255
+
+  val min = (255 / r2).coerceAtMost((255 / g2).coerceAtMost(255 / b2))
+  val r3 = (r2 * min).toInt().coerceIn(0, 255)
+  val g3 = (g2 * min).toInt().coerceIn(0, 255)
+  val b3 = (min * b2).toInt().coerceIn(0, 255)
+
+  return Color(r3, g3, b3)
+}
 
 fun Color.toApeColor(id: String = randomId()) = ApeColor(id, red, green, blue)
-
-private fun Color.overlay(overlay: Color): Color {
-  val alphaSum = alpha + overlay.alpha
-  return Color(
-    (red * alpha + overlay.red * overlay.alpha) / alphaSum,
-    (green * alpha + overlay.green * overlay.alpha) / alphaSum,
-    (blue * alpha + overlay.blue * overlay.alpha) / alphaSum,
-    alphaSum.coerceIn(0f, 1f),
-  )
-}
 
 val BuiltInColors = listOf(
   ApeColor("Candlelight Classic", 0.72f, 0.19f, 0.00f, 1.00f),
