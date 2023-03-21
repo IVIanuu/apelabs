@@ -262,7 +262,7 @@ import kotlin.math.roundToInt
         add(Program.RAINBOW.id to Program.RAINBOW)
         addAll(builtInColors.map { it.id to it })
       }
-        .sortedBy { it.first }
+        .sortedBy { it.first.lowercase() }
         .sortedByDescending { contentUsages[it.first] ?: 0.0 }
         .chunked(2)
         .forEach { row ->
