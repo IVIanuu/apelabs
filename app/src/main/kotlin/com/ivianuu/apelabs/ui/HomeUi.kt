@@ -705,11 +705,6 @@ data class HomeModel(
     updateColorPickerColor = action { composeColor ->
       composeColor
         .toApeColor(colorPickerId)
-        .let {
-          if (it.red >= 0.95f && it.green >= 0.95f && it.blue >= 0.95f)
-            ApeColor(id = it.id, white = 1f)
-          else it
-        }
         .asProgram(colorPickerId)
         .let {
           programRepository.updateProgram(it)
