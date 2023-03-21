@@ -59,6 +59,7 @@ import com.ivianuu.apelabs.data.merge
 import com.ivianuu.apelabs.data.randomId
 import com.ivianuu.apelabs.data.toApeColor
 import com.ivianuu.apelabs.domain.ColorRepository
+import com.ivianuu.apelabs.domain.ContentUsageRepository
 import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
@@ -69,6 +70,7 @@ import com.ivianuu.essentials.Resources
 import com.ivianuu.essentials.app.AppForegroundState
 import com.ivianuu.essentials.backup.BackupAndRestoreKey
 import com.ivianuu.essentials.compose.action
+import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
 import com.ivianuu.essentials.data.DataStore
@@ -246,14 +248,22 @@ import kotlin.math.roundToInt
       }
 
       item {
-        Subheader { Text("Custom") }
+        Subheader { Text("Programs / colors") }
       }
 
       val userColors = userColors.getOrElse { emptyList() }
       val userPrograms = userPrograms.getOrElse { emptyList() }
 
-      (userColors.map { it.id to it } + userPrograms.map { it.id to it })
+      fun Any.isCustom() = this in userColors || this in userPrograms
+
+      buildList {
+        addAll(userColors.map { it.id to it })
+        addAll(userPrograms.map { it.id to it })
+        add(Program.RAINBOW.id to Program.RAINBOW)
+        addAll(builtInColors.map { it.id to it })
+      }
         .sortedBy { it.first }
+        .sortedByDescending { contentUsages[it.first] ?: 0.0 }
         .chunked(2)
         .forEach { row ->
           item {
@@ -271,13 +281,14 @@ import kotlin.math.roundToInt
                 ListItem(
                   modifier = Modifier
                     .weight(0.5f)
+                    .animateItemPlacement()
                     .clickable {
                       item.map(
                         color = { updateColor(it) },
                         program = { updateProgram(it) }
                       )
                     },
-                  title = { Text(id) },
+                  title = { Text(if (item === Program.RAINBOW) "Rainbow" else id) },
                   leading = {
                     ColorListIcon(
                       modifier = Modifier.size(40.dp),
@@ -287,7 +298,7 @@ import kotlin.math.roundToInt
                       )
                     )
                   },
-                  trailing = {
+                  trailing = if (!item.isCustom()) null else ({
                     PopupMenuButton {
                       PopupMenuItem(onSelected = {
                         item.map(
@@ -302,7 +313,7 @@ import kotlin.math.roundToInt
                         )
                       }) { Text("Delete") }
                     }
-                  },
+                  }),
                   contentPadding = PaddingValues(
                     start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
                     end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
@@ -331,59 +342,12 @@ import kotlin.math.roundToInt
         }
       }
 
-      item { Subheader { Text("Built in") } }
-
-      item {
-        Row {
-          ListItem(
-            modifier = Modifier
-              .weight(0.5f)
-              .clickable { updateProgram(Program.RAINBOW) },
-            title = { Text("Rainbow") },
-            leading = {
-              ColorListIcon(
-                modifier = Modifier.size(40.dp),
-                program = Program.RAINBOW
-              )
-            }
-          )
-        }
-      }
-
-      builtInColors
-        .sortedBy { it.id }
-        .chunked(2)
-        .forEach { row ->
-          item {
-            Row {
-              row.forEachIndexed { index, color ->
-                ListItem(
-                  modifier = Modifier
-                    .weight(0.5f)
-                    .clickable { updateColor(color) },
-                  title = { Text(color.id) },
-                  leading = {
-                    ColorListIcon(
-                      modifier = Modifier.size(40.dp),
-                      colors = listOf(color)
-                    )
-                  },
-                  contentPadding = PaddingValues(
-                    start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
-                    end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
-                  ),
-                  textPadding = PaddingValues(start = 16.dp)
-                )
-              }
-            }
-          }
-        }
-
       item { Subheader { Text("Scenes") } }
 
       val scenes = scenes.getOrElse { emptyList() }
       scenes
         .sortedBy { it.id }
+        .sortedByDescending { contentUsages[it.id] ?: 0.0 }
         .chunked(2)
         .forEach { row ->
           item {
@@ -392,6 +356,7 @@ import kotlin.math.roundToInt
                 ListItem(
                   modifier = Modifier
                     .weight(0.5f)
+                    .animateItemPlacement()
                     .clickable { applyScene(scene) },
                   title = { Text(scene.id) },
                   trailing = {
@@ -577,6 +542,7 @@ data class HomeModel(
   val deleteColor: (ApeColor) -> Unit,
   val saveColor: () -> Unit,
   val updateColorPickerColor: (Color) -> Unit,
+  val contentUsages: Map<String, Double>,
   val builtInColors: List<ApeColor> = BuiltInColors,
   val userPrograms: Resource<List<Program>>,
   val updateProgram: (Program) -> Unit,
@@ -595,6 +561,7 @@ data class HomeModel(
 @Provide fun homeModel(
   appForegroundState: Flow<AppForegroundState>,
   colorRepository: ColorRepository,
+  contentUsageRepository: ContentUsageRepository,
   ctx: KeyUiContext<HomeKey>,
   groupConfigRepository: GroupConfigRepository,
   lightRepository: LightRepository,
@@ -701,6 +668,7 @@ data class HomeModel(
           )
         }
     },
+    contentUsages = contentUsageRepository.contentUsages.bind(emptyMap()),
     userColors = colorRepository.userColors.bindResource(),
     updateColor = action { color ->
       color
@@ -709,11 +677,15 @@ data class HomeModel(
           programRepository.updateProgram(it)
           updateConfig { copy(program = it) }
         }
+      contentUsageRepository.contentUsed(color.id)
     },
     openColor = action { color -> ctx.navigator.push(ColorKey(color)) },
     addColor = action {
       ctx.navigator.push(TextInputKey(label = "Name.."))
-        ?.let { ctx.navigator.push(ColorKey(colorRepository.createColor(it))) }
+        ?.let { id ->
+          ctx.navigator.push(ColorKey(colorRepository.createColor(id)))
+          contentUsageRepository.contentUsed(id)
+        }
     },
     deleteColor = action { color -> colorRepository.deleteColor(color.id) },
     saveColor = action {
@@ -727,6 +699,7 @@ data class HomeModel(
               programRepository.updateProgram(it)
               updateConfig { copy(program = it) }
             }
+          contentUsageRepository.contentUsed(color.id)
         }
     },
     updateColorPickerColor = action { composeColor ->
@@ -744,11 +717,17 @@ data class HomeModel(
         }
     },
     userPrograms = programRepository.userPrograms.bindResource(),
-    updateProgram = action { program -> updateConfig { copy(program = program) } },
+    updateProgram = action { program ->
+      updateConfig { copy(program = program) }
+      contentUsageRepository.contentUsed(program.id)
+    },
     openProgram = action { program -> ctx.navigator.push(ProgramKey(program.id)) },
     addProgram = action {
       ctx.navigator.push(TextInputKey(label = "Name.."))
-        ?.let { ctx.navigator.push(ProgramKey(programRepository.createProgram(it).id)) }
+        ?.let { id ->
+          ctx.navigator.push(ProgramKey(programRepository.createProgram(id).id))
+          contentUsageRepository.contentUsed(id)
+        }
     },
     deleteProgram = action { program -> programRepository.deleteProgram(program.id) },
     scenes = sceneRepository.userScenes.bindResource(),
@@ -759,6 +738,7 @@ data class HomeModel(
           .map { it.value!!.copy(id = it.key.toString()) },
         false
       )
+      contentUsageRepository.contentUsed(scene.id)
     },
     openScene = action { scene -> ctx.navigator.push(SceneKey(scene.id)) },
     addScene = action {
@@ -781,6 +761,7 @@ data class HomeModel(
                 .associate { it.id.toInt() to it.copy(id = randomId()) }
             )
           )
+          contentUsageRepository.contentUsed(id)
         }
     },
     openBackupRestore = action { ctx.navigator.push(BackupAndRestoreKey()) }
