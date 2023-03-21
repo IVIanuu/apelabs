@@ -346,7 +346,7 @@ import kotlin.math.roundToInt
 
       val scenes = scenes.getOrElse { emptyList() }
       scenes
-        .sortedBy { it.id }
+        .sortedBy { it.id.lowercase() }
         .sortedByDescending { contentUsages[it.id] ?: 0.0 }
         .chunked(2)
         .forEach { row ->
