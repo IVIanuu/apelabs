@@ -14,6 +14,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
@@ -21,6 +22,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ContentAlpha
@@ -108,26 +112,24 @@ import kotlin.math.roundToInt
 @Provide fun homeUi(resources: Resources) = ModelKeyUi<HomeKey, HomeModel> {
   Scaffold(
     topBar = {
-      TopAppBar(
-        title = { Text("Ape labs") },
-        actions = {
-          PopupMenuButton {
-            PopupMenuItem(onSelected = saveColor) {
-              Text("Save color")
-            }
-            PopupMenuItem(onSelected = saveScene) {
-              Text("Save scene")
-            }
-            PopupMenuItem(onSelected = openBackupRestore) {
-              Text("Backup and restore")
+      Column {
+        TopAppBar(
+          title = { Text("Ape labs") },
+          actions = {
+            PopupMenuButton {
+              PopupMenuItem(onSelected = saveColor) {
+                Text("Save color")
+              }
+              PopupMenuItem(onSelected = saveScene) {
+                Text("Save scene")
+              }
+              PopupMenuItem(onSelected = openBackupRestore) {
+                Text("Backup and restore")
+              }
             }
           }
-        }
-      )
-    }
-  ) {
-    VerticalList {
-      stickyHeader {
+        )
+
         FlowRow(
           modifier = Modifier
             .fillMaxWidth()
@@ -156,16 +158,18 @@ import kotlin.math.roundToInt
           }
         }
       }
-
+    }
+  ) {
+    LazyVerticalGrid(GridCells.Fixed(2)) {
       if (selectedGroups.isEmpty()) {
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
           Text(
             modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
             text = "Select a group to edit"
           )
         }
       } else {
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
           val programName = when {
             groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
             groupConfig.program.id.isUUID ->
@@ -189,7 +193,7 @@ import kotlin.math.roundToInt
           )
         }
 
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
           val controller = remember { ColorPickerController() }
 
           ImageColorPicker(
@@ -213,7 +217,7 @@ import kotlin.math.roundToInt
           }
         }
 
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
           SliderListItem(
             value = groupConfig.brightness,
             onValueChangeFinished = updateBrightness,
@@ -223,7 +227,7 @@ import kotlin.math.roundToInt
           )
         }
 
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
           SliderListItem(
             value = groupConfig.speed,
             onValueChangeFinished = updateSpeed,
@@ -233,7 +237,7 @@ import kotlin.math.roundToInt
           )
         }
 
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
           SwitchListItem(
             value = groupConfig.musicMode,
             onValueChange = updateMusicMode,
@@ -241,7 +245,7 @@ import kotlin.math.roundToInt
           )
         }
 
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
           SwitchListItem(
             value = groupConfig.blackout,
             onValueChange = updateBlackout,
@@ -250,7 +254,7 @@ import kotlin.math.roundToInt
         }
       }
 
-      item {
+      item(span = { GridItemSpan(maxLineSpan) }) {
         Subheader { Text("Programs / colors") }
       }
 
@@ -269,66 +273,65 @@ import kotlin.math.roundToInt
         .sortedByDescending { contentUsages[it.first] ?: 0.0 }
         .chunked(2)
         .forEach { row ->
-          item {
-            Row {
-              row.forEachIndexed { index, (id, item) ->
-                fun <T> Any.map(
-                  color: (ApeColor) -> T,
-                  program: (Program) -> T
-                ) = when (this) {
-                  is ApeColor -> color(this)
-                  is Program -> program(this)
-                  else -> throw AssertionError()
-                }
+          row.forEachIndexed { index, (id, item) ->
+            item(key = item, span = {
+              GridItemSpan(if (row.size == 1) maxLineSpan else 1)
+            }) {
+              fun <T> Any.map(
+                color: (ApeColor) -> T,
+                program: (Program) -> T
+              ) = when (this) {
+                is ApeColor -> color(this)
+                is Program -> program(this)
+                else -> throw AssertionError()
+              }
 
-                ListItem(
-                  modifier = Modifier
-                    .weight(0.5f)
-                    .animateItemPlacement()
-                    .clickable {
-                      item.map(
-                        color = { updateColor(it) },
-                        program = { updateProgram(it) }
-                      )
-                    },
-                  title = { Text(if (item === Program.RAINBOW) "Rainbow" else id) },
-                  leading = {
-                    ColorListIcon(
-                      modifier = Modifier.size(40.dp),
-                      colors = item.map(
-                        color = { listOf(it) },
-                        program = { it.items.map { it.color } }
-                      )
+              ListItem(
+                modifier = Modifier
+                  .animateItemPlacement()
+                  .clickable {
+                    item.map(
+                      color = { updateColor(it) },
+                      program = { updateProgram(it) }
                     )
                   },
-                  trailing = if (!item.isCustom()) null else ({
-                    PopupMenuButton {
-                      PopupMenuItem(onSelected = {
-                        item.map(
-                          color = { openColor(it) },
-                          program = { openProgram(it) }
-                        )
-                      }) { Text("Open") }
-                      PopupMenuItem(onSelected = {
-                        item.map(
-                          color = { deleteColor(it) },
-                          program = { deleteProgram(it) }
-                        )
-                      }) { Text("Delete") }
-                    }
-                  }),
-                  contentPadding = PaddingValues(
-                    start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
-                    end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
-                  ),
-                  textPadding = PaddingValues(start = 16.dp)
-                )
-              }
+                title = { Text(if (item === Program.RAINBOW) "Rainbow" else id) },
+                leading = {
+                  ColorListIcon(
+                    modifier = Modifier.size(40.dp),
+                    colors = item.map(
+                      color = { listOf(it) },
+                      program = { it.items.map { it.color } }
+                    )
+                  )
+                },
+                trailing = if (!item.isCustom()) null else ({
+                  PopupMenuButton {
+                    PopupMenuItem(onSelected = {
+                      item.map(
+                        color = { openColor(it) },
+                        program = { openProgram(it) }
+                      )
+                    }) { Text("Open") }
+                    PopupMenuItem(onSelected = {
+                      item.map(
+                        color = { deleteColor(it) },
+                        program = { deleteProgram(it) }
+                      )
+                    }) { Text("Delete") }
+                  }
+                }),
+                contentPadding = PaddingValues(
+                  start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
+                  end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
+                ),
+                textPadding = PaddingValues(start = 16.dp)
+              )
             }
           }
         }
 
-      item {
+      item(span = { GridItemSpan(maxLineSpan) }) {
         Row(
           modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
           horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
@@ -345,7 +348,7 @@ import kotlin.math.roundToInt
         }
       }
 
-      item { Subheader { Text("Scenes") } }
+      item(span = { GridItemSpan(maxLineSpan) }) { Subheader { Text("Scenes") } }
 
       val scenes = scenes.getOrElse { emptyList() }
       scenes
@@ -353,33 +356,32 @@ import kotlin.math.roundToInt
         .sortedByDescending { contentUsages[it.id] ?: 0.0 }
         .chunked(2)
         .forEach { row ->
-          item {
-            Row {
-              row.forEachIndexed { index, scene ->
-                ListItem(
-                  modifier = Modifier
-                    .weight(0.5f)
-                    .animateItemPlacement()
-                    .clickable { applyScene(scene) },
-                  title = { Text(scene.id) },
-                  trailing = {
-                    PopupMenuButton {
-                      PopupMenuItem(onSelected = { openScene(scene) }) { Text("Open") }
-                      PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
-                    }
-                  },
-                  contentPadding = PaddingValues(
-                    start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
-                    end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
-                  ),
-                  textPadding = PaddingValues(start = 16.dp)
-                )
-              }
+          row.forEachIndexed { index, scene ->
+            item(key = scene, span = {
+              GridItemSpan(if (row.size == 1) maxLineSpan else 1)
+            }) {
+              ListItem(
+                modifier = Modifier
+                  .animateItemPlacement()
+                  .clickable { applyScene(scene) },
+                title = { Text(scene.id) },
+                trailing = {
+                  PopupMenuButton {
+                    PopupMenuItem(onSelected = { openScene(scene) }) { Text("Open") }
+                    PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
+                  }
+                },
+                contentPadding = PaddingValues(
+                  start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
+                  end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
+                ),
+                textPadding = PaddingValues(start = 16.dp)
+              )
             }
           }
         }
 
-      item {
+      item(span = { GridItemSpan(maxLineSpan) }) {
         Button(
           modifier = Modifier
             .fillMaxWidth()
@@ -392,11 +394,11 @@ import kotlin.math.roundToInt
       val lights = lights.getOrElse { emptyList() }
 
       if (wappState.isConnected || lights.isNotEmpty()) {
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
           Subheader { Text("Devices ${lights.size}") }
         }
 
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
           FlowRow(
             modifier = Modifier
               .padding(16.dp),
@@ -462,7 +464,7 @@ import kotlin.math.roundToInt
           }
         }
 
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
           Row(
             modifier = Modifier
               .fillMaxWidth()
