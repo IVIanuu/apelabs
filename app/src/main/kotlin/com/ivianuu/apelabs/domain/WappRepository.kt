@@ -105,20 +105,26 @@ import kotlinx.coroutines.sync.withLock
           foundWapps += wapp
           if (wapp in wapps)
             return@launch
-          else {
+        }
+
+        wappRemote.withWapp(wapp.address) {
+          wappsLock.withLock {
+            if (wapp in wapps)
+              return@withWapp
+
             logger { "${wapp.debugName()} add wapp" }
 
             wapps += wapp
             trySend(wapps.toList())
           }
-        }
 
-        wappRemote.withWapp<Unit>(wapp.address) {
-          onCancel {
-            logger { "${wapp.debugName()} remove wapp" }
-            wappsLock.withLock {
-              wapps.remove(wapp)
-              trySend(wapps.toList())
+          onCancel(block = { awaitCancellation() }) {
+            if (coroutineContext.isActive) {
+              logger { "${wapp.debugName()} remove wapp" }
+              wappsLock.withLock {
+                wapps.remove(wapp)
+                trySend(wapps.toList())
+              }
             }
           }
         }
