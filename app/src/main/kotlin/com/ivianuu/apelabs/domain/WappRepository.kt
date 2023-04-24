@@ -99,28 +99,22 @@ import kotlinx.coroutines.sync.withLock
     val wapps = mutableSetOf<Wapp>()
     trySend(emptyList())
 
-    fun handleWapp(wapp: Wapp, isConnected: Boolean) {
+    fun handleWapp(wapp: Wapp) {
       launch {
-        suspend fun add() {
-          logger { "${wapp.debugName()} add wapp" }
-          wapps += wapp
-          trySend(wapps.toList())
-        }
-
         wappsLock.withLock {
           foundWapps += wapp
           if (wapp in wapps)
             return@launch
-          else if (isConnected) {
-            add()
+          else {
+            logger { "${wapp.debugName()} add wapp" }
+
+            wapps += wapp
+            trySend(wapps.toList())
           }
         }
 
         wappRemote.withWapp<Unit>(wapp.address) {
-          onCancel(block = {
-            if (!isConnected) add()
-            awaitCancellation()
-          }) {
+          onCancel {
             logger { "${wapp.debugName()} remove wapp" }
             wappsLock.withLock {
               wapps.remove(wapp)
@@ -133,15 +127,15 @@ import kotlinx.coroutines.sync.withLock
 
     bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)
       .filter { it.isWapp() }
-      .forEach { handleWapp(it.toWapp(), true) }
+      .forEach { handleWapp(it.toWapp()) }
 
-    foundWapps.forEach { handleWapp(it, false) }
+    foundWapps.forEach { handleWapp(it) }
 
     val callback = object : ScanCallback() {
       override fun onScanResult(callbackType: Int, result: ScanResult) {
         super.onScanResult(callbackType, result)
         if (result.device.isWapp())
-          handleWapp(result.device.toWapp(), true)
+          handleWapp(result.device.toWapp())
       }
     }
 
