@@ -270,7 +270,7 @@ import kotlin.math.roundToInt
         addAll(builtInColors.map { it.id to it })
       }
         .sortedBy { it.first.lowercase() }
-        .sortedByDescending { contentUsages[it.first] ?: 0.0 }
+        .sortedByDescending { contentUsages[it.first] ?: -1f }
         .chunked(2)
         .forEach { row ->
           row.forEachIndexed { index, (id, item) ->
@@ -353,7 +353,7 @@ import kotlin.math.roundToInt
       val scenes = scenes.getOrElse { emptyList() }
       scenes
         .sortedBy { it.id.lowercase() }
-        .sortedByDescending { contentUsages[it.id] ?: 0.0 }
+        .sortedByDescending { contentUsages[it.id] ?: -1f }
         .chunked(2)
         .forEach { row ->
           row.forEachIndexed { index, scene ->
@@ -547,7 +547,7 @@ data class HomeModel(
   val deleteColor: (ApeColor) -> Unit,
   val saveColor: () -> Unit,
   val updateColorPickerColor: (Color) -> Unit,
-  val contentUsages: Map<String, Double>,
+  val contentUsages: Map<String, Float>,
   val builtInColors: List<ApeColor> = BuiltInColors,
   val userPrograms: Resource<List<Program>>,
   val updateProgram: (Program) -> Unit,
