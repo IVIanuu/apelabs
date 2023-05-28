@@ -97,14 +97,17 @@ import kotlinx.coroutines.sync.withLock
   @SuppressLint("MissingPermission")
   private fun bleWapps(): Flow<List<Wapp>> = callbackFlow {
     val wapps = mutableSetOf<Wapp>()
+    val handledWapps = mutableSetOf<Wapp>()
     trySend(emptyList())
 
     fun handleWapp(wapp: Wapp) {
       launch {
         wappsLock.withLock {
           foundWapps += wapp
-          if (wapp in wapps)
+          if (handledWapps.any { it.address == wapp.address })
             return@launch
+
+          handledWapps += wapp
         }
 
         wappRemote.withWapp(wapp.address) {
@@ -122,6 +125,7 @@ import kotlinx.coroutines.sync.withLock
             if (coroutineContext.isActive) {
               logger { "${wapp.debugName()} remove wapp" }
               wappsLock.withLock {
+                handledWapps.removeAll { it.address == wapp.address }
                 wapps.remove(wapp)
                 trySend(wapps.toList())
               }
