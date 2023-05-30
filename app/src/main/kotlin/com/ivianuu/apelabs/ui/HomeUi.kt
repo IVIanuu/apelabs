@@ -84,6 +84,7 @@ import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.ListKey
 import com.ivianuu.essentials.ui.dialog.TextInputKey
+import com.ivianuu.essentials.ui.insets.localVerticalInsetsPadding
 import com.ivianuu.essentials.ui.material.ListItem
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Subheader
@@ -129,38 +130,48 @@ import kotlin.math.roundToInt
             }
           }
         )
-
-        FlowRow(
-          modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colors.surface)
-            .clickable { }
-            .padding(8.dp),
-          mainAxisSpacing = 8.dp,
-          crossAxisSpacing = 8.dp
-        ) {
-          LongClickChip(
-            selected = groups.all { it in selectedGroups },
-            onClick = toggleAllGroupSelections,
-            onLongClick = null
+      }
+    },
+    bottomBar = {
+      Surface(
+        modifier = Modifier
+          .fillMaxWidth()
+          .height(56.dp)
+          .clickable { },
+        elevation = 8.dp
+      ) {
+        Box(contentAlignment = Alignment.CenterStart) {
+          FlowRow(
+            modifier = Modifier.padding(8.dp),
+            mainAxisSpacing = 8.dp,
+            crossAxisSpacing = 8.dp
           ) {
-            Text("ALL")
-          }
-
-          groups.forEach { group ->
             LongClickChip(
-              selected = group in selectedGroups,
-              onClick = { toggleGroupSelection(group, false) },
-              onLongClick = { toggleGroupSelection(group, true) }
+              selected = groups.all { it in selectedGroups },
+              onClick = toggleAllGroupSelections,
+              onLongClick = null
             ) {
-              Text(group.toString())
+              Text("ALL")
+            }
+
+            groups.forEach { group ->
+              LongClickChip(
+                selected = group in selectedGroups,
+                onClick = { toggleGroupSelection(group, false) },
+                onLongClick = { toggleGroupSelection(group, true) }
+              ) {
+                Text(group.toString())
+              }
             }
           }
         }
       }
     }
   ) {
-    LazyVerticalGrid(GridCells.Fixed(2)) {
+    LazyVerticalGrid(
+      columns = GridCells.Fixed(2),
+      contentPadding = localVerticalInsetsPadding()
+    ) {
       if (selectedGroups.isEmpty()) {
         item(span = { GridItemSpan(maxLineSpan) }) {
           Text(
