@@ -135,7 +135,6 @@ import kotlinx.coroutines.withContext
     lights
       .sortedBy { it.id }
   }
-    .distinctUntilChanged()
     .shareIn(scope, SharingStarted.WhileSubscribed(2000), 1)
 
   private val _groupLightsChangedEvents = EventFlow<GroupLightsChangedEvent>()
