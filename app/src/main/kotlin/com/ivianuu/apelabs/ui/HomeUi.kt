@@ -142,7 +142,7 @@ import kotlin.math.roundToInt
       ) {
         Box(contentAlignment = Alignment.CenterStart) {
           FlowRow(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(16.dp),
             mainAxisSpacing = 8.dp,
             crossAxisSpacing = 8.dp
           ) {
