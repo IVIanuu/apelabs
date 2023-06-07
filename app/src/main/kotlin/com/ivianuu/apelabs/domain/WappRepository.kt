@@ -14,13 +14,13 @@ import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.onCancel
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.invoke
+import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.permission.PermissionManager
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.android.SystemService
+import com.ivianuu.injekt.common.IOCoroutineContext
+import com.ivianuu.injekt.common.NamedCoroutineScope
 import com.ivianuu.injekt.common.Scoped
-import com.ivianuu.injekt.coroutines.IOContext
-import com.ivianuu.injekt.coroutines.NamedCoroutineScope
 import com.ivianuu.injekt.inject
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.awaitClose
@@ -43,10 +43,10 @@ import kotlinx.coroutines.sync.withLock
 
 @Provide @Scoped<AppScope> class WappRepository(
   private val bluetoothManager: @SystemService BluetoothManager,
-  context: IOContext,
+  ioCoroutineContext: IOCoroutineContext,
   private val logger: Logger,
-  private val permissionManager: PermissionManager,
-  private val scope: NamedCoroutineScope<AppScope>,
+  permissionManager: PermissionManager,
+  scope: NamedCoroutineScope<AppScope>,
   private val wappRemote: WappRemote
 ) {
   val wapps: Flow<List<Wapp>> = permissionManager.permissionState(apeLabsPermissionKeys)
@@ -54,7 +54,7 @@ import kotlinx.coroutines.sync.withLock
       if (!it) flowOf(emptyList())
       else bleWapps()
     }
-    .flowOn(context)
+    .flowOn(ioCoroutineContext)
     .shareIn(scope, SharingStarted.WhileSubscribed(2000), 1)
     .distinctUntilChanged()
 
@@ -115,7 +115,7 @@ import kotlinx.coroutines.sync.withLock
             if (wapp in wapps)
               return@withWapp
 
-            logger { "${wapp.debugName()} add wapp" }
+            logger.log { "${wapp.debugName()} add wapp" }
 
             wapps += wapp
             trySend(wapps.toList())
@@ -123,7 +123,7 @@ import kotlinx.coroutines.sync.withLock
 
           onCancel(block = { awaitCancellation() }) {
             if (coroutineContext.isActive) {
-              logger { "${wapp.debugName()} remove wapp" }
+              logger.log { "${wapp.debugName()} remove wapp" }
               wappsLock.withLock {
                 handledWapps.removeAll { it.address == wapp.address }
                 wapps.remove(wapp)
@@ -149,10 +149,10 @@ import kotlinx.coroutines.sync.withLock
       }
     }
 
-    logger { "start scan" }
+    logger.log { "start scan" }
     bluetoothManager.adapter.bluetoothLeScanner.startScan(callback)
     awaitClose {
-      logger { "stop scan" }
+      logger.log { "stop scan" }
       bluetoothManager.adapter.bluetoothLeScanner.stopScan(callback)
     }
   }

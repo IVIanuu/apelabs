@@ -18,15 +18,15 @@ import com.ivianuu.essentials.coroutines.RefCountedResource
 import com.ivianuu.essentials.coroutines.race
 import com.ivianuu.essentials.coroutines.withResource
 import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.invoke
+import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.android.SystemService
+import com.ivianuu.injekt.common.IOCoroutineContext
+import com.ivianuu.injekt.common.NamedCoroutineScope
 import com.ivianuu.injekt.common.Scoped
-import com.ivianuu.injekt.coroutines.IOContext
-import com.ivianuu.injekt.coroutines.NamedCoroutineScope
 import com.ivianuu.injekt.inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -41,7 +41,7 @@ import java.util.*
 @Provide @Scoped<AppScope> class WappRemote(
   private val appContext: AppContext,
   private val bluetoothManager: @SystemService BluetoothManager,
-  private val context: IOContext,
+  private val ioCoroutineContext: IOCoroutineContext,
   private val logger: Logger,
   private val scope: NamedCoroutineScope<AppScope>
 ) {
@@ -54,7 +54,7 @@ import java.util.*
   suspend fun <R> withWapp(
     address: String,
     block: suspend WappServer.() -> R
-  ): R? = withContext(context) {
+  ): R? = withContext(ioCoroutineContext) {
     servers.withResource(address) {
       race(
         {
@@ -64,7 +64,7 @@ import java.util.*
         {
           it.serviceChanges.first()
           it.connectionState.first { !it }
-          logger { "${it.device.debugName()} cancel with wapp" }
+          logger.log { "${it.device.debugName()} cancel with wapp" }
         }
       ) as? R
     }
@@ -76,7 +76,7 @@ class WappServer(
   address: String,
   @Inject private val appContext: AppContext,
   @Inject private val bluetoothManager: @SystemService BluetoothManager,
-  @Inject private val context: IOContext,
+  @Inject private val coroutineContext: IOCoroutineContext,
   @Inject private val logger: Logger,
   @Inject private val scope: CoroutineScope
 ) {
@@ -104,7 +104,7 @@ class WappServer(
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
           super.onConnectionStateChange(gatt, status, newState)
           val isConnected = newState == BluetoothProfile.STATE_CONNECTED
-          logger { "${device.debugName()} connection state changed $newState" }
+          logger.log { "${device.debugName()} connection state changed $newState" }
           connectionState.tryEmit(isConnected)
           if (isConnected)
             gatt.discoverServices()
@@ -112,7 +112,7 @@ class WappServer(
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
           super.onServicesDiscovered(gatt, status)
-          logger { "${device.debugName()} services discovered" }
+          logger.log { "${device.debugName()} services discovered" }
 
           scope.launch {
             val readCharacteristic = gatt
@@ -147,10 +147,10 @@ class WappServer(
   private val writeLimiter = RateLimiter(1, 100.milliseconds)
 
   init {
-    logger { "${device.debugName()} init" }
+    logger.log { "${device.debugName()} init" }
   }
 
-  suspend fun write(message: ByteArray) = withContext(context) {
+  suspend fun write(message: ByteArray) = withContext(coroutineContext) {
     val service = gatt.getService(APE_LABS_SERVICE_ID) ?: error(
       "${device.debugName()} service not found ${
         gatt.services.map {
@@ -162,15 +162,15 @@ class WappServer(
       ?: error("${device.debugName()} characteristic not found")
 
     writeLock.withLock {
-      logger { "${device.debugName()} write -> ${message.contentToString()}" }
+      logger.log { "${device.debugName()} write -> ${message.contentToString()}" }
       characteristic.value = message
       writeLimiter.acquire()
       gatt.writeCharacteristic(characteristic)
     }
   }
 
-  suspend fun close() = withContext(context) {
-    logger { "${device.debugName()} close" }
+  suspend fun close() = withContext(coroutineContext) {
+    logger.log { "${device.debugName()} close" }
     catch { gatt.disconnect() }
     catch { gatt.close() }
   }

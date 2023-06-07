@@ -1,24 +1,24 @@
 package com.ivianuu.apelabs.domain
 
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.ivianuu.apelabs.data.Light
 import com.ivianuu.essentials.AppScope
-import com.ivianuu.essentials.compose.getValue
-import com.ivianuu.essentials.compose.setValue
 import com.ivianuu.essentials.compose.stateFlow
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.invoke
+import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.minutes
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Provide
+import com.ivianuu.injekt.common.IOCoroutineContext
+import com.ivianuu.injekt.common.NamedCoroutineScope
 import com.ivianuu.injekt.common.Scoped
-import com.ivianuu.injekt.coroutines.IOContext
-import com.ivianuu.injekt.coroutines.NamedCoroutineScope
 import com.ivianuu.injekt.inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
@@ -27,7 +27,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapNotNull
@@ -39,7 +38,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Provide @Scoped<AppScope> class LightRepository(
-  private val context: IOContext,
+  private val ioCoroutineContext: IOCoroutineContext,
   private val logger: Logger,
   private val scope: NamedCoroutineScope<AppScope>,
   private val wappRemote: WappRemote,
@@ -84,7 +83,7 @@ import kotlinx.coroutines.withContext
             awaitClose()
           }
         }
-        .onEach { logger { "on message ${it.contentToString()}" } }
+        .onEach { logger.log { "on message ${it.contentToString()}" } }
         .mapNotNull { message ->
           if ((message.getOrNull(0)?.toInt() == 82 ||
                 message.getOrNull(0)?.toInt() == 83) &&
@@ -112,7 +111,7 @@ import kotlinx.coroutines.withContext
             light to false
           } else null
         }
-        .onEach { logger { "${it.first.id} ping" } }
+        .onEach { logger.log { "${it.first.id} ping" } }
         .onStart {
           // ensure that we launch a light removal job for existing lights
           lights.forEach { emit(it to true) }
@@ -122,7 +121,7 @@ import kotlinx.coroutines.withContext
 
           lightRemovalJobs[light.id] = launch {
             delay(if (fromCache) 17.seconds else 1.minutes)
-            logger { "${light.id} remove light" }
+            logger.log { "${light.id} remove light" }
             lights = lights
               .filter { it.id != light.id }
           }
@@ -165,7 +164,7 @@ import kotlinx.coroutines.withContext
     }
   }
 
-  suspend fun regroupLights(ids: List<Int>, group: Int) = withContext(context) {
+  suspend fun regroupLights(ids: List<Int>, group: Int) = withContext(ioCoroutineContext) {
     wappRepository.wapps.first().parForEach { wapp ->
       wappRemote.withWapp(wapp.address) {
         ids.forEach { id ->

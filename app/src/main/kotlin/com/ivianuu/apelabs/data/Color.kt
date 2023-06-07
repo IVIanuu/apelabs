@@ -5,7 +5,6 @@ import com.ivianuu.essentials.db.Entity
 import com.ivianuu.essentials.db.PrimaryKey
 import kotlinx.serialization.Serializable
 
-
 @Serializable @Entity data class ApeColor(
   @PrimaryKey val id: String = randomId(),
   val red: Float = 0f,

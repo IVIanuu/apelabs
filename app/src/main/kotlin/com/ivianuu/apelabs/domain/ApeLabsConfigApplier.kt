@@ -11,7 +11,7 @@ import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.invoke
+import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
@@ -28,7 +28,6 @@ import kotlinx.coroutines.withContext
 import kotlin.time.Duration
 
 @Provide fun apeLabsConfigApplier(
-  prefs: DataStore<ApeLabsPrefs>,
   groupConfigRepository: GroupConfigRepository,
   logger: Logger,
   lightRepository: LightRepository,
@@ -37,14 +36,14 @@ import kotlin.time.Duration
   wappRepository: WappRepository
 ) = ScopeWorker<AppForegroundScope> {
   wappRepository.wapps.collectLatest { wapps ->
-    logger { "wapps $wapps" }
+    logger.log { "wapps $wapps" }
     if (wapps.isEmpty()) return@collectLatest
 
     wapps.parForEach { wapp ->
       val cache = Cache()
 
       wappRemote.withWapp(wapp.address) {
-        logger { "apply for wapp $wapp" }
+        logger.log { "apply for wapp $wapp" }
 
         combine(groupConfigRepository.groupConfigs, previewRepository.previewGroupConfigs)
           .mapNotNull { (groupConfigs, previewGroupConfigs) ->
@@ -60,7 +59,7 @@ import kotlin.time.Duration
             lightRepository.groupLightsChangedEvents
               .map { it.group }
               .onEach { changedGroup ->
-                logger { "force reapply for $changedGroup" }
+                logger.log { "force reapply for $changedGroup" }
                 cache.lastProgram.remove(changedGroup)
                 cache.lastBrightness.remove(changedGroup)
                 cache.lastSpeed.remove(changedGroup)
@@ -87,7 +86,7 @@ private suspend fun WappServer.applyGroupConfig(
   cache: Cache,
   @Inject logger: Logger
 ) {
-  logger { "apply $configs" }
+  logger.log { "apply $configs" }
 
   val appliers = mutableMapOf<List<Int>, MutableList<suspend () -> Unit>>()
 
@@ -111,7 +110,7 @@ private suspend fun WappServer.applyGroupConfig(
       .forEach { (value, groups) ->
         appliers.getOrPut(groups) { mutableListOf() } += {
           // cache and apply output
-          logger { "apply $tag $value for $groups" }
+          logger.log { "apply $tag $value for $groups" }
           apply(value, groups)
           groups.forEach { cache[it] = value }
         }
