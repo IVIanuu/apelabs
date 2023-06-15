@@ -6,9 +6,7 @@
 
 package com.ivianuu.apelabs.ui
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,11 +15,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -68,11 +70,10 @@ import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
-import com.ivianuu.apelabs.domain.WappRemote
 import com.ivianuu.apelabs.domain.WappRepository
 import com.ivianuu.essentials.Resources
 import com.ivianuu.essentials.app.AppForegroundState
-import com.ivianuu.essentials.backup.BackupAndRestoreKey
+import com.ivianuu.essentials.backup.BackupAndRestoreScreen
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.compose.bindResource
@@ -81,20 +82,18 @@ import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.time.milliseconds
-import com.ivianuu.essentials.ui.common.VerticalList
-import com.ivianuu.essentials.ui.dialog.ListKey
-import com.ivianuu.essentials.ui.dialog.TextInputKey
-import com.ivianuu.essentials.ui.insets.localVerticalInsetsPadding
+import com.ivianuu.essentials.ui.dialog.ListScreen
+import com.ivianuu.essentials.ui.dialog.TextInputScreen
 import com.ivianuu.essentials.ui.material.ListItem
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Subheader
 import com.ivianuu.essentials.ui.material.TopAppBar
 import com.ivianuu.essentials.ui.material.guessingContentColorFor
 import com.ivianuu.essentials.ui.material.incrementingStepPolicy
-import com.ivianuu.essentials.ui.navigation.KeyUiContext
 import com.ivianuu.essentials.ui.navigation.Model
-import com.ivianuu.essentials.ui.navigation.ModelKeyUi
-import com.ivianuu.essentials.ui.navigation.RootKey
+import com.ivianuu.essentials.ui.navigation.Navigator
+import com.ivianuu.essentials.ui.navigation.RootScreen
+import com.ivianuu.essentials.ui.navigation.Ui
 import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.popup.PopupMenuItem
@@ -107,10 +106,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlin.math.roundToInt
 
-@Provide object HomeKey : RootKey
+@Provide class HomeScreen : RootScreen
 
-@OptIn(ExperimentalFoundationApi::class)
-@Provide fun homeUi(resources: Resources) = ModelKeyUi<HomeKey, HomeModel> {
+@Provide fun homeUi(resources: Resources) = Ui<HomeScreen, HomeModel> { model ->
   Scaffold(
     topBar = {
       Column {
@@ -118,13 +116,13 @@ import kotlin.math.roundToInt
           title = { Text("Ape labs") },
           actions = {
             PopupMenuButton {
-              PopupMenuItem(onSelected = saveColor) {
+              PopupMenuItem(onSelected = model.saveColor) {
                 Text("Save color")
               }
-              PopupMenuItem(onSelected = saveScene) {
+              PopupMenuItem(onSelected = model.saveScene) {
                 Text("Save scene")
               }
-              PopupMenuItem(onSelected = openBackupRestore) {
+              PopupMenuItem(onSelected = model.openBackupRestore) {
                 Text("Backup and restore")
               }
             }
@@ -147,18 +145,18 @@ import kotlin.math.roundToInt
             crossAxisSpacing = 8.dp
           ) {
             LongClickChip(
-              selected = groups.all { it in selectedGroups },
-              onClick = toggleAllGroupSelections,
+              selected = model.groups.all { it in model.selectedGroups },
+              onClick = model.toggleAllGroupSelections,
               onLongClick = null
             ) {
               Text("ALL")
             }
 
-            groups.forEach { group ->
+            model.groups.forEach { group ->
               LongClickChip(
-                selected = group in selectedGroups,
-                onClick = { toggleGroupSelection(group, false) },
-                onLongClick = { toggleGroupSelection(group, true) }
+                selected = group in model.selectedGroups,
+                onClick = { model.toggleGroupSelection(group, false) },
+                onLongClick = { model.toggleGroupSelection(group, true) }
               ) {
                 Text(group.toString())
               }
@@ -169,10 +167,9 @@ import kotlin.math.roundToInt
     }
   ) {
     LazyVerticalGrid(
-      columns = GridCells.Fixed(2),
-      contentPadding = localVerticalInsetsPadding()
+      columns = GridCells.Fixed(2)
     ) {
-      if (selectedGroups.isEmpty()) {
+      if (model.selectedGroups.isEmpty()) {
         item(span = { GridItemSpan(maxLineSpan) }) {
           Text(
             modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
@@ -182,21 +179,22 @@ import kotlin.math.roundToInt
       } else {
         item(span = { GridItemSpan(maxLineSpan) }) {
           val programName = when {
-            groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
-            groupConfig.program.id.isUUID ->
-              groupConfig.program.items.singleOrNull()
+            model.groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
+            model.groupConfig.program.id.isUUID ->
+              model.groupConfig.program.items.singleOrNull()
                 ?.color
                 ?.takeUnless { it.id.isUUID }
                 ?.id
                 ?: "Color"
-            else -> groupConfig.program.id
+
+            else -> model.groupConfig.program.id
           }
 
           ListItem(
             leading = {
               ColorListIcon(
                 modifier = Modifier.size(40.dp),
-                program = groupConfig.program
+                program = model.groupConfig.program
               )
             },
             title = { Text("Program") },
@@ -218,20 +216,20 @@ import kotlin.math.roundToInt
           LaunchedEffect(controller.selectedColor) {
             controller.selectedColor?.let {
               delay(20.milliseconds)
-              updateColorPickerColor(it)
+              model.updateColorPickerColor(it)
             }
           }
 
-          LaunchedEffect(groupConfig.program) {
-            if (groupConfig.program.id != Program.colorPickerId(selectedGroups.toList()))
+          LaunchedEffect(model.groupConfig.program) {
+            if (model.groupConfig.program.id != Program.colorPickerId(model.selectedGroups.toList()))
               controller.clear()
           }
         }
 
         item(span = { GridItemSpan(maxLineSpan) }) {
           SliderListItem(
-            value = groupConfig.brightness,
-            onValueChangeFinished = updateBrightness,
+            value = model.groupConfig.brightness,
+            onValueChangeFinished = model.updateBrightness,
             stepPolicy = incrementingStepPolicy(0.05f),
             title = { Text("Brightness") },
             valueText = { Text("${(it * 100f).roundToInt()}") }
@@ -240,8 +238,8 @@ import kotlin.math.roundToInt
 
         item(span = { GridItemSpan(maxLineSpan) }) {
           SliderListItem(
-            value = groupConfig.speed,
-            onValueChangeFinished = updateSpeed,
+            value = model.groupConfig.speed,
+            onValueChangeFinished = model.updateSpeed,
             stepPolicy = incrementingStepPolicy(0.05f),
             title = { Text("Speed") },
             valueText = { Text("${(it * 100f).roundToInt()}") }
@@ -250,16 +248,16 @@ import kotlin.math.roundToInt
 
         item(span = { GridItemSpan(maxLineSpan) }) {
           SwitchListItem(
-            value = groupConfig.musicMode,
-            onValueChange = updateMusicMode,
+            value = model.groupConfig.musicMode,
+            onValueChange = model.updateMusicMode,
             title = { Text("Music mode") }
           )
         }
 
         item(span = { GridItemSpan(maxLineSpan) }) {
           SwitchListItem(
-            value = groupConfig.blackout,
-            onValueChange = updateBlackout,
+            value = model.groupConfig.blackout,
+            onValueChange = model.updateBlackout,
             title = { Text("Blackout") }
           )
         }
@@ -269,8 +267,8 @@ import kotlin.math.roundToInt
         Subheader { Text("Programs / colors") }
       }
 
-      val userColors = userColors.getOrElse { emptyList() }
-      val userPrograms = userPrograms.getOrElse { emptyList() }
+      val userColors = model.userColors.getOrElse { emptyList() }
+      val userPrograms = model.userPrograms.getOrElse { emptyList() }
 
       fun Any.isCustom() = this in userColors || this in userPrograms
 
@@ -278,10 +276,10 @@ import kotlin.math.roundToInt
         addAll(userColors.map { it.id to it })
         addAll(userPrograms.map { it.id to it })
         add(Program.RAINBOW.id to Program.RAINBOW)
-        addAll(builtInColors.map { it.id to it })
+        addAll(model.builtInColors.map { it.id to it })
       }
         .sortedBy { it.first.lowercase() }
-        .sortedByDescending { contentUsages[it.first] ?: -1f }
+        .sortedByDescending { model.contentUsages[it.first] ?: -1f }
         .chunked(2)
         .forEach { row ->
           row.forEachIndexed { index, (id, item) ->
@@ -302,8 +300,8 @@ import kotlin.math.roundToInt
                   .animateItemPlacement()
                   .clickable {
                     item.map(
-                      color = { updateColor(it) },
-                      program = { updateProgram(it) }
+                      color = { model.updateColor(it) },
+                      program = { model.updateProgram(it) }
                     )
                   },
                 title = { Text(if (item === Program.RAINBOW) "Rainbow" else id) },
@@ -320,14 +318,14 @@ import kotlin.math.roundToInt
                   PopupMenuButton {
                     PopupMenuItem(onSelected = {
                       item.map(
-                        color = { openColor(it) },
-                        program = { openProgram(it) }
+                        color = { model.openColor(it) },
+                        program = { model.openProgram(it) }
                       )
                     }) { Text("Open") }
                     PopupMenuItem(onSelected = {
                       item.map(
-                        color = { deleteColor(it) },
-                        program = { deleteProgram(it) }
+                        color = { model.deleteColor(it) },
+                        program = { model.deleteProgram(it) }
                       )
                     }) { Text("Delete") }
                   }
@@ -349,22 +347,22 @@ import kotlin.math.roundToInt
         ) {
           Button(
             modifier = Modifier.weight(0.5f),
-            onClick = addColor
+            onClick = model.addColor
           ) { Text("ADD COLOR") }
 
           Button(
             modifier = Modifier.weight(0.5f),
-            onClick = addProgram
+            onClick = model.addProgram
           ) { Text("ADD PROGRAM") }
         }
       }
 
       item(span = { GridItemSpan(maxLineSpan) }) { Subheader { Text("Scenes") } }
 
-      val scenes = scenes.getOrElse { emptyList() }
+      val scenes = model.scenes.getOrElse { emptyList() }
       scenes
         .sortedBy { it.id.lowercase() }
-        .sortedByDescending { contentUsages[it.id] ?: -1f }
+        .sortedByDescending { model.contentUsages[it.id] ?: -1f }
         .chunked(2)
         .forEach { row ->
           row.forEachIndexed { index, scene ->
@@ -374,12 +372,12 @@ import kotlin.math.roundToInt
               ListItem(
                 modifier = Modifier
                   .animateItemPlacement()
-                  .clickable { applyScene(scene) },
+                  .clickable { model.applyScene(scene) },
                 title = { Text(scene.id) },
                 trailing = {
                   PopupMenuButton {
-                    PopupMenuItem(onSelected = { openScene(scene) }) { Text("Open") }
-                    PopupMenuItem(onSelected = { deleteScene(scene) }) { Text("Delete") }
+                    PopupMenuItem(onSelected = { model.openScene(scene) }) { Text("Open") }
+                    PopupMenuItem(onSelected = { model.deleteScene(scene) }) { Text("Delete") }
                   }
                 },
                 contentPadding = PaddingValues(
@@ -397,12 +395,12 @@ import kotlin.math.roundToInt
           modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-          onClick = addScene
+          onClick = model.addScene
         ) { Text("ADD SCENE") }
       }
 
-      val wappState = wappState.getOrElse { WappState() }
-      val lights = lights.getOrElse { emptyList() }
+      val wappState = model.wappState.getOrElse { WappState() }
+      val lights = model.lights.getOrElse { emptyList() }
 
       if (wappState.isConnected || lights.isNotEmpty()) {
         item(span = { GridItemSpan(maxLineSpan) }) {
@@ -449,9 +447,9 @@ import kotlin.math.roundToInt
                 Text("#$group")
                 groupLights.forEach { light ->
                   LongClickChip(
-                    selected = light.id in selectedLights,
-                    onClick = { toggleLightSelection(light) },
-                    onLongClick = { toggleLightSelection(light) }
+                    selected = light.id in model.selectedLights,
+                    onClick = { model.toggleLightSelection(light) },
+                    onLongClick = { model.toggleLightSelection(light) }
                   ) {
                     Text(
                       buildString {
@@ -484,22 +482,23 @@ import kotlin.math.roundToInt
           ) {
             Button(
               modifier = Modifier.weight(1f),
-              onClick = refreshLights
+              onClick = model.refreshLights
             ) { Text("REFRESH") }
 
             Button(
               modifier = Modifier.weight(1f),
-              enabled = selectedLights.isNotEmpty(),
-              onClick = regroupLights
+              enabled = model.selectedLights.isNotEmpty(),
+              onClick = model.regroupLights
             ) { Text("REGROUP") }
           }
         }
       }
+
+      item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(56.dp)) }
     }
   }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable private fun LongClickChip(
   selected: Boolean,
   onClick: () -> Unit,
@@ -578,9 +577,9 @@ data class HomeModel(
   appForegroundState: Flow<AppForegroundState>,
   colorRepository: ColorRepository,
   contentUsageRepository: ContentUsageRepository,
-  ctx: KeyUiContext<HomeKey>,
   groupConfigRepository: GroupConfigRepository,
   lightRepository: LightRepository,
+  navigator: Navigator,
   programRepository: ProgramRepository,
   sceneRepository: SceneRepository,
   wappRepository: WappRepository,
@@ -676,7 +675,7 @@ data class HomeModel(
       }
     },
     regroupLights = action {
-      ctx.navigator.push(ListKey(items = GROUPS) { it.toString() })
+      navigator.push(ListScreen(items = GROUPS) { it.toString() })
         ?.let { group ->
           lightRepository.regroupLights(
             selectedLights.toList()
@@ -695,17 +694,17 @@ data class HomeModel(
         }
       contentUsageRepository.contentUsed(color.id)
     },
-    openColor = action { color -> ctx.navigator.push(ColorKey(color)) },
+    openColor = action { color -> navigator.push(ColorScreen(color)) },
     addColor = action {
-      ctx.navigator.push(TextInputKey(label = "Name.."))
+      navigator.push(TextInputScreen(label = "Name.."))
         ?.let { id ->
-          ctx.navigator.push(ColorKey(colorRepository.createColor(id)))
+          navigator.push(ColorScreen(colorRepository.createColor(id)))
           contentUsageRepository.contentUsed(id)
         }
     },
     deleteColor = action { color -> colorRepository.deleteColor(color.id) },
     saveColor = action {
-      ctx.navigator.push(TextInputKey(label = "Name.."))
+      navigator.push(TextInputScreen(label = "Name.."))
         ?.let { id ->
           val color = colorPickerColor.copy(id = id)
           colorRepository.updateColor(color)
@@ -732,11 +731,11 @@ data class HomeModel(
       updateConfig { copy(program = program) }
       contentUsageRepository.contentUsed(program.id)
     },
-    openProgram = action { program -> ctx.navigator.push(ProgramKey(program.id)) },
+    openProgram = action { program -> navigator.push(ProgramScreen(program.id)) },
     addProgram = action {
-      ctx.navigator.push(TextInputKey(label = "Name.."))
+      navigator.push(TextInputScreen(label = "Name.."))
         ?.let { id ->
-          ctx.navigator.push(ProgramKey(programRepository.createProgram(id).id))
+          navigator.push(ProgramScreen(programRepository.createProgram(id).id))
           contentUsageRepository.contentUsed(id)
         }
     },
@@ -751,14 +750,14 @@ data class HomeModel(
       )
       contentUsageRepository.contentUsed(scene.id)
     },
-    openScene = action { scene -> ctx.navigator.push(SceneKey(scene.id)) },
+    openScene = action { scene -> navigator.push(SceneScreen(scene.id)) },
     addScene = action {
-      ctx.navigator.push(TextInputKey(label = "Name.."))
-        ?.let { ctx.navigator.push(SceneKey(sceneRepository.createScene(it).id)) }
+      navigator.push(TextInputScreen(label = "Name.."))
+        ?.let { navigator.push(SceneScreen(sceneRepository.createScene(it).id)) }
     },
     deleteScene = action { scene -> sceneRepository.deleteScene(scene.id) },
     saveScene = action {
-      ctx.navigator.push(TextInputKey(label = "Name.."))
+      navigator.push(TextInputScreen(label = "Name.."))
         ?.let { id ->
           sceneRepository.updateScene(
             Scene(
@@ -775,6 +774,6 @@ data class HomeModel(
           contentUsageRepository.contentUsed(id)
         }
     },
-    openBackupRestore = action { ctx.navigator.push(BackupAndRestoreKey()) }
+    openBackupRestore = action { navigator.push(BackupAndRestoreScreen()) }
   )
 }

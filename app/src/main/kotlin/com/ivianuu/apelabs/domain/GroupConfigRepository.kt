@@ -37,7 +37,7 @@ import kotlinx.coroutines.flow.onStart
       .distinctUntilChanged()
       .flatMapLatest { groupConfigs(it.map { it.toString() }) }
 
-  private fun groupConfigs(ids: List<String>): Flow<List<GroupConfig>> = db.changes
+  private fun groupConfigs(ids: List<String>): Flow<List<GroupConfig>> = db.tableChanges
     .onStart { emit(null) }
     .mapLatest {
       ids

@@ -1,6 +1,5 @@
 package com.ivianuu.apelabs.ui
 
-import android.telecom.CallScreeningService
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,15 +39,15 @@ import com.ivianuu.essentials.resource.get
 import com.ivianuu.essentials.resource.getOrNull
 import com.ivianuu.essentials.resource.map
 import com.ivianuu.essentials.ui.common.VerticalList
-import com.ivianuu.essentials.ui.dialog.ListKey
+import com.ivianuu.essentials.ui.dialog.ListScreen
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Subheader
 import com.ivianuu.essentials.ui.material.TopAppBar
 import com.ivianuu.essentials.ui.material.incrementingStepPolicy
-import com.ivianuu.essentials.ui.navigation.Key
-import com.ivianuu.essentials.ui.navigation.KeyUiContext
 import com.ivianuu.essentials.ui.navigation.Model
-import com.ivianuu.essentials.ui.navigation.ModelKeyUi
+import com.ivianuu.essentials.ui.navigation.Navigator
+import com.ivianuu.essentials.ui.navigation.Screen
+import com.ivianuu.essentials.ui.navigation.Ui
 import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
@@ -58,15 +57,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlin.math.roundToInt
 
-data class SceneKey(val id: String) : Key<Unit>
+data class SceneScreen(val id: String) : Screen<Unit>
 
-@Provide val sceneUi = ModelKeyUi<SceneKey, SceneModel> {
+@Provide val sceneUi = Ui<SceneScreen, SceneModel> { model ->
   Scaffold(
     topBar = {
-      TopAppBar(title = { Text(id) })
+      TopAppBar(title = { Text(model.id) })
     }
   ) {
-    ResourceBox(scene) { value ->
+    ResourceBox(model.scene) { value ->
       VerticalList {
         value.groupConfigs.forEach { (group, config) ->
           item {
@@ -79,7 +78,7 @@ data class SceneKey(val id: String) : Key<Unit>
               Box(
                 modifier = Modifier
                   .size(40.dp)
-                  .clickable { updateProgram(group, config) },
+                  .clickable { model.updateProgram(group, config) },
                 contentAlignment = Alignment.Center
               ) {
                 if (config != null) {
@@ -99,7 +98,7 @@ data class SceneKey(val id: String) : Key<Unit>
                 if (config != null) {
                   SliderListItem(
                     value = config.brightness,
-                    onValueChangeFinished = { updateBrightness(group, it) },
+                    onValueChangeFinished = { model.updateBrightness(group, it) },
                     stepPolicy = incrementingStepPolicy(0.05f),
                     title = { Text("Brightness") },
                     valueText = { Text("${(it * 100f).roundToInt()}") }
@@ -107,7 +106,7 @@ data class SceneKey(val id: String) : Key<Unit>
 
                   SliderListItem(
                     value = config.speed,
-                    onValueChangeFinished = { updateSpeed(group, it) },
+                    onValueChangeFinished = { model.updateSpeed(group, it) },
                     stepPolicy = incrementingStepPolicy(0.05f),
                     title = { Text("Speed") },
                     valueText = { Text("${(it * 100f).roundToInt()}") }
@@ -115,7 +114,7 @@ data class SceneKey(val id: String) : Key<Unit>
 
                   SwitchListItem(
                     value = config.musicMode,
-                    onValueChange = { updateMusicMode(group, it) },
+                    onValueChange = { model.updateMusicMode(group, it) },
                     title = { Text("Music mode") }
                   )
                 } else {
@@ -124,7 +123,7 @@ data class SceneKey(val id: String) : Key<Unit>
               }
 
               if (config != null)
-                IconButton(onClick = { deleteGroupConfig(group) }) {
+                IconButton(onClick = { model.deleteGroupConfig(group) }) {
                   Icon(Icons.Default.Close)
                 }
             }
@@ -133,8 +132,8 @@ data class SceneKey(val id: String) : Key<Unit>
 
         item {
           SwitchListItem(
-            value = previewsEnabled,
-            onValueChange = updatePreviewsEnabled,
+            value = model.previewsEnabled,
+            onValueChange = model.updatePreviewsEnabled,
             title = { Text("Preview") }
           )
         }
@@ -156,12 +155,13 @@ data class SceneModel(
 )
 
 @Provide fun sceneModel(
-  ctx: KeyUiContext<SceneKey>,
+  screen: SceneScreen,
+  navigator: Navigator,
   programRepository: ProgramRepository,
   previewRepository: PreviewRepository,
   sceneRepository: SceneRepository
 ) = Model {
-  val id = ctx.key.id
+  val id = screen.id
 
   val scene by remember {
     sceneRepository.scene(id)
@@ -206,8 +206,8 @@ data class SceneModel(
     id = id,
     scene = scene,
     updateProgram = action { group, config ->
-      ctx.navigator.push(
-        ListKey<Pair<String, Program?>>(
+      navigator.push(
+        ListScreen<Pair<String, Program?>>(
           buildList<Pair<String, Program?>> {
             add("Color" to null)
             addAll(
@@ -221,11 +221,12 @@ data class SceneModel(
       )
         ?.let { (id, program) ->
           val finalProgram = when (id) {
-            "Color" -> ctx.navigator.push(
-              ColorKey(
+            "Color" -> navigator.push(
+              ColorScreen(
                 config?.program?.items?.singleOrNull()?.color?.copy(id = randomId()) ?: ApeColor()
               )
             )?.asProgram() ?: return@let
+
             "Rainbow" -> Program.RAINBOW
             else -> program!!
           }

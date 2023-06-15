@@ -7,7 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.ivianuu.apelabs.data.Light
 import com.ivianuu.essentials.AppScope
-import com.ivianuu.essentials.compose.stateFlow
+import com.ivianuu.essentials.compose.composedFlow
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
@@ -18,7 +18,8 @@ import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.common.IOCoroutineContext
 import com.ivianuu.injekt.common.NamedCoroutineScope
-import com.ivianuu.injekt.common.Scoped
+import com.ivianuu.essentials.Scoped
+import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.injekt.inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
@@ -40,11 +41,11 @@ import kotlinx.coroutines.withContext
 @Provide @Scoped<AppScope> class LightRepository(
   private val ioCoroutineContext: IOCoroutineContext,
   private val logger: Logger,
-  private val scope: NamedCoroutineScope<AppScope>,
+  private val scope: ScopedCoroutineScope<AppScope>,
   private val wappRemote: WappRemote,
   private val wappRepository: WappRepository
 ) {
-  val lights: SharedFlow<List<Light>> = stateFlow {
+  val lights: SharedFlow<List<Light>> = composedFlow {
     var lights by remember {
       mutableStateOf(
         inject<LightRepository>().lights.replayCache.firstOrNull() ?: emptyList()

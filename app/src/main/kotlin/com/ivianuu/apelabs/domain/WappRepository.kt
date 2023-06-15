@@ -20,7 +20,8 @@ import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.injekt.common.IOCoroutineContext
 import com.ivianuu.injekt.common.NamedCoroutineScope
-import com.ivianuu.injekt.common.Scoped
+import com.ivianuu.essentials.Scoped
+import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.injekt.inject
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.awaitClose
@@ -46,7 +47,7 @@ import kotlinx.coroutines.sync.withLock
   ioCoroutineContext: IOCoroutineContext,
   private val logger: Logger,
   permissionManager: PermissionManager,
-  scope: NamedCoroutineScope<AppScope>,
+  scope: ScopedCoroutineScope<AppScope>,
   private val wappRemote: WappRemote
 ) {
   val wapps: Flow<List<Wapp>> = permissionManager.permissionState(apeLabsPermissionKeys)

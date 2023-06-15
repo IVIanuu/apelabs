@@ -40,13 +40,13 @@ import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.Dialog
 import com.ivianuu.essentials.ui.dialog.DialogScaffold
-import com.ivianuu.essentials.ui.dialog.TextInputKey
+import com.ivianuu.essentials.ui.dialog.DialogScreen
+import com.ivianuu.essentials.ui.dialog.TextInputScreen
 import com.ivianuu.essentials.ui.material.Subheader
 import com.ivianuu.essentials.ui.material.Switch
 import com.ivianuu.essentials.ui.material.guessingContentColorFor
-import com.ivianuu.essentials.ui.navigation.KeyUiContext
-import com.ivianuu.essentials.ui.navigation.PopupKey
-import com.ivianuu.essentials.ui.navigation.SimpleKeyUi
+import com.ivianuu.essentials.ui.navigation.Navigator
+import com.ivianuu.essentials.ui.navigation.Ui
 import com.ivianuu.essentials.ui.navigation.pop
 import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
@@ -55,22 +55,21 @@ import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 
-data class ColorKey(val initial: ApeColor) : PopupKey<ApeColor>
+data class ColorScreen(val initial: ApeColor) : DialogScreen<ApeColor>
 
-@OptIn(ExperimentalMaterialApi::class)
-@Provide
-fun colorUi(
-  ctx: KeyUiContext<ColorKey>,
+@Provide fun colorUi(
+  screen: ColorScreen,
+  navigator: Navigator,
   colorRepository: ColorRepository,
   groupConfigRepository: GroupConfigRepository,
   previewRepository: PreviewRepository
-) = SimpleKeyUi<ColorKey> {
+) = Ui<ColorScreen, Unit> {
   DialogScaffold {
-    var id by remember { mutableStateOf(ctx.key.initial.id) }
-    var red by remember { mutableStateOf(ctx.key.initial.red) }
-    var green by remember { mutableStateOf(ctx.key.initial.green) }
-    var blue by remember { mutableStateOf(ctx.key.initial.blue) }
-    var white by remember { mutableStateOf(ctx.key.initial.white) }
+    var id by remember { mutableStateOf(screen.initial.id) }
+    var red by remember { mutableStateOf(screen.initial.red) }
+    var green by remember { mutableStateOf(screen.initial.green) }
+    var blue by remember { mutableStateOf(screen.initial.blue) }
+    var white by remember { mutableStateOf(screen.initial.white) }
 
     fun currentColor() = ApeColor(id, red, green, blue, white)
 
@@ -136,7 +135,7 @@ fun colorUi(
             ColorSlider(
               value = red,
               onValueChange = {
-                id = ctx.key.initial.id
+                id = screen.initial.id
                 red = it
               },
               color = Color.Red
@@ -147,7 +146,7 @@ fun colorUi(
             ColorSlider(
               value = green,
               onValueChange = {
-                id = ctx.key.initial.id
+                id = screen.initial.id
                 green = it
               },
               color = Color.Green
@@ -158,7 +157,7 @@ fun colorUi(
             ColorSlider(
               value = blue,
               onValueChange = {
-                id = ctx.key.initial.id
+                id = screen.initial.id
                 blue = it
               },
               color = Color.Blue
@@ -169,7 +168,7 @@ fun colorUi(
             ColorSlider(
               value = white,
               onValueChange = {
-                id = ctx.key.initial.id
+                id = screen.initial.id
                 white = it
               },
               color = Color.White
@@ -254,7 +253,7 @@ fun colorUi(
 
         OutlinedButton(
           onClick = action {
-            ctx.navigator.push(TextInputKey(label = "Name.."))
+            navigator.push(TextInputScreen(label = "Name.."))
               ?.let {
                 id = it
                 colorRepository.updateColor(currentColor())
@@ -262,9 +261,7 @@ fun colorUi(
           }
         ) { Text("SAVE") }
 
-        Button(onClick = action {
-          ctx.navigator.pop(ctx.key, currentColor())
-        }) {
+        Button(onClick = action { navigator.pop(screen, currentColor()) }) {
           Text("OK")
         }
       }

@@ -26,7 +26,8 @@ import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.injekt.common.IOCoroutineContext
 import com.ivianuu.injekt.common.NamedCoroutineScope
-import com.ivianuu.injekt.common.Scoped
+import com.ivianuu.essentials.Scoped
+import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.injekt.inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -43,7 +44,7 @@ import java.util.*
   private val bluetoothManager: @SystemService BluetoothManager,
   private val ioCoroutineContext: IOCoroutineContext,
   private val logger: Logger,
-  private val scope: NamedCoroutineScope<AppScope>
+  private val scope: ScopedCoroutineScope<AppScope>
 ) {
   private val servers = RefCountedResource<String, WappServer>(
     timeout = 5.seconds,

@@ -6,7 +6,6 @@ import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.app.ScopeWorker
-import com.ivianuu.essentials.coroutines.combine
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.lerp
@@ -18,7 +17,9 @@ import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
@@ -45,15 +46,18 @@ import kotlin.time.Duration
       wappRemote.withWapp(wapp.address) {
         logger.log { "apply for wapp $wapp" }
 
-        combine(groupConfigRepository.groupConfigs, previewRepository.previewGroupConfigs)
-          .mapNotNull { (groupConfigs, previewGroupConfigs) ->
-            GROUPS
-              .associateWith { group ->
-                previewGroupConfigs.singleOrNull { it.id == group.toString() }
-                  ?: groupConfigs.singleOrNull { it.id == group.toString() }
-                  ?: return@mapNotNull null
-              }
-          }
+        combine(
+          groupConfigRepository.groupConfigs,
+          previewRepository.previewGroupConfigs
+        ) { groupConfigs, previewGroupConfigs ->
+          GROUPS
+            .associateWith { group ->
+              previewGroupConfigs.singleOrNull { it.id == group.toString() }
+                ?: groupConfigs.singleOrNull { it.id == group.toString() }
+                ?: return@combine null
+            }
+        }
+          .filterNotNull()
           .distinctUntilChanged()
           .flatMapLatest { groupConfigs ->
             lightRepository.groupLightsChangedEvents

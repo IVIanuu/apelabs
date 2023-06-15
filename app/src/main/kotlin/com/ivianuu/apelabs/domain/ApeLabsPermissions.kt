@@ -17,14 +17,12 @@ import com.ivianuu.injekt.common.typeKeyOf
   title = "Bluetooth connect"
 )
 
-@Provide
-class ApeLabsBluetoothScanPermission : RuntimePermission(
+@Provide class ApeLabsBluetoothScanPermission : RuntimePermission(
   permissionName = Manifest.permission.BLUETOOTH_SCAN,
   title = "Bluetooth scan"
 )
 
-@Provide
-class ApeLabsLocationPermission : RuntimePermission(
+@Provide class ApeLabsLocationPermission : RuntimePermission(
   permissionName = Manifest.permission.ACCESS_FINE_LOCATION,
   title = "Location"
 )

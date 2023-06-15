@@ -47,10 +47,10 @@ import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Slider
 import com.ivianuu.essentials.ui.material.TopAppBar
-import com.ivianuu.essentials.ui.navigation.Key
-import com.ivianuu.essentials.ui.navigation.KeyUiContext
 import com.ivianuu.essentials.ui.navigation.Model
-import com.ivianuu.essentials.ui.navigation.ModelKeyUi
+import com.ivianuu.essentials.ui.navigation.Navigator
+import com.ivianuu.essentials.ui.navigation.Screen
+import com.ivianuu.essentials.ui.navigation.Ui
 import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
@@ -60,23 +60,23 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
 
-data class ProgramKey(val id: String) : Key<Unit>
+data class ProgramScreen(val id: String) : Screen<Unit>
 
-@Provide val programUi = ModelKeyUi<ProgramKey, ProgramModel> {
+@Provide val programUi = Ui<ProgramScreen, ProgramModel> { model ->
   Scaffold(
-    topBar = { TopAppBar(title = { Text(id) }) },
+    topBar = { TopAppBar(title = { Text(model.id) }) },
     floatingActionButtonPosition = FabPosition.Center,
     floatingActionButton = {
-      if (canAddItem)
+      if (model.canAddItem)
         ExtendedFloatingActionButton(
-          onClick = addItem,
+          onClick = model.addItem,
           text = {
             Text("ADD ITEM")
           }
         )
     }
   ) {
-    ResourceBox(program) { value ->
+    ResourceBox(model.program) { value ->
       VerticalList {
         value.items.forEachIndexed { itemIndex, item ->
           item {
@@ -88,7 +88,7 @@ data class ProgramKey(val id: String) : Key<Unit>
               ColorListIcon(
                 modifier = Modifier
                   .size(40.dp)
-                  .clickable { updateColor(itemIndex) },
+                  .clickable { model.updateColor(itemIndex) },
                 colors = listOf(item.color)
               )
 
@@ -128,19 +128,19 @@ data class ProgramKey(val id: String) : Key<Unit>
 
                 DurationSlider(
                   value = item.fadeTime,
-                  onValueChange = { updateFade(itemIndex, it) },
+                  onValueChange = { model.updateFade(itemIndex, it) },
                   title = "Fade"
                 )
 
                 DurationSlider(
                   value = item.holdTime,
-                  onValueChange = { updateHold(itemIndex, it) },
+                  onValueChange = { model.updateHold(itemIndex, it) },
                   title = "Hold"
                 )
               }
 
               if (itemIndex != 0)
-                IconButton(onClick = { deleteItem(itemIndex) }) { Icon(Icons.Default.Close) }
+                IconButton(onClick = { model.deleteItem(itemIndex) }) { Icon(Icons.Default.Close) }
               else
                 Spacer(Modifier.size(40.dp))
             }
@@ -149,8 +149,8 @@ data class ProgramKey(val id: String) : Key<Unit>
 
         item {
           SwitchListItem(
-            value = previewsEnabled,
-            onValueChange = updatePreviewsEnabled,
+            value = model.previewsEnabled,
+            onValueChange = model.updatePreviewsEnabled,
             title = { Text("Preview") }
           )
         }
@@ -206,12 +206,13 @@ data class ProgramModel(
 }
 
 @Provide fun programModel(
-  ctx: KeyUiContext<ProgramKey>,
+  screen: ProgramScreen,
+  navigator: Navigator,
   groupConfigRepository: GroupConfigRepository,
   programRepository: ProgramRepository,
   previewRepository: PreviewRepository
 ) = Model {
-  val id = ctx.key.id
+  val id = screen.id
 
   val program by remember {
     programRepository.program(id)
@@ -256,7 +257,7 @@ data class ProgramModel(
     program = program,
     addItem = action { updateProgram { copy(items = items + Program.Item(color = ApeColor())) } },
     updateColor = action { itemIndex ->
-      ctx.navigator.push(ColorKey(program.get().items.get(itemIndex).color.copy(id = randomId())))
+      navigator.push(ColorScreen(program.get().items.get(itemIndex).color.copy(id = randomId())))
         ?.let { updateItem(itemIndex) { copy(color = it) } }
     },
     updateFade = action { itemIndex, fade ->
