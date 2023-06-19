@@ -70,9 +70,11 @@ import kotlin.time.Duration
           val valueByGroup = GROUPS.associateWith { configs[it]!!.get() }
 
           val dirtyGroups = GROUPS.mapNotNull { group ->
-            key(group, groupLightsState[group]) {
+            key(group) {
               val value = valueByGroup[group]!!
-              if (!currentComposer.changed(value)) null
+              if (!currentComposer.changed(value) and
+                !currentComposer.changed(groupLightsState[group])
+              ) null
               else group to value
             }
           }
