@@ -31,6 +31,7 @@ import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.injekt.inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -118,11 +119,14 @@ class WappServer(
             val readCharacteristic = gatt
               .getService(APE_LABS_SERVICE_ID)
               .getCharacteristic(APE_LABS_READ_ID)
+            delay(100.milliseconds)
             gatt.setCharacteristicNotification(readCharacteristic, true)
             val cccDescriptor = readCharacteristic.getDescriptor(CCCD_ID)
             cccDescriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+            delay(100.milliseconds)
             gatt.writeDescriptor(cccDescriptor)
             onCharacteristicChanged(gatt, readCharacteristic)
+            delay(100.milliseconds)
             serviceChanges.tryEmit(Unit)
           }
         }
