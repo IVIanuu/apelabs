@@ -83,9 +83,8 @@ import kotlin.time.Duration
                 .groupBy { it.second }
                 .forEach { (value, groups) ->
                   logger.log { "apply $tag $value for $groups" }
-                  wappRemote.withWapp<Unit>(wapp.address) {
+                  wappRemote.withWapp(wapp.address) {
                     apply(this, value, groups.map { it.first })
-                    awaitCancellation()
                   }
                 }
             }
