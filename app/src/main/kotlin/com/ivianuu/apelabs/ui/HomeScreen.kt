@@ -211,7 +211,6 @@ import kotlin.math.roundToInt
 
           LaunchedEffect(controller.selectedColor) {
             controller.selectedColor?.let {
-              delay(20.milliseconds)
               model.updateColorPickerColor(it)
             }
           }

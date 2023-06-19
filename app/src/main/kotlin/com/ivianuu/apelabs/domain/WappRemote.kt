@@ -118,11 +118,9 @@ class WappServer(
             val readCharacteristic = gatt
               .getService(APE_LABS_SERVICE_ID)
               .getCharacteristic(APE_LABS_READ_ID)
-            writeLimiter.acquire()
             gatt.setCharacteristicNotification(readCharacteristic, true)
             val cccDescriptor = readCharacteristic.getDescriptor(CCCD_ID)
             cccDescriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            writeLimiter.acquire()
             gatt.writeDescriptor(cccDescriptor)
             onCharacteristicChanged(gatt, readCharacteristic)
             serviceChanges.tryEmit(Unit)
@@ -144,7 +142,6 @@ class WappServer(
     )
 
   private val writeLock = Mutex()
-  private val writeLimiter = RateLimiter(1, 100.milliseconds)
 
   init {
     logger.log { "${device.debugName()} init" }
@@ -164,7 +161,6 @@ class WappServer(
     writeLock.withLock {
       logger.log { "${device.debugName()} write -> ${message.contentToString()}" }
       characteristic.value = message
-      writeLimiter.acquire()
       gatt.writeCharacteristic(characteristic)
     }
   }

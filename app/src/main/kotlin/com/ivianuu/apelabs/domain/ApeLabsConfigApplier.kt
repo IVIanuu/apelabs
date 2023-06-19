@@ -19,6 +19,7 @@ import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -82,7 +83,10 @@ import kotlin.time.Duration
                 .groupBy { it.second }
                 .forEach { (value, groups) ->
                   logger.log { "apply $tag $value for $groups" }
-                  wappRemote.withWapp(wapp.address) { apply(this, value, groups.map { it.first }) }
+                  wappRemote.withWapp<Unit>(wapp.address) {
+                    apply(this, value, groups.map { it.first })
+                    awaitCancellation()
+                  }
                 }
             }
         }
