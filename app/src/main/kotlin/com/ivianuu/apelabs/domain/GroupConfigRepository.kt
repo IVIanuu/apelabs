@@ -28,14 +28,12 @@ import kotlinx.coroutines.flow.onStart
   private val db: Db,
   private val programRepository: ProgramRepository
 ) {
-  val groupConfigs: Flow<List<GroupConfig>>
-    get() = groupConfigs(GROUPS.map { it.toString() })
+  val groupConfigs: Flow<List<GroupConfig>> = groupConfigs(GROUPS.map { it.toString() })
 
-  val selectedGroupConfigs: Flow<List<GroupConfig>>
-    get() = pref.data
-      .map { it.selectedGroups }
-      .distinctUntilChanged()
-      .flatMapLatest { groupConfigs(it.map { it.toString() }) }
+  val selectedGroupConfigs: Flow<List<GroupConfig>> = pref.data
+    .map { it.selectedGroups }
+    .distinctUntilChanged()
+    .flatMapLatest { groupConfigs(it.map { it.toString() }) }
 
   private fun groupConfigs(ids: List<String>): Flow<List<GroupConfig>> = db.tableChanges
     .onStart { emit(null) }

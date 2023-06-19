@@ -21,12 +21,11 @@ import kotlinx.coroutines.flow.flowOf
   private val colorRepository: ColorRepository,
   private val db: Db
 ) {
-  val userPrograms: Flow<List<Program>>
-    get() = db.selectAllTransform<ProgramEntity, Program> {
-      it
-        ?.takeUnless { it.id.isUUID }
-        ?.toProgram()
-    }
+  val userPrograms: Flow<List<Program>> = db.selectAllTransform<ProgramEntity, Program> {
+    it
+      ?.takeUnless { it.id.isUUID }
+      ?.toProgram()
+  }
 
   suspend fun createProgram(id: String): Program = db.transaction {
     val color = ApeColor(white = 1f).also { colorRepository.updateColor(it) }

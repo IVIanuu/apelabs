@@ -31,7 +31,6 @@ import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
 import com.ivianuu.essentials.compose.action
-import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.flowAsResource
@@ -250,7 +249,7 @@ data class SceneModel(
         })
       }
     },
-    previewsEnabled = previewRepository.previewsEnabled.bind(),
+    previewsEnabled = previewRepository.previewsEnabled.collectAsState().value,
     updatePreviewsEnabled = action { value -> previewRepository.updatePreviewsEnabled(value) }
   )
 }

@@ -7,7 +7,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.ivianuu.apelabs.data.Light
 import com.ivianuu.essentials.AppScope
-import com.ivianuu.essentials.compose.composedFlow
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
@@ -19,6 +18,7 @@ import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.common.IOCoroutineContext
 import com.ivianuu.injekt.common.NamedCoroutineScope
 import com.ivianuu.essentials.Scoped
+import com.ivianuu.essentials.compose.compositionFlow
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.injekt.inject
 import kotlinx.coroutines.Job
@@ -45,7 +45,7 @@ import kotlinx.coroutines.withContext
   private val wappRemote: WappRemote,
   private val wappRepository: WappRepository
 ) {
-  val lights: SharedFlow<List<Light>> = composedFlow {
+  val lights: SharedFlow<List<Light>> = compositionFlow {
     var lights by remember {
       mutableStateOf(
         inject<LightRepository>().lights.replayCache.firstOrNull() ?: emptyList()
@@ -74,7 +74,7 @@ import kotlinx.coroutines.withContext
         .flatMapLatest { wapps ->
           callbackFlow {
             wapps.parForEach { wapp ->
-              wappRemote.withWapp(wapp.address) {
+              wappRemote.withWapp<Unit>(wapp.address) {
                 messages.collect {
                   trySend(it)
                 }

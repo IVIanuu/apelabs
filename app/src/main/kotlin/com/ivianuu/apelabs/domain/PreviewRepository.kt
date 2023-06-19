@@ -40,7 +40,7 @@ import kotlinx.coroutines.sync.withLock
   private val lock = Mutex()
 
   private val _previewsEnabled = MutableStateFlow(false)
-  val previewsEnabled: StateFlow<Boolean> get() = _previewsEnabled
+  val previewsEnabled: StateFlow<Boolean> by this::_previewsEnabled
 
   val previewGroupConfigs: Flow<List<GroupConfig>> = _previewsEnabled
     .flatMapLatest {

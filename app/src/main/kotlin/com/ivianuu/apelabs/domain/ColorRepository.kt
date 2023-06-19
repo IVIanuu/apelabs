@@ -14,8 +14,8 @@ import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
 
 @Provide class ColorRepository(private val db: Db) {
-  val userColors: Flow<List<ApeColor>>
-    get() = db.selectAllTransform<ApeColor, _> { it?.takeUnless { it.id.isUUID } }
+  val userColors: Flow<List<ApeColor>> =
+    db.selectAllTransform<ApeColor, _> { it?.takeUnless { it.id.isUUID } }
 
   suspend fun createColor(id: String): ApeColor = db.transaction {
     val color = ApeColor(id = id, white = 1f)

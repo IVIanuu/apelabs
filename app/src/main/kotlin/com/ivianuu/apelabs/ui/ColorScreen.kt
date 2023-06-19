@@ -18,6 +18,7 @@ import androidx.compose.material.SliderDefaults
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,7 +37,6 @@ import com.ivianuu.apelabs.domain.ColorRepository
 import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.essentials.compose.action
-import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.Dialog
 import com.ivianuu.essentials.ui.dialog.DialogScaffold
@@ -91,8 +91,7 @@ data class ColorScreen(val initial: ApeColor) : DialogScreen<ApeColor>
     Dialog(
       applyContentPadding = false,
       content = {
-        val userColors = colorRepository.userColors
-          .bind(emptyList())
+        val userColors by colorRepository.userColors.collectAsState(emptyList())
 
         VerticalList(
           modifier = Modifier.padding(horizontal = 8.dp)
@@ -246,7 +245,7 @@ data class ColorScreen(val initial: ApeColor) : DialogScreen<ApeColor>
           Spacer(Modifier.width(8.dp))
 
           Switch(
-            checked = previewRepository.previewsEnabled.bind(),
+            checked = previewRepository.previewsEnabled.collectAsState().value,
             onCheckedChange = action { value -> previewRepository.updatePreviewsEnabled(value) },
           )
         }

@@ -19,12 +19,11 @@ import kotlinx.coroutines.flow.first
   private val groupConfigRepository: GroupConfigRepository,
   private val db: Db
 ) {
-  val userScenes: Flow<List<Scene>>
-    get() = db.selectAllTransform<SceneEntity, Scene> {
-      it
-        ?.takeUnless { it.id.isUUID }
-        ?.toScene()
-    }
+  val userScenes: Flow<List<Scene>> = db.selectAllTransform<SceneEntity, Scene> {
+    it
+      ?.takeUnless { it.id.isUUID }
+      ?.toScene()
+  }
 
   suspend fun createScene(id: String): Scene = db.transaction {
     val scene = Scene(id)

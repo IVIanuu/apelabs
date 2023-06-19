@@ -47,7 +47,6 @@ import java.util.*
   private val scope: ScopedCoroutineScope<AppScope>
 ) {
   private val servers = RefCountedResource<String, WappServer>(
-    timeout = 5.seconds,
     create = { WappServer(it) },
     release = { _, server -> server.close() }
   )

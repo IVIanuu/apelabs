@@ -32,7 +32,6 @@ import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.essentials.compose.action
-import com.ivianuu.essentials.compose.bind
 import com.ivianuu.essentials.resource.Idle
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.flowAsResource
@@ -269,7 +268,7 @@ data class ProgramModel(
     deleteItem = action { itemIndex ->
       updateProgram { copy(items = items.toMutableList().apply { removeAt(itemIndex) }) }
     },
-    previewsEnabled = previewRepository.previewsEnabled.bind(),
+    previewsEnabled = previewRepository.previewsEnabled.collectAsState().value,
     updatePreviewsEnabled = action { value -> previewRepository.updatePreviewsEnabled(value) }
   )
 }

@@ -16,10 +16,9 @@ import kotlin.time.Duration
   private val clock: Clock,
   private val pref: DataStore<ApeLabsPrefs>
 ) {
-  val contentUsages: Flow<Map<String, Float>>
-    get() = pref.data
-      .map { it.programUsages.mapToUsageScores() }
-      .distinctUntilChanged()
+  val contentUsages: Flow<Map<String, Float>> = pref.data
+    .map { it.programUsages.mapToUsageScores() }
+    .distinctUntilChanged()
 
   suspend fun contentUsed(id: String) {
     pref.updateData {

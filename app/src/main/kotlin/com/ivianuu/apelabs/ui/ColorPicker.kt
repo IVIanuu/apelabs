@@ -24,10 +24,7 @@ import com.ivianuu.essentials.Resources
 import com.ivianuu.essentials.ui.image.toImageBitmap
 import com.ivianuu.injekt.Inject
 
-@Composable fun ImageColorPicker(
-  modifier: Modifier,
-  controller: ColorPickerController
-) {
+@Composable fun ImageColorPicker(modifier: Modifier, controller: ColorPickerController) {
   Box(
     modifier = modifier
       .onSizeChanged { controller.updateSize(it) }

@@ -16,14 +16,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -75,11 +72,10 @@ import com.ivianuu.essentials.Resources
 import com.ivianuu.essentials.app.AppForegroundState
 import com.ivianuu.essentials.backup.BackupAndRestoreScreen
 import com.ivianuu.essentials.compose.action
-import com.ivianuu.essentials.compose.bind
-import com.ivianuu.essentials.compose.bindResource
 import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.resource.Resource
+import com.ivianuu.essentials.resource.collectAsResourceState
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.ui.dialog.ListScreen
@@ -587,7 +583,7 @@ data class HomeModel(
 ) = Model {
   val prefs by pref.data.collectAsState(ApeLabsPrefs())
 
-  val selectedGroupConfigs by remember { groupConfigRepository.selectedGroupConfigs }
+  val selectedGroupConfigs by groupConfigRepository.selectedGroupConfigs
     .collectAsState(emptyList())
 
   val groupConfig = selectedGroupConfigs
@@ -601,12 +597,13 @@ data class HomeModel(
     )
   }
 
-  val lights = appForegroundState
-    .flatMapLatest {
-      if (it == AppForegroundState.FOREGROUND) lightRepository.lights
-      else infiniteEmptyFlow()
-    }
-    .bindResource()
+  val lights by remember {
+    appForegroundState
+      .flatMapLatest {
+        if (it == AppForegroundState.FOREGROUND) lightRepository.lights
+        else infiniteEmptyFlow()
+      }
+  }.collectAsResourceState()
   var selectedLights by remember { mutableStateOf(emptySet<Int>()) }
 
   LaunchedEffect(selectedLights) {
@@ -664,7 +661,7 @@ data class HomeModel(
           if (it == AppForegroundState.FOREGROUND) wappRepository.wappState
           else infiniteEmptyFlow()
         }
-    }.bindResource(),
+    }.collectAsResourceState().value,
     lights = lights,
     refreshLights = action { lightRepository.refreshLights() },
     selectedLights = selectedLights,
@@ -683,8 +680,8 @@ data class HomeModel(
           )
         }
     },
-    contentUsages = contentUsageRepository.contentUsages.bind(emptyMap()),
-    userColors = colorRepository.userColors.bindResource(),
+    contentUsages = contentUsageRepository.contentUsages.collectAsState(emptyMap()).value,
+    userColors = colorRepository.userColors.collectAsResourceState().value,
     updateColor = action { color ->
       color
         .asProgram(colorPickerId)
@@ -726,7 +723,7 @@ data class HomeModel(
           updateConfig { copy(program = it) }
         }
     },
-    userPrograms = programRepository.userPrograms.bindResource(),
+    userPrograms = programRepository.userPrograms.collectAsResourceState().value,
     updateProgram = action { program ->
       updateConfig { copy(program = program) }
       contentUsageRepository.contentUsed(program.id)
@@ -740,7 +737,7 @@ data class HomeModel(
         }
     },
     deleteProgram = action { program -> programRepository.deleteProgram(program.id) },
-    scenes = sceneRepository.userScenes.bindResource(),
+    scenes = sceneRepository.userScenes.collectAsResourceState().value,
     applyScene = action { scene ->
       groupConfigRepository.updateGroupConfigs(
         scene.groupConfigs
