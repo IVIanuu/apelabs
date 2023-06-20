@@ -12,14 +12,11 @@ import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.essentials.app.AppForegroundScope
-import com.ivianuu.essentials.app.ScopeWorker
-import com.ivianuu.essentials.compose.launchComposition
-import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
+import com.ivianuu.essentials.app.ScopeComposition
 import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -31,154 +28,151 @@ import kotlin.time.Duration
   logger: Logger,
   lightRepository: LightRepository,
   previewRepository: PreviewRepository,
-  scope: ScopedCoroutineScope<AppForegroundScope>,
   wappRemote: WappRemote,
   wappRepository: WappRepository
-) = ScopeWorker<AppForegroundScope> {
-  scope.launchComposition {
-    val groupLightsState by produceState(GROUPS.associateWith { 0 }) {
-      lightRepository.groupLightsChangedEvents
-        .map { it.group }
-        .collect { changedGroup ->
-          value = value.toMutableMap().apply { put(changedGroup, get(changedGroup)!!.inc()) }
+) = ScopeComposition<AppForegroundScope> {
+  val groupLightsState by produceState(GROUPS.associateWith { 0 }) {
+    lightRepository.groupLightsChangedEvents
+      .map { it.group }
+      .collect { changedGroup ->
+        value = value.toMutableMap().apply { put(changedGroup, get(changedGroup)!!.inc()) }
+      }
+  }
+
+  val configs = remember {
+    combine(
+      groupConfigRepository.groupConfigs,
+      previewRepository.previewGroupConfigs
+    ) { groupConfigs, previewGroupConfigs ->
+      GROUPS
+        .associateWith { group ->
+          previewGroupConfigs.singleOrNull { it.id == group.toString() }
+            ?: groupConfigs.singleOrNull { it.id == group.toString() }
+            ?: return@combine null
         }
     }
+      .filterNotNull()
+      .distinctUntilChanged()
+  }.collectAsState(null).value ?: return@ScopeComposition
 
-    val configs = remember {
-      combine(
-        groupConfigRepository.groupConfigs,
-        previewRepository.previewGroupConfigs
-      ) { groupConfigs, previewGroupConfigs ->
-        GROUPS
-          .associateWith { group ->
-            previewGroupConfigs.singleOrNull { it.id == group.toString() }
-              ?: groupConfigs.singleOrNull { it.id == group.toString() }
-              ?: return@combine null
+  wappRepository.wapps.collectAsState(emptyList()).value.forEach { wapp ->
+    key(wapp) {
+      @Composable fun <T> LightConfiguration(
+        tag: String,
+        get: GroupConfig.() -> T,
+        apply: suspend WappServer.(T, List<Int>) -> Unit
+      ) {
+        val valueByGroup = GROUPS.associateWith { configs[it]!!.get() }
+
+        val dirtyGroups = GROUPS.mapNotNull { group ->
+          key(group) {
+            val value = valueByGroup[group]!!
+            if (!currentComposer.changed(value) and
+              !currentComposer.changed(groupLightsState[group])
+            ) null
+            else group to value
           }
-      }
-        .filterNotNull()
-        .distinctUntilChanged()
-    }.collectAsState(null).value ?: return@launchComposition
-
-    wappRepository.wapps.collectAsState(emptyList()).value.forEach { wapp ->
-      key(wapp) {
-        @Composable fun <T> LightConfiguration(
-          tag: String,
-          get: GroupConfig.() -> T,
-          apply: suspend WappServer.(T, List<Int>) -> Unit
-        ) {
-          val valueByGroup = GROUPS.associateWith { configs[it]!!.get() }
-
-          val dirtyGroups = GROUPS.mapNotNull { group ->
-            key(group) {
-              val value = valueByGroup[group]!!
-              if (!currentComposer.changed(value) and
-                !currentComposer.changed(groupLightsState[group])
-              ) null
-              else group to value
-            }
-          }
-
-          if (dirtyGroups.isNotEmpty())
-            LaunchedEffect(dirtyGroups) {
-              dirtyGroups
-                .groupBy { it.second }
-                .forEach { (value, groups) ->
-                  logger.log { "apply $tag $value for $groups" }
-                  wappRemote.withWapp(wapp.address) {
-                    apply(this, value, groups.map { it.first })
-                  }
-                }
-            }
         }
 
-        LightConfiguration(
-          tag = "program",
-          get = {
-            // erase ids here to make caching work correctly
-            // there could be the same program just with different ids
-            if (program == Program.RAINBOW) program
-            else program.copy(
-              id = "",
-              items = program.items
-                .map { it.copy(color = it.color.copy(id = "")) }
+        if (dirtyGroups.isNotEmpty())
+          LaunchedEffect(dirtyGroups) {
+            dirtyGroups
+              .groupBy { it.second }
+              .forEach { (value, groups) ->
+                logger.log { "apply $tag $value for $groups" }
+                wappRemote.withWapp(wapp.address) {
+                  apply(this, value, groups.map { it.first })
+                }
+              }
+          }
+      }
+
+      LightConfiguration(
+        tag = "program",
+        get = {
+          // erase ids here to make caching work correctly
+          // there could be the same program just with different ids
+          if (program == Program.RAINBOW) program
+          else program.copy(
+            id = "",
+            items = program.items
+              .map { it.copy(color = it.color.copy(id = "")) }
+          )
+        }
+      ) { value, groups ->
+        when {
+          value.id == Program.RAINBOW.id -> {
+            write(byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0))
+          }
+
+          value.items.size == 1 -> {
+            val color = value.items.single().color
+            write(
+              byteArrayOf(
+                68,
+                68,
+                groups.toGroupByte(),
+                4,
+                30,
+                color.red.toColorByte(),
+                color.green.toColorByte(),
+                color.blue.toColorByte(),
+                color.white.toColorByte()
+              )
             )
           }
-        ) { value, groups ->
-          when {
-            value.id == Program.RAINBOW.id -> {
-              write(byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0))
-            }
 
-            value.items.size == 1 -> {
-              val color = value.items.single().color
+          else -> {
+            value.items.forEachIndexed { index, item ->
               write(
                 byteArrayOf(
-                  68,
-                  68,
-                  groups.toGroupByte(),
-                  4,
-                  30,
-                  color.red.toColorByte(),
-                  color.green.toColorByte(),
-                  color.blue.toColorByte(),
-                  color.white.toColorByte()
+                  81,
+                  index.toByte(),
+                  value.items.size.toByte(),
+                  item.color.red.toColorByte(),
+                  item.color.green.toColorByte(),
+                  item.color.blue.toColorByte(),
+                  item.color.white.toColorByte(),
+                  0,
+                  item.fadeTime.toDurationByte(),
+                  0,
+                  item.holdTime.toDurationByte(),
+                  groups.toGroupByte()
                 )
               )
             }
-
-            else -> {
-              value.items.forEachIndexed { index, item ->
-                write(
-                  byteArrayOf(
-                    81,
-                    index.toByte(),
-                    value.items.size.toByte(),
-                    item.color.red.toColorByte(),
-                    item.color.green.toColorByte(),
-                    item.color.blue.toColorByte(),
-                    item.color.white.toColorByte(),
-                    0,
-                    item.fadeTime.toDurationByte(),
-                    0,
-                    item.holdTime.toDurationByte(),
-                    groups.toGroupByte()
-                  )
-                )
-              }
-            }
           }
         }
+      }
 
-        LightConfiguration(tag = "speed", get = { speed }) { value, groups ->
-          write(
-            byteArrayOf(
-              68,
-              68,
-              groups.toGroupByte(),
-              2,
-              (value * 100f).toInt().toByte()
-            )
+      LightConfiguration(tag = "speed", get = { speed }) { value, groups ->
+        write(
+          byteArrayOf(
+            68,
+            68,
+            groups.toGroupByte(),
+            2,
+            (value * 100f).toInt().toByte()
           )
-        }
+        )
+      }
 
-        LightConfiguration(tag = "music mode", get = { musicMode }) { value, groups ->
-          write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (value) 1 else 0, 0))
-        }
+      LightConfiguration(tag = "music mode", get = { musicMode }) { value, groups ->
+        write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (value) 1 else 0, 0))
+      }
 
-        LightConfiguration(
-          tag = "brightness",
-          get = { if (blackout) 0f else brightness }) { value, groups ->
-          write(
-            byteArrayOf(
-              68,
-              68,
-              groups.toGroupByte(),
-              1,
-              (value * 100f).toInt().toByte()
-            )
+      LightConfiguration(
+        tag = "brightness",
+        get = { if (blackout) 0f else brightness }) { value, groups ->
+        write(
+          byteArrayOf(
+            68,
+            68,
+            groups.toGroupByte(),
+            1,
+            (value * 100f).toInt().toByte()
           )
-        }
+        )
       }
     }
   }
