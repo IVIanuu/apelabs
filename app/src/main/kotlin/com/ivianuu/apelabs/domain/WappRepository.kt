@@ -5,6 +5,15 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import com.ivianuu.apelabs.data.Wapp
 import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.debugName
@@ -18,56 +27,85 @@ import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.permission.PermissionManager
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.android.SystemService
-import com.ivianuu.injekt.common.IOCoroutineContext
-import com.ivianuu.injekt.common.NamedCoroutineScope
 import com.ivianuu.essentials.Scoped
+import com.ivianuu.essentials.compose.compositionStateFlow
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
-import com.ivianuu.injekt.inject
-import kotlinx.coroutines.awaitCancellation
+import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 @Provide @Scoped<AppScope> class WappRepository(
   private val bluetoothManager: @SystemService BluetoothManager,
-  ioCoroutineContext: IOCoroutineContext,
   private val logger: Logger,
   permissionManager: PermissionManager,
   scope: ScopedCoroutineScope<AppScope>,
   private val wappRemote: WappRemote
-) {
-  val wapps: Flow<List<Wapp>> = permissionManager.permissionState(apeLabsPermissionKeys)
-    .flatMapLatest {
-      if (!it) flowOf(emptyList())
-      else bleWapps()
-    }
-    .flowOn(ioCoroutineContext)
-    .shareIn(scope, SharingStarted.WhileSubscribed(2000), 1)
-    .distinctUntilChanged()
-
+) : SynchronizedObject() {
   private val foundWapps = mutableSetOf<Wapp>()
-  private val wappsLock = Mutex()
 
-  val wappState: SharedFlow<WappState> = wapps
-    .flatMapLatest { wapps ->
-      if (wapps.isEmpty()) flowOf(WappState(null, false, null))
-      else callbackFlow<Pair<Wapp, ByteArray>> {
+  @SuppressLint("MissingPermission")
+  val wapps: StateFlow<List<Wapp>> = scope.compositionStateFlow {
+    if (!permissionManager.permissionState(apeLabsPermissionKeys).collectAsState(false).value)
+      return@compositionStateFlow emptyList()
+
+    var wapps by remember {
+      mutableStateOf(
+        buildSet<Wapp> {
+          this += bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)
+            .filter { it.isWapp() }
+            .map { it.toWapp() }
+
+          this += synchronized(this) { foundWapps.toList() }
+        }
+      )
+    }
+
+    remember(wapps) { foundWapps += wapps }
+
+    wapps.forEach { wapp ->
+      key(wapp.address) {
+        LaunchedEffect(true) {
+          wappRemote.withWapp<Unit>(wapp.address) {
+            onCancel {
+              logger.log { "${wapp.debugName()} remove wapp" }
+              wapps = wapps - wapp
+            }
+          }
+        }
+      }
+    }
+
+    DisposableEffect(true) {
+      val callback = object : ScanCallback() {
+        override fun onScanResult(callbackType: Int, result: ScanResult) {
+          super.onScanResult(callbackType, result)
+          if (result.device.isWapp())
+            wapps = wapps + result.device.toWapp()
+        }
+      }
+
+      logger.log { "start scan" }
+      bluetoothManager.adapter.bluetoothLeScanner.startScan(callback)
+      onDispose {
+        logger.log { "stop scan" }
+        bluetoothManager.adapter.bluetoothLeScanner.stopScan(callback)
+      }
+    }
+
+    wapps.toList()
+  }
+
+  val wappState: StateFlow<WappState> = scope.compositionStateFlow {
+    val wapps by wapps.collectAsState()
+    if (wapps.isEmpty()) return@compositionStateFlow WappState()
+
+    produceState(WappState()) {
+      callbackFlow {
         wapps.parForEach { wapp ->
-          wappRemote.withWapp(wapp.address) {
+          wappRemote.withWapp<Unit>(wapp.address) {
             messages.collect {
               trySend(wapp to it)
             }
@@ -85,76 +123,7 @@ import kotlinx.coroutines.sync.withLock
             true,
             message.getOrNull(6)?.let { it / 100f })
         }
-        .onStart {
-          emit(
-            inject<WappRepository>().wappState.replayCache.firstOrNull()
-              ?: WappState(null, true, null)
-          )
-        }
-    }
-    .distinctUntilChanged()
-    .shareIn(scope, SharingStarted.WhileSubscribed(2000), 1)
-
-  @SuppressLint("MissingPermission")
-  private fun bleWapps(): Flow<List<Wapp>> = callbackFlow {
-    val wapps = mutableSetOf<Wapp>()
-    val handledWapps = mutableSetOf<Wapp>()
-    trySend(emptyList())
-
-    fun handleWapp(wapp: Wapp) {
-      launch {
-        wappsLock.withLock {
-          foundWapps += wapp
-          if (handledWapps.any { it.address == wapp.address })
-            return@launch
-
-          handledWapps += wapp
-        }
-
-        wappRemote.withWapp(wapp.address) {
-          wappsLock.withLock {
-            if (wapp in wapps)
-              return@withWapp
-
-            logger.log { "${wapp.debugName()} add wapp" }
-
-            wapps += wapp
-            trySend(wapps.toList())
-          }
-
-          onCancel(block = { awaitCancellation() }) {
-            if (coroutineContext.isActive) {
-              logger.log { "${wapp.debugName()} remove wapp" }
-              wappsLock.withLock {
-                handledWapps.removeAll { it.address == wapp.address }
-                wapps.remove(wapp)
-                trySend(wapps.toList())
-              }
-            }
-          }
-        }
-      }
-    }
-
-    bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)
-      .filter { it.isWapp() }
-      .forEach { handleWapp(it.toWapp()) }
-
-    foundWapps.forEach { handleWapp(it) }
-
-    val callback = object : ScanCallback() {
-      override fun onScanResult(callbackType: Int, result: ScanResult) {
-        super.onScanResult(callbackType, result)
-        if (result.device.isWapp())
-          handleWapp(result.device.toWapp())
-      }
-    }
-
-    logger.log { "start scan" }
-    bluetoothManager.adapter.bluetoothLeScanner.startScan(callback)
-    awaitClose {
-      logger.log { "stop scan" }
-      bluetoothManager.adapter.bluetoothLeScanner.stopScan(callback)
-    }
+        .collect { value = it }
+    }.value
   }
 }

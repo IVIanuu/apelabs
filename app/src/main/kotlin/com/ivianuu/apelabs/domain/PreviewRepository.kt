@@ -31,7 +31,7 @@ import kotlinx.coroutines.sync.withLock
 @Provide @Scoped<AppScope> class PreviewRepository(
   private val logger: Logger,
   private val pref: DataStore<ApeLabsPrefs>,
-  private val scope: ScopedCoroutineScope<AppScope>
+  scope: ScopedCoroutineScope<AppScope>
 ) {
   private val _previewProviders =
     MutableStateFlow<List<suspend (List<Int>, suspend (List<GroupConfig>) -> Unit) -> Unit>>(
