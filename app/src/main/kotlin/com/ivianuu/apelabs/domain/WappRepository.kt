@@ -30,6 +30,7 @@ import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.compose.compositionStateFlow
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
+import com.ivianuu.essentials.ui.UiScope
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.StateFlow
@@ -37,33 +38,19 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 
-@Provide @Scoped<AppScope> class WappRepository(
+@Provide @Scoped<UiScope> class WappRepository(
   private val bluetoothManager: @SystemService BluetoothManager,
   private val logger: Logger,
   permissionManager: PermissionManager,
-  scope: ScopedCoroutineScope<AppScope>,
+  scope: ScopedCoroutineScope<UiScope>,
   private val wappRemote: WappRemote
-) : SynchronizedObject() {
-  private val foundWapps = mutableSetOf<Wapp>()
-
+) {
   @SuppressLint("MissingPermission")
   val wapps: StateFlow<List<Wapp>> = scope.compositionStateFlow {
     if (!permissionManager.permissionState(apeLabsPermissionKeys).collectAsState(false).value)
       return@compositionStateFlow emptyList()
 
-    var wapps by remember {
-      mutableStateOf(
-        buildSet<Wapp> {
-          this += bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)
-            .filter { it.isWapp() }
-            .map { it.toWapp() }
-
-          this += synchronized(this) { foundWapps.toList() }
-        }
-      )
-    }
-
-    remember(wapps) { foundWapps += wapps }
+    var wapps by remember { mutableStateOf(emptySet<Wapp>()) }
 
     wapps.forEach { wapp ->
       key(wapp.address) {
@@ -79,6 +66,10 @@ import kotlinx.coroutines.flow.map
     }
 
     DisposableEffect(true) {
+      wapps = wapps + bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)
+        .filter { it.isWapp() }
+        .map { it.toWapp() }
+
       val callback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
           super.onScanResult(callbackType, result)
@@ -95,6 +86,10 @@ import kotlinx.coroutines.flow.map
       }
     }
 
+    remember(wapps) {
+      logger.log { "wapps changed ${wapps.map { it.debugName() }}" }
+    }
+
     wapps.toList()
   }
 
@@ -102,7 +97,7 @@ import kotlinx.coroutines.flow.map
     val wapps by wapps.collectAsState()
     if (wapps.isEmpty()) return@compositionStateFlow WappState()
 
-    produceState(WappState()) {
+    produceState(WappState(isConnected = true)) {
       callbackFlow {
         wapps.parForEach { wapp ->
           wappRemote.withWapp<Unit>(wapp.address) {

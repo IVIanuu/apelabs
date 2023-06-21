@@ -11,6 +11,7 @@ import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.common.NamedCoroutineScope
 import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
+import com.ivianuu.essentials.ui.UiScope
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -28,10 +29,10 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-@Provide @Scoped<AppScope> class PreviewRepository(
+@Provide @Scoped<UiScope> class PreviewRepository(
   private val logger: Logger,
   private val pref: DataStore<ApeLabsPrefs>,
-  scope: ScopedCoroutineScope<AppScope>
+  scope: ScopedCoroutineScope<UiScope>
 ) {
   private val _previewProviders =
     MutableStateFlow<List<suspend (List<Int>, suspend (List<GroupConfig>) -> Unit) -> Unit>>(

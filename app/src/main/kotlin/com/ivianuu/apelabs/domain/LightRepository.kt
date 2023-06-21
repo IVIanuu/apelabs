@@ -20,6 +20,7 @@ import com.ivianuu.injekt.common.NamedCoroutineScope
 import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.compose.compositionFlow
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
+import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.injekt.inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
@@ -38,10 +39,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@Provide @Scoped<AppScope> class LightRepository(
+@Provide @Scoped<UiScope> class LightRepository(
   private val ioCoroutineContext: IOCoroutineContext,
   private val logger: Logger,
-  private val scope: ScopedCoroutineScope<AppScope>,
+  private val scope: ScopedCoroutineScope<UiScope>,
   private val wappRemote: WappRemote,
   private val wappRepository: WappRepository
 ) {
