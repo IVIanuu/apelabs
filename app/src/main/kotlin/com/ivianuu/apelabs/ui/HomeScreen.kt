@@ -182,9 +182,7 @@ import kotlin.math.roundToInt
       }
     }
   ) {
-    LazyVerticalGrid(
-      columns = GridCells.Fixed(2)
-    ) {
+    LazyVerticalGrid(columns = GridCells.Fixed(2)) {
       if (model.selectedGroups.isEmpty()) {
         item(span = { GridItemSpan(maxLineSpan) }) {
           Text(
