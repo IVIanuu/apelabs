@@ -99,7 +99,7 @@ class WappServer(
   private val gatt = bluetoothManager.adapter
     .getRemoteDevice(address)
     .connectGatt(
-      inject(),
+      appContext,
       true,
       object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {

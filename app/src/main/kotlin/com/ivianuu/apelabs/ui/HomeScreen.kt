@@ -600,7 +600,7 @@ data class HomeModel(
   wappRepository: WappRepository,
   pref: DataStore<ApeLabsPrefs>
 ) = Model {
-  val prefs by pref.data.collectAsState(ApeLabsPrefs())
+  val prefs by pref.data.collectAsState(ApeLabsPrefs(selectedGroups = GROUPS.toSet()))
 
   val selectedGroupConfigs by groupConfigRepository.selectedGroupConfigs
     .collectAsState(emptyList())

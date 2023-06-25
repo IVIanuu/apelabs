@@ -1,7 +1,7 @@
 package com.ivianuu.apelabs.data
 
-import com.ivianuu.essentials.android.prefs.DataStoreModule
 import com.ivianuu.essentials.data.DataStore
+import com.ivianuu.essentials.data.DataStoreModule
 import com.ivianuu.injekt.Provide
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration
