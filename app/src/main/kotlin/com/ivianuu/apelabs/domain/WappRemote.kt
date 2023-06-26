@@ -11,7 +11,6 @@ import android.bluetooth.BluetoothProfile
 import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.essentials.AppContext
 import com.ivianuu.essentials.AppScope
-import com.ivianuu.essentials.catch
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.RateLimiter
 import com.ivianuu.essentials.coroutines.RefCountedResource
@@ -24,10 +23,10 @@ import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.android.SystemService
-import com.ivianuu.injekt.common.IOCoroutineContext
-import com.ivianuu.injekt.common.NamedCoroutineScope
 import com.ivianuu.essentials.Scoped
+import com.ivianuu.essentials.coroutines.CoroutineContexts
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
+import com.ivianuu.essentials.result.catch
 import com.ivianuu.injekt.inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -43,9 +42,9 @@ import java.util.*
 @Provide @Scoped<AppScope> class WappRemote(
   private val appContext: AppContext,
   private val bluetoothManager: @SystemService BluetoothManager,
-  private val ioCoroutineContext: IOCoroutineContext,
+  private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
-  private val scope: ScopedCoroutineScope<AppScope>
+  private val scope: ScopedCoroutineScope<AppScope>,
 ) {
   private val servers = RefCountedResource<String, WappServer>(
     create = { WappServer(it) },
@@ -54,8 +53,8 @@ import java.util.*
 
   suspend fun <R> withWapp(
     address: String,
-    block: suspend WappServer.() -> R
-  ): R? = withContext(ioCoroutineContext) {
+    block: suspend WappServer.() -> R,
+  ): R? = withContext(coroutineContexts.io) {
     servers.withResource(address) {
       race(
         {
@@ -77,9 +76,9 @@ class WappServer(
   address: String,
   @Inject private val appContext: AppContext,
   @Inject private val bluetoothManager: @SystemService BluetoothManager,
-  @Inject private val coroutineContext: IOCoroutineContext,
+  @Inject private val coroutineContexts: CoroutineContexts,
   @Inject private val logger: Logger,
-  @Inject private val scope: CoroutineScope
+  @Inject private val scope: CoroutineScope,
 ) {
   val connectionState = MutableSharedFlow<Boolean>(
     replay = 1,
@@ -151,7 +150,7 @@ class WappServer(
     logger.log { "${device.debugName()} init" }
   }
 
-  suspend fun write(message: ByteArray) = withContext(coroutineContext) {
+  suspend fun write(message: ByteArray) = withContext(coroutineContexts.io) {
     val service = gatt.getService(APE_LABS_SERVICE_ID) ?: error(
       "${device.debugName()} service not found ${
         gatt.services.map {
@@ -169,7 +168,7 @@ class WappServer(
     }
   }
 
-  suspend fun close() = withContext(coroutineContext) {
+  suspend fun close() = withContext(coroutineContexts.io) {
     logger.log { "${device.debugName()} close" }
     catch { gatt.disconnect() }
     catch { gatt.close() }

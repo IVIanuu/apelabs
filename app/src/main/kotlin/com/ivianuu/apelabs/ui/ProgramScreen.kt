@@ -32,8 +32,8 @@ import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.essentials.compose.action
-import com.ivianuu.essentials.resource.Idle
 import com.ivianuu.essentials.resource.Resource
+import com.ivianuu.essentials.resource.collectAsResourceState
 import com.ivianuu.essentials.resource.flowAsResource
 import com.ivianuu.essentials.resource.get
 import com.ivianuu.essentials.resource.getOrNull
@@ -215,10 +215,8 @@ data class ProgramModel(
 
   val program by remember {
     programRepository.program(id)
-      .flowAsResource()
-      .map { it.map { it!! } }
-  }
-    .collectAsState(Idle)
+      .map { it!! }
+  }.collectAsResourceState()
 
   LaunchedEffect(true) {
     previewRepository.providePreviews { selectedGroups, update ->

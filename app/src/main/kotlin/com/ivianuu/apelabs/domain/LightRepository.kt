@@ -15,10 +15,9 @@ import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.time.minutes
 import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Provide
-import com.ivianuu.injekt.common.IOCoroutineContext
-import com.ivianuu.injekt.common.NamedCoroutineScope
 import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.compose.compositionFlow
+import com.ivianuu.essentials.coroutines.CoroutineContexts
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.injekt.inject
@@ -40,11 +39,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Provide @Scoped<UiScope> class LightRepository(
-  private val ioCoroutineContext: IOCoroutineContext,
+  private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
   private val scope: ScopedCoroutineScope<UiScope>,
   private val wappRemote: WappRemote,
-  private val wappRepository: WappRepository
+  private val wappRepository: WappRepository,
 ) {
   val lights: SharedFlow<List<Light>> = compositionFlow {
     var lights by remember {
@@ -166,7 +165,7 @@ import kotlinx.coroutines.withContext
     }
   }
 
-  suspend fun regroupLights(ids: List<Int>, group: Int) = withContext(ioCoroutineContext) {
+  suspend fun regroupLights(ids: List<Int>, group: Int) = withContext(coroutineContexts.io) {
     wappRepository.wapps.first().parForEach { wapp ->
       wappRemote.withWapp(wapp.address) {
         ids.forEach { id ->

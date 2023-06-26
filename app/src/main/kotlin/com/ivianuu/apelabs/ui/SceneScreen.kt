@@ -31,8 +31,8 @@ import com.ivianuu.apelabs.domain.PreviewRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
 import com.ivianuu.essentials.compose.action
-import com.ivianuu.essentials.resource.Idle
 import com.ivianuu.essentials.resource.Resource
+import com.ivianuu.essentials.resource.collectAsResourceState
 import com.ivianuu.essentials.resource.flowAsResource
 import com.ivianuu.essentials.resource.get
 import com.ivianuu.essentials.resource.getOrNull
@@ -164,10 +164,8 @@ data class SceneModel(
 
   val scene by remember {
     sceneRepository.scene(id)
-      .flowAsResource()
-      .map { it.map { it!! } }
-  }
-    .collectAsState(Idle)
+      .map { it!! }
+  }.collectAsResourceState()
 
   LaunchedEffect(true) {
     previewRepository.providePreviews { _, update ->
