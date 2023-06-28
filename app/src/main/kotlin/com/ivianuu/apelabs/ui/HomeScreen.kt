@@ -520,15 +520,17 @@ import kotlin.math.roundToInt
   onLongClick: (() -> Unit)?,
   content: @Composable () -> Unit
 ) {
-  val backgroundColor = if (selected) MaterialTheme.colors.secondary
+  val targetBackgroundColor = if (selected) MaterialTheme.colors.secondary
   else LocalContentColor.current.copy(alpha = ContentAlpha.disabled)
+  val backgroundColor by animateColorAsState(targetBackgroundColor)
+  val contentColor by animateColorAsState(guessingContentColorFor(targetBackgroundColor))
   Surface(
     modifier = Modifier
       .height(32.dp)
       .defaultMinSize(minWidth = 56.dp),
     shape = RoundedCornerShape(50),
     color = backgroundColor,
-    contentColor = guessingContentColorFor(backgroundColor)
+    contentColor = contentColor
   ) {
     Box(
       modifier = Modifier
