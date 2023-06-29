@@ -120,28 +120,20 @@ import kotlin.math.roundToInt
           title = { Text("Ape labs") },
           actions = {
             PopupMenuButton {
-              PopupMenuItem(onSelected = model.saveColor) {
-                Text("Save color")
-              }
-              PopupMenuItem(onSelected = model.saveScene) {
-                Text("Save scene")
-              }
-              PopupMenuItem(onSelected = model.openBackupRestore) {
-                Text("Backup and restore")
-              }
+              PopupMenuItem(onSelected = model.saveColor) { Text("Save color") }
+              PopupMenuItem(onSelected = model.saveScene) { Text("Save scene") }
+              PopupMenuItem(onSelected = model.openBackupRestore) { Text("Backup and restore") }
             }
 
-            Box(
-              modifier = Modifier
-                .size(12.dp)
-                .background(
-                  animateColorAsState(
-                    if (model.wappState.map { it.isConnected }.getOrElse { false }) Color.Green
-                    else Color.Red
-                  ).value,
-                  CircleShape
-                )
-            )
+            IconButton(onClick = {}) {
+              Icon(
+                painterResId = R.drawable.ic_bluetooth,
+                tint = animateColorAsState(
+                  if (model.wappState.map { it.isConnected }.getOrElse { false }) Color(0xFF0082FC)
+                  else LocalContentColor.current.copy(alpha = ContentAlpha.disabled)
+                ).value
+              )
+            }
           }
         )
       }
