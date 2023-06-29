@@ -12,22 +12,22 @@ import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.essentials.AppContext
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.EventFlow
-import com.ivianuu.essentials.coroutines.RateLimiter
 import com.ivianuu.essentials.coroutines.RefCountedResource
 import com.ivianuu.essentials.coroutines.race
 import com.ivianuu.essentials.coroutines.withResource
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
-import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.essentials.Scoped
+import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.coroutines.CoroutineContexts
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.essentials.result.catch
-import com.ivianuu.injekt.inject
+import com.ivianuu.essentials.ui.UiScope
+import com.ivianuu.essentials.unsafeCast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
@@ -39,15 +39,13 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.*
 
-@Provide @Scoped<AppScope> class WappRemote(
-  private val appContext: AppContext,
-  private val bluetoothManager: @SystemService BluetoothManager,
+@Provide @Scoped<UiScope> class WappRemote(
   private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
-  private val scope: ScopedCoroutineScope<AppScope>,
+  private val serverFactory: (String) -> WappServer,
 ) {
   private val servers = RefCountedResource<String, WappServer>(
-    create = { WappServer(it) },
+    create = { serverFactory(it) },
     release = { _, server -> server.close() }
   )
 
@@ -56,36 +54,28 @@ import java.util.*
     block: suspend WappServer.() -> R,
   ): R? = withContext(coroutineContexts.io) {
     servers.withResource(address) {
+      it.isConnected.first { it }
       race(
+        { block(it) },
         {
-          it.serviceChanges.first()
-          block(it)
-        },
-        {
-          it.serviceChanges.first()
-          it.connectionState.first { !it }
+          it.isConnected.first { !it }
           logger.log { "${it.device.debugName()} cancel with wapp" }
         }
-      ) as? R
+      ).unsafeCast()
     }
   }
 }
 
 @SuppressLint("MissingPermission")
-class WappServer(
+@Provide class WappServer(
   address: String,
-  @Inject private val appContext: AppContext,
-  @Inject private val bluetoothManager: @SystemService BluetoothManager,
-  @Inject private val coroutineContexts: CoroutineContexts,
-  @Inject private val logger: Logger,
-  @Inject private val scope: CoroutineScope,
+  appContext: AppContext,
+  bluetoothManager: @SystemService BluetoothManager,
+  private val coroutineContexts: CoroutineContexts,
+  private val logger: Logger,
+  private val scope: ScopedCoroutineScope<UiScope>,
 ) {
-  val connectionState = MutableSharedFlow<Boolean>(
-    replay = 1,
-    extraBufferCapacity = Int.MAX_VALUE,
-    onBufferOverflow = BufferOverflow.SUSPEND
-  )
-  val serviceChanges = MutableSharedFlow<Unit>(
+  val isConnected = MutableSharedFlow<Boolean>(
     replay = 1,
     extraBufferCapacity = Int.MAX_VALUE,
     onBufferOverflow = BufferOverflow.SUSPEND
@@ -105,9 +95,10 @@ class WappServer(
           super.onConnectionStateChange(gatt, status, newState)
           val isConnected = newState == BluetoothProfile.STATE_CONNECTED
           logger.log { "${device.debugName()} connection state changed $newState" }
-          connectionState.tryEmit(isConnected)
           if (isConnected)
             gatt.discoverServices()
+          else
+            this@WappServer.isConnected.tryEmit(false)
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
@@ -115,6 +106,7 @@ class WappServer(
           logger.log { "${device.debugName()} services discovered" }
 
           scope.launch {
+            delay(100.milliseconds)
             val readCharacteristic = gatt
               .getService(APE_LABS_SERVICE_ID)
               .getCharacteristic(APE_LABS_READ_ID)
@@ -126,7 +118,7 @@ class WappServer(
             gatt.writeDescriptor(cccDescriptor)
             onCharacteristicChanged(gatt, readCharacteristic)
             delay(100.milliseconds)
-            serviceChanges.tryEmit(Unit)
+            isConnected.emit(true)
           }
         }
 
