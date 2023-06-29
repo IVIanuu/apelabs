@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.ivianuu.apelabs.data.Light
-import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
@@ -157,7 +156,7 @@ import kotlinx.coroutines.withContext
           ids
             .shuffled()
             .forEach { id ->
-              write("flash", byteArrayOf(72, 100) + id.toByteArray().dropLast(1))
+              write(byteArrayOf(72, 100) + id.toByteArray().dropLast(1))
               delay(100.milliseconds)
             }
         }
@@ -172,7 +171,6 @@ import kotlinx.coroutines.withContext
           // works more reliable if we send it twice:D
           repeat(2) {
             write(
-              "regroup",
               byteArrayOf(82, 10) +
                   id.toByteArray()
                     .dropLast(1) +

@@ -10,7 +10,6 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.essentials.AppContext
-import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.RefCountedResource
 import com.ivianuu.essentials.coroutines.race
@@ -18,18 +17,14 @@ import com.ivianuu.essentials.coroutines.withResource
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.time.milliseconds
-import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.essentials.Scoped
-import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.coroutines.CoroutineContexts
-import com.ivianuu.essentials.coroutines.RateLimiter
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.essentials.result.catch
 import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.essentials.unsafeCast
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -113,9 +108,10 @@ import java.util.*
             gatt.setCharacteristicNotification(readCharacteristic, true)
             val cccDescriptor = readCharacteristic.getDescriptor(CCCD_ID)
             cccDescriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+            delay(100.milliseconds)
             gatt.writeDescriptor(cccDescriptor)
             onCharacteristicChanged(gatt, readCharacteristic)
-            writeLimiter.acquire()
+            delay(100.milliseconds)
             isConnected.emit(true)
           }
         }
@@ -135,14 +131,12 @@ import java.util.*
     )
 
   private val writeLock = Mutex()
-  private var lastWriteKey: Any? = null
-  private val writeLimiter = RateLimiter(1, 100.milliseconds)
 
   init {
     logger.log { "${device.debugName()} init" }
   }
 
-  suspend fun write(key: Any, message: ByteArray) = withContext(coroutineContexts.io) {
+  suspend fun write(message: ByteArray) = withContext(coroutineContexts.io) {
     val service = gatt.getService(APE_LABS_SERVICE_ID) ?: error(
       "${device.debugName()} service not found ${
         gatt.services.map {
@@ -154,8 +148,6 @@ import java.util.*
       ?: error("${device.debugName()} characteristic not found")
 
     writeLock.withLock {
-      if (key != lastWriteKey) writeLimiter.acquire()
-      lastWriteKey = key
       logger.log { "${device.debugName()} write -> ${message.contentToString()}" }
       characteristic.value = message
       gatt.writeCharacteristic(characteristic)
