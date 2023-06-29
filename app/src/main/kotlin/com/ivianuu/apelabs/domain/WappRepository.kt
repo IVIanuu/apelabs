@@ -98,10 +98,12 @@ import kotlinx.coroutines.flow.map
     val wapps by wapps.collectAsState()
     if (wapps.isEmpty()) return@compositionStateFlow WappState()
 
-    produceState(WappState(isConnected = true)) {
+    produceState(WappState()) {
       callbackFlow {
         wapps.parForEach { wapp ->
           wappRemote.withWapp<Unit>(wapp.address) {
+            trySend(wapp to byteArrayOf())
+
             messages.collect {
               trySend(wapp to it)
             }
@@ -110,8 +112,9 @@ import kotlinx.coroutines.flow.map
         awaitClose()
       }
         .filter {
-          it.second.getOrNull(0)?.toInt() == 83 &&
-              it.second.getOrNull(1)?.toInt() == -112
+          it.second.isEmpty() ||
+              (it.second.getOrNull(0)?.toInt() == 83 &&
+                  it.second.getOrNull(1)?.toInt() == -112)
         }
         .map { (wapp, message) ->
           WappState(
