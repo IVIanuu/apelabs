@@ -106,15 +106,12 @@ import java.util.*
           logger.log { "${device.debugName()} services discovered" }
 
           scope.launch {
-            delay(100.milliseconds)
             val readCharacteristic = gatt
               .getService(APE_LABS_SERVICE_ID)
               .getCharacteristic(APE_LABS_READ_ID)
-            delay(100.milliseconds)
             gatt.setCharacteristicNotification(readCharacteristic, true)
             val cccDescriptor = readCharacteristic.getDescriptor(CCCD_ID)
             cccDescriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            delay(100.milliseconds)
             gatt.writeDescriptor(cccDescriptor)
             onCharacteristicChanged(gatt, readCharacteristic)
             delay(100.milliseconds)
