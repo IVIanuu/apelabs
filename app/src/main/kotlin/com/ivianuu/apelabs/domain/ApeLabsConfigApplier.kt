@@ -102,12 +102,13 @@ import kotlin.time.Duration
       ) { value, groups ->
         when {
           value.id == Program.RAINBOW.id -> {
-            write(byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0))
+            write("program", byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0))
           }
 
           value.items.size == 1 -> {
             val color = value.items.single().color
             write(
+              "program",
               byteArrayOf(
                 68,
                 68,
@@ -125,6 +126,7 @@ import kotlin.time.Duration
           else -> {
             value.items.forEachIndexed { index, item ->
               write(
+                "program",
                 byteArrayOf(
                   81,
                   index.toByte(),
@@ -147,6 +149,7 @@ import kotlin.time.Duration
 
       LightConfiguration(tag = "speed", get = { speed }) { value, groups ->
         write(
+          "speed",
           byteArrayOf(
             68,
             68,
@@ -158,13 +161,14 @@ import kotlin.time.Duration
       }
 
       LightConfiguration(tag = "music mode", get = { musicMode }) { value, groups ->
-        write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (value) 1 else 0, 0))
+        write("music_mode", byteArrayOf(68, 68, groups.toGroupByte(), 3, if (value) 1 else 0, 0))
       }
 
       LightConfiguration(
         tag = "brightness",
         get = { if (blackout) 0f else brightness }) { value, groups ->
         write(
+          "brightness",
           byteArrayOf(
             68,
             68,

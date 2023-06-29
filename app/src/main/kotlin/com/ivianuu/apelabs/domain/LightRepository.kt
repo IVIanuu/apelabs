@@ -157,7 +157,7 @@ import kotlinx.coroutines.withContext
           ids
             .shuffled()
             .forEach { id ->
-              write(byteArrayOf(72, 100) + id.toByteArray().dropLast(1))
+              write("flash", byteArrayOf(72, 100) + id.toByteArray().dropLast(1))
               delay(100.milliseconds)
             }
         }
@@ -172,6 +172,7 @@ import kotlinx.coroutines.withContext
           // works more reliable if we send it twice:D
           repeat(2) {
             write(
+              "regroup",
               byteArrayOf(82, 10) +
                   id.toByteArray()
                     .dropLast(1) +
