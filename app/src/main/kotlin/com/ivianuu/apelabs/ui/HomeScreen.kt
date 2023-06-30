@@ -119,12 +119,6 @@ import kotlin.math.roundToInt
         TopAppBar(
           title = { Text("Ape labs") },
           actions = {
-            PopupMenuButton {
-              PopupMenuItem(onSelected = model.saveColor) { Text("Save color") }
-              PopupMenuItem(onSelected = model.saveScene) { Text("Save scene") }
-              PopupMenuItem(onSelected = model.openBackupRestore) { Text("Backup and restore") }
-            }
-
             IconButton(onClick = {}) {
               Icon(
                 painterResId = R.drawable.ic_bluetooth,
@@ -133,6 +127,12 @@ import kotlin.math.roundToInt
                   else LocalContentColor.current.copy(alpha = ContentAlpha.disabled)
                 ).value
               )
+            }
+
+            PopupMenuButton {
+              PopupMenuItem(onSelected = model.saveColor) { Text("Save color") }
+              PopupMenuItem(onSelected = model.saveScene) { Text("Save scene") }
+              PopupMenuItem(onSelected = model.openBackupRestore) { Text("Backup and restore") }
             }
           }
         )
