@@ -19,7 +19,6 @@ import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.apelabs.data.isWapp
 import com.ivianuu.apelabs.data.toWapp
-import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.onCancel
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
@@ -28,14 +27,12 @@ import com.ivianuu.essentials.permission.PermissionManager
 import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.essentials.Scoped
-import com.ivianuu.essentials.app.AppForegroundScope
 import com.ivianuu.essentials.compose.compositionStateFlow
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.essentials.ui.UiScope
-import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 
@@ -99,7 +96,7 @@ import kotlinx.coroutines.flow.map
     if (wapps.isEmpty()) return@compositionStateFlow WappState()
 
     produceState(WappState()) {
-      callbackFlow {
+      channelFlow {
         wapps.parForEach { wapp ->
           wappRemote.withWapp<Unit>(wapp.address) {
             trySend(wapp to byteArrayOf())
