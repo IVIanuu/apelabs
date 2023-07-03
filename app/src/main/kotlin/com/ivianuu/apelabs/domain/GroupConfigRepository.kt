@@ -79,14 +79,13 @@ import kotlinx.coroutines.flow.onStart
   private fun GroupConfig.toEntity() =
     GroupConfigEntity(id, program.id, brightness, speed, musicMode, blackout)
 
-  private suspend fun GroupConfigEntity.toGroupConfig() =
-    GroupConfig(
-      id,
-      programRepository.program(program).first()
-        ?: Program(items = listOf(Program.Item(ApeColor(white = 1f)))),
-      brightness,
-      speed,
-      musicMode,
-      blackout
-    )
+  private suspend fun GroupConfigEntity.toGroupConfig() = GroupConfig(
+    id,
+    programRepository.program(program).first()
+      ?: Program(items = listOf(Program.Item(ApeColor(white = 1f)))),
+    brightness,
+    speed,
+    musicMode,
+    blackout
+  )
 }

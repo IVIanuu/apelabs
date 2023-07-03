@@ -21,18 +21,16 @@ import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.injekt.inject
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,7 +38,7 @@ import kotlinx.coroutines.withContext
 @Provide @Scoped<UiScope> class LightRepository(
   private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
-  private val scope: ScopedCoroutineScope<UiScope>,
+  scope: ScopedCoroutineScope<UiScope>,
   private val wappRemote: WappRemote,
   private val wappRepository: WappRepository,
 ) {
@@ -70,17 +68,13 @@ import kotlinx.coroutines.withContext
 
     LaunchedEffect(true) {
       wappRepository.wapps
-        .flatMapLatest { wapps ->
-          callbackFlow {
-            wapps.parForEach { wapp ->
-              wappRemote.withWapp<Unit>(wapp.address) {
-                messages.collect {
-                  trySend(it)
-                }
+        .transformLatest { wapps ->
+          wapps.parForEach { wapp ->
+            wappRemote.withWapp<Unit>(wapp.address) {
+              messages.collect {
+                emit(it)
               }
             }
-
-            awaitClose()
           }
         }
         .onEach { logger.log { "on message ${it.contentToString()}" } }
@@ -101,7 +95,7 @@ import kotlinx.coroutines.withContext
 
             val oldLight = lights.singleOrNull { it.id == id }
             if (message[0].toInt() == 82 && oldLight == null)
-              _groupLightsChangedEvents.tryEmit(
+              _groupLightsChangedEvents.emit(
                 GroupLightsChangedEvent(
                   light.group,
                   listOf(light.id)
@@ -181,6 +175,6 @@ import kotlinx.coroutines.withContext
       }
     }
 
-    _groupLightsChangedEvents.tryEmit(GroupLightsChangedEvent(group, ids))
+    _groupLightsChangedEvents.emit(GroupLightsChangedEvent(group, ids))
   }
 }

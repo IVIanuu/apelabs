@@ -29,7 +29,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 @Provide @Scoped<UiScope> class PreviewRepository(
-  private val logger: Logger,
   private val pref: DataStore<ApeLabsPrefs>,
   scope: ScopedCoroutineScope<UiScope>
 ) {
@@ -54,12 +53,9 @@ import kotlinx.coroutines.sync.withLock
         .distinctUntilChanged()
         .map { it.toList() to provider }
     }
-    .flatMapLatest { (groups, provider) ->
-      if (provider == null) flowOf(emptyList())
-      else callbackFlow {
-        provider(groups) {
-          trySend(it)
-        }
+    .transformLatest { (groups, provider) ->
+      provider?.invoke(groups) {
+        emit(it)
       }
     }
     .shareIn(scope, SharingStarted.WhileSubscribed(), 1)
