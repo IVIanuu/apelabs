@@ -54,9 +54,7 @@ import kotlinx.coroutines.sync.withLock
         .map { it.toList() to provider }
     }
     .transformLatest { (groups, provider) ->
-      provider?.invoke(groups) {
-        emit(it)
-      }
+      provider?.invoke(groups) { emit(it) } ?: emit(emptyList())
     }
     .shareIn(scope, SharingStarted.WhileSubscribed(), 1)
     .distinctUntilChanged()
