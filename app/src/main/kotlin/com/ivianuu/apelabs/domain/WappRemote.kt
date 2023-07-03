@@ -77,7 +77,7 @@ import java.util.*
     onBufferOverflow = BufferOverflow.SUSPEND
   )
 
-  val device = bluetoothManager.adapter.getRemoteDevice(address)
+  val device: BluetoothDevice = bluetoothManager.adapter.getRemoteDevice(address)
 
   val messages = EventFlow<ByteArray>()
 
