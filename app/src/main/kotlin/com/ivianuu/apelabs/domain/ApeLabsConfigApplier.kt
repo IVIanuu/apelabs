@@ -55,12 +55,12 @@ import kotlin.time.Duration
       .distinctUntilChanged()
   }.collectAsState(null).value ?: return@ScopeComposition
 
-  wappRepository.wapps.collectAsState(emptyList()).value.forEach { wapp ->
+  wappRepository.wapps.collectAsState(null).value?.forEach { wapp ->
     key(wapp) {
       @Composable fun <T> LightConfiguration(
         tag: String,
         get: GroupConfig.() -> T,
-        apply: suspend WappServer.(T, List<Int>) -> Unit
+        apply: suspend WappServer.(T, List<Int>) -> Unit,
       ) {
         val valueByGroup = GROUPS.associateWith { configs[it]!!.get() }
 

@@ -23,8 +23,10 @@ import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.coroutines.CoroutineContexts
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.essentials.result.catch
+import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.essentials.unsafeCast
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -33,6 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.*
 
 @Provide @Scoped<UiScope> class WappRemote(
@@ -167,11 +170,14 @@ import java.util.*
       ?: error("${device.debugName()} characteristic not found")
 
     writeLock.withLock {
-      logger.log { "${device.debugName()} write -> ${message.contentToString()}" }
-      characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-      characteristic.value = message
-      gatt.writeCharacteristic(characteristic)
-      writeResults.first { it.first == characteristic }
+      withContext(NonCancellable) {
+        logger.log { "${device.debugName()} write -> ${message.contentToString()}" }
+        characteristic.value = message
+        gatt.writeCharacteristic(characteristic)
+        withTimeoutOrNull(300.milliseconds) {
+          writeResults.first { it.first == characteristic }
+        }
+      }
     }
   }
 
