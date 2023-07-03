@@ -236,7 +236,7 @@ import kotlin.math.roundToInt
         item(span = { GridItemSpan(maxLineSpan) }) {
           SliderListItem(
             value = model.groupConfig.brightness,
-            onValueChangeFinished = model.updateBrightness,
+            onValueChange = model.updateBrightness,
             stepPolicy = incrementingStepPolicy(0.05f),
             title = { Text("Brightness") },
             valueText = { Text("${(it * 100f).roundToInt()}") }
@@ -246,7 +246,7 @@ import kotlin.math.roundToInt
         item(span = { GridItemSpan(maxLineSpan) }) {
           SliderListItem(
             value = model.groupConfig.speed,
-            onValueChangeFinished = model.updateSpeed,
+            onValueChange = model.updateSpeed,
             stepPolicy = incrementingStepPolicy(0.05f),
             title = { Text("Speed") },
             valueText = { Text("${(it * 100f).roundToInt()}") }

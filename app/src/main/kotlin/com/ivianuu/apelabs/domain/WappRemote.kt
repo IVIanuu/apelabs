@@ -80,6 +80,7 @@ import java.util.*
   val device: BluetoothDevice = bluetoothManager.adapter.getRemoteDevice(address)
 
   val messages = EventFlow<ByteArray>()
+  private val writeResults = EventFlow<Pair<Any, Int>>()
 
   private val gatt = bluetoothManager.adapter
     .getRemoteDevice(address)
@@ -106,25 +107,43 @@ import java.util.*
               .getService(APE_LABS_SERVICE_ID)
               .getCharacteristic(APE_LABS_READ_ID)
             gatt.setCharacteristicNotification(readCharacteristic, true)
+
             val cccDescriptor = readCharacteristic.getDescriptor(CCCD_ID)
             cccDescriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            delay(100.milliseconds)
             gatt.writeDescriptor(cccDescriptor)
-            onCharacteristicChanged(gatt, readCharacteristic)
-            delay(100.milliseconds)
+            writeResults.first { it.first == cccDescriptor }
+
             isConnected.emit(true)
           }
         }
 
         override fun onCharacteristicChanged(
           gatt: BluetoothGatt,
-          characteristic: BluetoothGattCharacteristic
+          characteristic: BluetoothGattCharacteristic,
         ) {
           super.onCharacteristicChanged(gatt, characteristic)
 
           val message = characteristic.value ?: return
 
           messages.tryEmit(message)
+        }
+
+        override fun onDescriptorWrite(
+          gatt: BluetoothGatt,
+          descriptor: BluetoothGattDescriptor,
+          status: Int,
+        ) {
+          super.onDescriptorWrite(gatt, descriptor, status)
+          writeResults.tryEmit(descriptor to status)
+        }
+
+        override fun onCharacteristicWrite(
+          gatt: BluetoothGatt,
+          characteristic: BluetoothGattCharacteristic,
+          status: Int,
+        ) {
+          super.onCharacteristicWrite(gatt, characteristic, status)
+          writeResults.tryEmit(characteristic to status)
         }
       },
       BluetoothDevice.TRANSPORT_LE
@@ -149,8 +168,10 @@ import java.util.*
 
     writeLock.withLock {
       logger.log { "${device.debugName()} write -> ${message.contentToString()}" }
+      characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
       characteristic.value = message
       gatt.writeCharacteristic(characteristic)
+      writeResults.first { it.first == characteristic }
     }
   }
 
