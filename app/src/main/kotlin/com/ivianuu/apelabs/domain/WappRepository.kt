@@ -45,7 +45,7 @@ import kotlinx.coroutines.flow.map
 ) {
   @SuppressLint("MissingPermission")
   val wapps: StateFlow<List<Wapp>> = scope.compositionStateFlow {
-    if (!permissionManager.permissionState(apeLabsPermissionKeys).collectAsState(false).value)
+    if (!remember { permissionManager.permissionState(apeLabsPermissionKeys) }.collectAsState(false).value)
       return@compositionStateFlow emptyList()
 
     var wapps by remember { mutableStateOf(emptySet<Wapp>()) }
