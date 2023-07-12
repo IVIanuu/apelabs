@@ -38,10 +38,6 @@ import com.ivianuu.essentials.resource.flowAsResource
 import com.ivianuu.essentials.resource.get
 import com.ivianuu.essentials.resource.getOrNull
 import com.ivianuu.essentials.resource.map
-import com.ivianuu.essentials.time.hours
-import com.ivianuu.essentials.time.milliseconds
-import com.ivianuu.essentials.time.minutes
-import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Slider
@@ -58,6 +54,10 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 data class ProgramScreen(val id: String) : Screen<Unit>
 

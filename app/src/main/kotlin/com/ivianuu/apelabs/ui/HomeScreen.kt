@@ -85,7 +85,6 @@ import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.collectAsResourceState
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.resource.map
-import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.essentials.ui.dialog.ListScreen
 import com.ivianuu.essentials.ui.dialog.TextInputScreen
 import com.ivianuu.essentials.ui.material.ListItem

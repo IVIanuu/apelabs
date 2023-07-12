@@ -7,15 +7,14 @@ package com.ivianuu.apelabs
 import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.Scope
 import com.ivianuu.essentials.app.EsApp
-import com.ivianuu.injekt.Inject
-import com.ivianuu.injekt.Providers
-import com.ivianuu.injekt.common.Elements
+import com.ivianuu.essentials.logging.AndroidLogger
+import com.ivianuu.injekt.Provide
 import com.ivianuu.injekt.inject
+import com.ivianuu.injekt.provider
 
 class App : EsApp() {
-  override fun buildAppScope(): Scope<AppScope> =
-    @Providers(
-      ".**",
-      "com.ivianuu.essentials.logging.AndroidLogger.Companion.androidLogger"
-    ) inject()
+  override fun buildAppScope(): Scope<AppScope> {
+    @Provide val loggerProvider = provider(AndroidLogger::androidLogger)
+    return inject()
+  }
 }

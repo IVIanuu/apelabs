@@ -4,9 +4,9 @@ import androidx.compose.ui.graphics.Color
 import com.ivianuu.apelabs.domain.toGroupByte
 import com.ivianuu.essentials.db.Entity
 import com.ivianuu.essentials.db.PrimaryKey
-import com.ivianuu.essentials.time.seconds
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 data class Program(
   val id: String = randomId(),

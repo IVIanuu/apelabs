@@ -11,19 +11,17 @@ import android.bluetooth.BluetoothProfile
 import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.essentials.AppContext
 import com.ivianuu.essentials.coroutines.EventFlow
-import com.ivianuu.essentials.coroutines.RefCountedResource
 import com.ivianuu.essentials.coroutines.race
-import com.ivianuu.essentials.coroutines.withResource
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
-import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.injekt.Provide
-import com.ivianuu.injekt.android.SystemService
 import com.ivianuu.essentials.Scoped
+import com.ivianuu.essentials.SystemService
 import com.ivianuu.essentials.coroutines.CoroutineContexts
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
+import com.ivianuu.essentials.coroutines.sharedResource
+import com.ivianuu.essentials.coroutines.use
 import com.ivianuu.essentials.result.catch
-import com.ivianuu.essentials.time.seconds
 import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.essentials.unsafeCast
 import kotlinx.coroutines.NonCancellable
@@ -37,13 +35,15 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.*
+import kotlin.time.Duration.Companion.milliseconds
 
 @Provide @Scoped<UiScope> class WappRemote(
   private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
   private val serverFactory: (String) -> WappServer,
+  private val scope: ScopedCoroutineScope<UiScope>
 ) {
-  private val servers = RefCountedResource<String, WappServer>(
+  private val servers = scope.sharedResource<String, WappServer>(
     create = { serverFactory(it) },
     release = { _, server -> server.close() }
   )
@@ -52,7 +52,7 @@ import java.util.*
     address: String,
     block: suspend WappServer.() -> R,
   ): R? = withContext(coroutineContexts.io) {
-    servers.withResource(address) {
+    servers.use(address) {
       it.isConnected.first { it }
       race(
         { block(it) },

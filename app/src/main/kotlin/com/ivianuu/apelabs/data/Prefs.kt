@@ -1,6 +1,5 @@
 package com.ivianuu.apelabs.data
 
-import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.data.DataStoreModule
 import com.ivianuu.injekt.Provide
 import kotlinx.serialization.Serializable
@@ -11,6 +10,6 @@ import kotlin.time.Duration
   val programUsages: Map<String, List<Duration>> = emptyMap(),
 ) {
   companion object {
-    @Provide val prefModule = DataStoreModule("apelabs_prefs") { ApeLabsPrefs() }
+    @Provide val dataStoreModule = DataStoreModule("apelabs_prefs") { ApeLabsPrefs() }
   }
 }

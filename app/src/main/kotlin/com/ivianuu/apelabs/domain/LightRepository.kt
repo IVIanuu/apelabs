@@ -10,9 +10,6 @@ import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
-import com.ivianuu.essentials.time.milliseconds
-import com.ivianuu.essentials.time.minutes
-import com.ivianuu.essentials.time.seconds
 import com.ivianuu.injekt.Provide
 import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.compose.compositionFlow
@@ -34,6 +31,9 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 @Provide @Scoped<UiScope> class LightRepository(
   private val coroutineContexts: CoroutineContexts,

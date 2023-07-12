@@ -4,13 +4,13 @@ import android.view.animation.AccelerateInterpolator
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.time.Clock
-import com.ivianuu.essentials.time.days
 import com.ivianuu.essentials.unlerp
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 
 @Provide class ContentUsageRepository(
   private val clock: Clock,

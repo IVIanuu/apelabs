@@ -6,7 +6,6 @@ import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.coroutines.bracket
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.time.milliseconds
 import com.ivianuu.injekt.Provide
 import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
