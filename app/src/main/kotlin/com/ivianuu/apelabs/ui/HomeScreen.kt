@@ -102,6 +102,7 @@ import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
+import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -111,7 +112,7 @@ import kotlin.math.roundToInt
 
 @Provide class HomeScreen : RootScreen
 
-@Provide fun homeUi(resources: Resources) = Ui<HomeScreen, HomeModel> { model ->
+@Provide fun homeUi(@Inject resources: Resources) = Ui<HomeScreen, HomeModel> { model ->
   Scaffold(
     topBar = {
       Column {
