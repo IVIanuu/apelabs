@@ -34,10 +34,8 @@ import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.essentials.compose.action
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.collectAsResourceState
-import com.ivianuu.essentials.resource.flowAsResource
 import com.ivianuu.essentials.resource.get
 import com.ivianuu.essentials.resource.getOrNull
-import com.ivianuu.essentials.resource.map
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Slider

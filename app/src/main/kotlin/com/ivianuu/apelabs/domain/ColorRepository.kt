@@ -2,7 +2,6 @@ package com.ivianuu.apelabs.domain
 
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.BuiltInColors
-import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.isUUID
 import com.ivianuu.essentials.db.Db
 import com.ivianuu.essentials.db.InsertConflictStrategy
