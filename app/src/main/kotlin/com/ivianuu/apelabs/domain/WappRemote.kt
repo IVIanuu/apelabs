@@ -27,6 +27,7 @@ import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -43,6 +44,7 @@ import kotlin.time.Duration.Companion.milliseconds
   private val scope: ScopedCoroutineScope<UiScope>
 ) {
   private val servers = scope.sharedResource<String, WappServer>(
+    sharingStarted = SharingStarted.WhileSubscribed(1000, 0)
     create = { serverFactory(it) },
     release = { _, server -> server.close() }
   )
