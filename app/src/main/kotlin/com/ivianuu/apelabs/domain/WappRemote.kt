@@ -44,7 +44,7 @@ import kotlin.time.Duration.Companion.milliseconds
   private val scope: ScopedCoroutineScope<UiScope>
 ) {
   private val servers = scope.sharedResource<String, WappServer>(
-    sharingStarted = SharingStarted.WhileSubscribed(1000, 0)
+    sharingStarted = SharingStarted.WhileSubscribed(1000, 0),
     create = { serverFactory(it) },
     release = { _, server -> server.close() }
   )
