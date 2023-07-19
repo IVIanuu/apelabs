@@ -37,9 +37,9 @@ import com.ivianuu.essentials.resource.collectAsResourceState
 import com.ivianuu.essentials.resource.get
 import com.ivianuu.essentials.resource.getOrNull
 import com.ivianuu.essentials.ui.common.VerticalList
+import com.ivianuu.essentials.ui.material.AppBar
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Slider
-import com.ivianuu.essentials.ui.material.TopAppBar
 import com.ivianuu.essentials.ui.navigation.Model
 import com.ivianuu.essentials.ui.navigation.Navigator
 import com.ivianuu.essentials.ui.navigation.Screen
@@ -61,7 +61,7 @@ data class ProgramScreen(val id: String) : Screen<Unit>
 
 @Provide val programUi = Ui<ProgramScreen, ProgramModel> { model ->
   Scaffold(
-    topBar = { TopAppBar(title = { Text(model.id) }) },
+    topBar = { AppBar { Text(model.id) } },
     floatingActionButtonPosition = FabPosition.Center,
     floatingActionButton = {
       if (model.canAddItem)

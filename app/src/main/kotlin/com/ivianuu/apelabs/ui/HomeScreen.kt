@@ -84,10 +84,10 @@ import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.resource.map
 import com.ivianuu.essentials.ui.dialog.ListScreen
 import com.ivianuu.essentials.ui.dialog.TextInputScreen
+import com.ivianuu.essentials.ui.material.AppBar
 import com.ivianuu.essentials.ui.material.ListItem
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Subheader
-import com.ivianuu.essentials.ui.material.TopAppBar
 import com.ivianuu.essentials.ui.material.guessingContentColorFor
 import com.ivianuu.essentials.ui.material.incrementingStepPolicy
 import com.ivianuu.essentials.ui.navigation.Model
@@ -112,7 +112,7 @@ import kotlin.math.roundToInt
   Scaffold(
     topBar = {
       Column {
-        TopAppBar(
+        AppBar(
           title = { Text("Ape labs") },
           actions = {
             IconButton(onClick = {}) {

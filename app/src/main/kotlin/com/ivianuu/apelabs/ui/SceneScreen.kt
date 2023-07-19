@@ -37,9 +37,9 @@ import com.ivianuu.essentials.resource.get
 import com.ivianuu.essentials.resource.getOrNull
 import com.ivianuu.essentials.ui.common.VerticalList
 import com.ivianuu.essentials.ui.dialog.ListScreen
+import com.ivianuu.essentials.ui.material.AppBar
 import com.ivianuu.essentials.ui.material.Scaffold
 import com.ivianuu.essentials.ui.material.Subheader
-import com.ivianuu.essentials.ui.material.TopAppBar
 import com.ivianuu.essentials.ui.material.incrementingStepPolicy
 import com.ivianuu.essentials.ui.navigation.Model
 import com.ivianuu.essentials.ui.navigation.Navigator
@@ -57,11 +57,7 @@ import kotlin.math.roundToInt
 data class SceneScreen(val id: String) : Screen<Unit>
 
 @Provide val sceneUi = Ui<SceneScreen, SceneModel> { model ->
-  Scaffold(
-    topBar = {
-      TopAppBar(title = { Text(model.id) })
-    }
-  ) {
+  Scaffold(topBar = { AppBar { Text(model.id) } }) {
     ResourceBox(model.scene) { value ->
       VerticalList {
         value.groupConfigs.forEach { (group, config) ->
