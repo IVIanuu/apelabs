@@ -73,11 +73,12 @@ import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
 import com.ivianuu.apelabs.domain.WappRepository
 import com.ivianuu.essentials.Resources
-import com.ivianuu.essentials.app.AppForegroundState
+import com.ivianuu.essentials.ScopeManager
+import com.ivianuu.essentials.app.AppVisibleScope
 import com.ivianuu.essentials.backup.BackupAndRestoreScreen
 import com.ivianuu.essentials.compose.action
-import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
 import com.ivianuu.essentials.data.DataStore
+import com.ivianuu.essentials.flowInScope
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.collectAsResourceState
 import com.ivianuu.essentials.resource.getOrElse
@@ -101,9 +102,7 @@ import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlin.math.roundToInt
 
 @Provide class HomeScreen : RootScreen
@@ -579,7 +578,6 @@ data class HomeModel(
 )
 
 @Provide fun homeModel(
-  appForegroundState: Flow<AppForegroundState>,
   colorRepository: ColorRepository,
   contentUsageRepository: ContentUsageRepository,
   groupConfigRepository: GroupConfigRepository,
@@ -587,6 +585,7 @@ data class HomeModel(
   navigator: Navigator,
   programRepository: ProgramRepository,
   sceneRepository: SceneRepository,
+  scopeManager: ScopeManager,
   wappRepository: WappRepository,
   pref: DataStore<ApeLabsPrefs>
 ) = Model {
@@ -607,11 +606,7 @@ data class HomeModel(
   }
 
   val lights by remember {
-    appForegroundState
-      .flatMapLatest {
-        if (it == AppForegroundState.FOREGROUND) lightRepository.lights
-        else infiniteEmptyFlow()
-      }
+    scopeManager.flowInScope<AppVisibleScope, _>(lightRepository.lights)
   }.collectAsResourceState()
   var selectedLights by remember { mutableStateOf(emptySet<Int>()) }
 
@@ -665,11 +660,7 @@ data class HomeModel(
       updateConfig { copy(blackout = value) }
     },
     wappState = remember {
-      appForegroundState
-        .flatMapLatest {
-          if (it == AppForegroundState.FOREGROUND) wappRepository.wappState
-          else infiniteEmptyFlow()
-        }
+      scopeManager.flowInScope<AppVisibleScope, _>(wappRepository.wappState)
     }.collectAsResourceState().value,
     lights = lights,
     refreshLights = action { lightRepository.refreshLights() },

@@ -78,8 +78,7 @@ data class ProgramScreen(val id: String) : Screen<Unit>
         value.items.forEachIndexed { itemIndex, item ->
           item {
             Row(
-              modifier = Modifier
-                .padding(horizontal = 16.dp),
+              modifier = Modifier.padding(horizontal = 16.dp),
               verticalAlignment = Alignment.CenterVertically
             ) {
               ColorListIcon(
