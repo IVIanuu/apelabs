@@ -11,7 +11,7 @@ import androidx.compose.runtime.remember
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
-import com.ivianuu.essentials.app.AppForegroundScope
+import com.ivianuu.essentials.app.AppVisibleScope
 import com.ivianuu.essentials.app.ScopeComposition
 import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
@@ -30,7 +30,7 @@ import kotlin.time.Duration
   previewRepository: PreviewRepository,
   wappRemote: WappRemote,
   wappRepository: WappRepository
-) = ScopeComposition<AppForegroundScope> {
+) = ScopeComposition<AppVisibleScope> {
   val groupLightsState by produceState(GROUPS.associateWith { 0 }) {
     lightRepository.groupLightsChangedEvents
       .map { it.group }
