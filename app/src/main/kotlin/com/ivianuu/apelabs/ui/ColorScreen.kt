@@ -92,9 +92,7 @@ data class ColorScreen(val initial: ApeColor) : DialogScreen<ApeColor>
       content = {
         val userColors by colorRepository.userColors.collectAsState(emptyList())
 
-        VerticalList(
-          modifier = Modifier.padding(horizontal = 8.dp)
-        ) {
+        VerticalList(modifier = Modifier.padding(horizontal = 8.dp)) {
           item {
             ColorListIcon(
               colors = listOf(currentColor()),
