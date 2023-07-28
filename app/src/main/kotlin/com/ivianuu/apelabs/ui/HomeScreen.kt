@@ -332,11 +332,9 @@ import kotlin.math.roundToInt
                     }) { Text("Delete") }
                   }
                 }),
-                contentPadding = PaddingValues(
-                  start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
-                  end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
-                ),
-                textPadding = PaddingValues(start = 16.dp)
+                textPadding = PaddingValues(start = 16.dp),
+                leadingPadding = PaddingValues(start = if (index == 0 || row.size == 1) 16.dp else 8.dp),
+                trailingPadding = PaddingValues(end = if (index == 1 || row.size == 1) 16.dp else 8.dp)
               )
             }
           }
@@ -382,10 +380,8 @@ import kotlin.math.roundToInt
                     PopupMenuItem(onSelected = { model.deleteScene(scene) }) { Text("Delete") }
                   }
                 },
-                contentPadding = PaddingValues(
-                  start = if (index == 0 || row.size == 1) 16.dp else 8.dp,
-                  end = if (index == 1 || row.size == 1) 16.dp else 8.dp,
-                ),
+                leadingPadding = PaddingValues(start = if (index == 0 || row.size == 1) 16.dp else 8.dp),
+                trailingPadding = PaddingValues(end = if (index == 1 || row.size == 1) 16.dp else 8.dp),
                 textPadding = PaddingValues(start = 16.dp)
               )
             }
