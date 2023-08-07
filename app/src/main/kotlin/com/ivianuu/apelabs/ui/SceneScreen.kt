@@ -162,7 +162,7 @@ data class SceneModel(
   }.collectAsResourceState()
 
   LaunchedEffect(true) {
-    previewRepository.providePreviews { _, update ->
+    previewRepository.providePreviews {
       snapshotFlow { scene }
         .map {
           scene.getOrNull()
@@ -172,7 +172,6 @@ data class SceneModel(
             ?.filterNotNull()
             ?: emptyList()
         }
-        .collect(update)
     }
   }
 

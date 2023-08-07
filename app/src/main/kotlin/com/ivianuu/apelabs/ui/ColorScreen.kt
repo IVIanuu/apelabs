@@ -73,7 +73,7 @@ data class ColorScreen(val initial: ApeColor) : DialogScreen<ApeColor>
     fun currentColor() = ApeColor(id, red, green, blue, white)
 
     LaunchedEffect(true) {
-      previewRepository.providePreviews { selectedGroups, update ->
+      previewRepository.providePreviews { selectedGroups ->
         snapshotFlow { currentColor() }
           .flatMapLatest { color ->
             groupConfigRepository.groupConfigs
@@ -83,7 +83,6 @@ data class ColorScreen(val initial: ApeColor) : DialogScreen<ApeColor>
                   .map { config -> config.copy(program = color.asProgram()) }
               }
           }
-          .collect(update)
       }
     }
 

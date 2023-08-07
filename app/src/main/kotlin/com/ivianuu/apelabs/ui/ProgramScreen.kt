@@ -216,7 +216,7 @@ data class ProgramModel(
   }.collectAsResourceState()
 
   LaunchedEffect(true) {
-    previewRepository.providePreviews { selectedGroups, update ->
+    previewRepository.providePreviews { selectedGroups ->
       snapshotFlow { program }
         .map { it.getOrNull() }
         .flatMapLatest { program ->
@@ -228,7 +228,6 @@ data class ProgramModel(
                 .map { config -> config.copy(program = program) }
             }
         }
-        .collect(update)
     }
   }
 

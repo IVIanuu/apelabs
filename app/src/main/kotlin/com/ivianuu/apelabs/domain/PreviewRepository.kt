@@ -5,6 +5,7 @@ import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.essentials.coroutines.bracket
+import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
 import com.ivianuu.essentials.data.DataStore
 import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.injekt.Provide
@@ -27,9 +28,7 @@ import kotlinx.coroutines.sync.withLock
   scope: ScopedCoroutineScope<UiScope>
 ) {
   private val _previewProviders =
-    MutableStateFlow<List<suspend (List<Int>, suspend (List<GroupConfig>) -> Unit) -> Unit>>(
-      emptyList()
-    )
+    MutableStateFlow(emptyList<(List<Int>) -> Flow<List<GroupConfig>>>())
   private val lock = Mutex()
 
   private val _previewsEnabled = MutableStateFlow(false)
@@ -47,8 +46,8 @@ import kotlinx.coroutines.sync.withLock
         .distinctUntilChanged()
         .map { it.toList() to provider }
     }
-    .transformLatest { (groups, provider) ->
-      provider?.invoke(groups) { emit(it) } ?: emit(emptyList())
+    .flatMapLatest { (groups, provider) ->
+      provider?.invoke(groups) ?: flowOf(emptyList())
     }
     .shareIn(scope, SharingStarted.WhileSubscribed(), 1)
     .distinctUntilChanged()
@@ -58,7 +57,7 @@ import kotlinx.coroutines.sync.withLock
   }
 
   suspend fun providePreviews(
-    block: suspend (List<Int>, suspend (List<GroupConfig>) -> Unit) -> Unit
+    block: (List<Int>) -> Flow<List<GroupConfig>>
   ): Nothing = bracket(
     acquire = {
       lock.withLock {
