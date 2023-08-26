@@ -36,7 +36,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.*
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 
 @Provide @Scoped<UiScope> class WappRemote(
   private val coroutineContexts: CoroutineContexts,
@@ -45,7 +44,7 @@ import kotlin.time.Duration.Companion.minutes
   private val scope: ScopedCoroutineScope<UiScope>
 ) {
   private val servers = scope.sharedResource<String, WappServer>(
-    sharingStarted = SharingStarted.WhileSubscribed(30.minutes.inWholeMilliseconds, 0),
+    sharingStarted = SharingStarted.WhileSubscribed(1000, 0),
     create = { serverFactory(it) },
     release = { _, server -> server.close() }
   )
