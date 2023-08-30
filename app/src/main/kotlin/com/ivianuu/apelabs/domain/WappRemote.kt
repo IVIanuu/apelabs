@@ -41,7 +41,7 @@ import kotlin.time.Duration.Companion.milliseconds
   private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
   private val serverFactory: (String) -> WappServer,
-  private val scope: ScopedCoroutineScope<UiScope>
+  scope: ScopedCoroutineScope<UiScope>
 ) {
   private val servers = scope.sharedResource<String, WappServer>(
     sharingStarted = SharingStarted.WhileSubscribed(1000, 0),
@@ -53,13 +53,13 @@ import kotlin.time.Duration.Companion.milliseconds
     address: String,
     block: suspend WappServer.() -> R,
   ): R? = withContext(coroutineContexts.io) {
-    servers.use(address) {
-      it.isConnected.first { it }
+    servers.use(address) { server ->
+      server.isConnected.first { it }
       race(
-        { block(it) },
+        { block(server) },
         {
-          it.isConnected.first { !it }
-          logger.log { "${it.device.debugName()} cancel with wapp" }
+          server.isConnected.first { !it }
+          logger.log { "${server.device.debugName()} cancel with wapp" }
         }
       ).unsafeCast()
     }

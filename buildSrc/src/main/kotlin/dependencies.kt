@@ -6,7 +6,7 @@
 
 object Build {
   const val applicationId = "com.ivianuu.apelabs"
-  const val compileSdk = 33
+  const val compileSdk = 34
   const val minSdk = 32
   const val targetSdk = 31
   const val versionCode = 1
@@ -15,7 +15,7 @@ object Build {
 
 object Deps {
   object Essentials {
-    private const val version = "0.0.1-dev1217"
+    private const val version = "0.0.1-dev1225"
     const val android = "com.ivianuu.essentials:android:$version"
     const val backup = "com.ivianuu.essentials:backup:$version"
     const val gradlePlugin = "com.ivianuu.essentials:gradle-plugin:$version"
