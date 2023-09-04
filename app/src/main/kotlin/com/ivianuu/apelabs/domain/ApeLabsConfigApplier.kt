@@ -28,6 +28,7 @@ import kotlin.time.Duration
   logger: Logger,
   lightRepository: LightRepository,
   previewRepository: PreviewRepository,
+  soundSyncRepository: SoundSyncRepository,
   wappRemote: WappRemote,
   wappRepository: WappRepository
 ) = ScopeComposition<AppVisibleScope> {
@@ -59,8 +60,9 @@ import kotlin.time.Duration
     key(wapp) {
       @Composable fun <T> LightConfiguration(
         tag: String,
+        writes: T.() -> Int = { 1 },
         get: GroupConfig.() -> T,
-        apply: suspend WappServer.(T, List<Int>) -> Unit,
+        apply: suspend WappServer.(T, List<Int>) -> Unit
       ) {
         val valueByGroup = GROUPS.associateWith { configs[it]!!.get() }
 
@@ -81,7 +83,9 @@ import kotlin.time.Duration
               .forEach { (value, groups) ->
                 logger.log { "apply $tag $value for $groups" }
                 wappRemote.withWapp(wapp.address) {
-                  apply(this, value, groups.map { it.first })
+                  soundSyncRepository.soundSynced(writes(value)) {
+                    apply(this, value, groups.map { it.first })
+                  }
                 }
               }
           }
@@ -98,6 +102,12 @@ import kotlin.time.Duration
             items = program.items
               .map { it.copy(color = it.color.copy(id = "")) }
           )
+        },
+        writes = {
+          when (id) {
+            Program.RAINBOW.id -> 1
+            else -> items.size
+          }
         }
       ) { value, groups ->
         when {

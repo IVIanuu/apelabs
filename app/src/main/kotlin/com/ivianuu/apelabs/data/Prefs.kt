@@ -8,6 +8,7 @@ import kotlin.time.Duration
 @Serializable data class ApeLabsPrefs(
   val selectedGroups: Set<Int> = emptySet(),
   val programUsages: Map<String, List<Duration>> = emptyMap(),
+  val soundSync: Boolean = false
 ) {
   @Provide companion object {
     @Provide val dataStoreModule = DataStoreModule("apelabs_prefs") { ApeLabsPrefs() }

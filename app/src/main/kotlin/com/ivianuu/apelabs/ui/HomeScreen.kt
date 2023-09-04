@@ -115,6 +115,17 @@ import kotlin.math.roundToInt
         AppBar(
           title = { Text("Ape labs") },
           actions = {
+            IconButton(onClick = { model.updateSoundSync(!model.soundSync) }) {
+              Icon(
+                painterResId = R.drawable.es_ic_notifications,
+                tint = animateColorAsState(
+                  LocalContentColor.current.copy(
+                    alpha = if (model.soundSync) ContentAlpha.high else ContentAlpha.disabled
+                  )
+                ).value
+              )
+            }
+
             IconButton(onClick = {}) {
               Icon(
                 painterResId = R.drawable.ic_bluetooth,
@@ -583,7 +594,9 @@ data class HomeModel(
   val saveScene: () -> Unit,
   val canUndoGroupConfigs: Boolean,
   val undoGroupConfigs: () -> Unit,
-  val openBackupRestore: () -> Unit
+  val openBackupRestore: () -> Unit,
+  val soundSync: Boolean,
+  val updateSoundSync: (Boolean) -> Unit
 )
 
 @Provide fun homeModel(
@@ -786,6 +799,8 @@ data class HomeModel(
     },
     canUndoGroupConfigs = undoManager.canUndo.collectAsState(false).value,
     undoGroupConfigs = action { undoManager.undoLast() },
-    openBackupRestore = action { navigator.push(BackupAndRestoreScreen()) }
+    openBackupRestore = action { navigator.push(BackupAndRestoreScreen()) },
+    soundSync = prefs.soundSync,
+    updateSoundSync = action { value -> pref.updateData { copy(soundSync = value) } }
   )
 }

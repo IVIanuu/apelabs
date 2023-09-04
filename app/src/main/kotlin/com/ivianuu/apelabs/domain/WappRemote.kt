@@ -35,7 +35,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.*
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.measureTime
 
 @Provide @Scoped<UiScope> class WappRemote(
   private val coroutineContexts: CoroutineContexts,
@@ -172,11 +174,19 @@ import kotlin.time.Duration.Companion.milliseconds
 
     writeLock.withLock {
       withContext(NonCancellable) {
-        logger.log { "${device.debugName()} write -> ${message.contentToString()}" }
-        characteristic.value = message
-        gatt.writeCharacteristic(characteristic)
-        withTimeoutOrNull(300.milliseconds) {
-          writeResults.first { it.first == characteristic }
+        measureTime {
+          logger.log { "${device.debugName()} write -> ${message.contentToString()}" }
+          characteristic.value = message
+          gatt.writeCharacteristic(characteristic)
+          withTimeoutOrNull(300.milliseconds) {
+            writeResults.first { it.first == characteristic }
+          }
+        }.also { writeDuration ->
+          synchronized(writeDurations) {
+            writeDurations += writeDuration
+            while (writeDurations.size > 100)
+              writeDurations.removeFirst()
+          }
         }
       }
     }
@@ -186,6 +196,17 @@ import kotlin.time.Duration.Companion.milliseconds
     logger.log { "${device.debugName()} close" }
     catch { gatt.disconnect() }
     catch { gatt.close() }
+  }
+
+  companion object {
+    private var writeDurations = mutableListOf<Duration>()
+    val averageWriteDuration: Duration get() =
+      synchronized(writeDurations) {
+        writeDurations.map { it.inWholeMilliseconds }.average()
+          .takeUnless { it.isNaN() }
+          ?.milliseconds
+          ?: Duration.ZERO
+      }
   }
 }
 
