@@ -10,6 +10,7 @@ data class GroupConfig(
   val brightness: Float = 1f,
   val speed: Float = 0f,
   val musicMode: Boolean = false,
+  val shuffle: Boolean = false,
   val blackout: Boolean = false
 )
 
@@ -19,6 +20,7 @@ data class GroupConfig(
   val brightness: Float,
   val speed: Float,
   val musicMode: Boolean,
+  val shuffle: Boolean,
   val blackout: Boolean
 )
 
@@ -33,6 +35,7 @@ fun Collection<GroupConfig>.merge(): GroupConfig = when {
     brightness = map { it.brightness }.average().toFloat(),
     speed = map { it.speed }.average().toFloat(),
     musicMode = all { it.musicMode },
+    shuffle = all { it.shuffle },
     blackout = all { it.blackout }
   )
 }

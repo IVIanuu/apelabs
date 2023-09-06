@@ -7,7 +7,6 @@ import androidx.compose.runtime.currentComposer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
@@ -17,17 +16,13 @@ import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
 
 @Provide fun apeLabsConfigApplier(
-  groupConfigRepository: GroupConfigRepository,
+  groupConfigProvider: GroupConfigProvider,
   logger: Logger,
   lightRepository: LightRepository,
-  previewRepository: PreviewRepository,
   wappRemote: WappRemote,
   wappRepository: WappRepository
 ) = ScopeComposition<AppVisibleScope> {
@@ -39,21 +34,8 @@ import kotlin.time.Duration
       }
   }
 
-  val configs = remember {
-    combine(
-      groupConfigRepository.groupConfigs,
-      previewRepository.previewGroupConfigs
-    ) { groupConfigs, previewGroupConfigs ->
-      GROUPS
-        .associateWith { group ->
-          previewGroupConfigs.singleOrNull { it.id == group.toString() }
-            ?: groupConfigs.singleOrNull { it.id == group.toString() }
-            ?: return@combine null
-        }
-    }
-      .filterNotNull()
-      .distinctUntilChanged()
-  }.collectAsState(null).value ?: return@ScopeComposition
+  val configs = groupConfigProvider.groupConfigs.collectAsState(null).value
+    ?: return@ScopeComposition
 
   wappRepository.wapps.collectAsState(null).value?.forEach { wapp ->
     key(wapp) {

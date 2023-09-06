@@ -261,6 +261,14 @@ import kotlin.math.roundToInt
 
         item(span = { GridItemSpan(maxLineSpan) }) {
           SwitchListItem(
+            value = model.groupConfig.shuffle,
+            onValueChange = model.updateShuffle,
+            title = { Text("Shuffle") }
+          )
+        }
+
+        item(span = { GridItemSpan(maxLineSpan) }) {
+          SwitchListItem(
             value = model.groupConfig.blackout,
             onValueChange = model.updateBlackout,
             title = { Text("Blackout") }
@@ -456,7 +464,7 @@ import kotlin.math.roundToInt
                       buildString {
                         append(
                           "${
-                            light.type?.name?.toLowerCase()?.capitalize() ?: "Light"
+                            light.type?.name?.lowercase()?.capitalize() ?: "Light"
                           } ${light.id}"
                         )
                         if (light.battery != null) {
@@ -546,6 +554,7 @@ data class HomeModel(
   val updateBrightness: (Float) -> Unit,
   val updateSpeed: (Float) -> Unit,
   val updateMusicMode: (Boolean) -> Unit,
+  val updateShuffle: (Boolean) -> Unit,
   val updateBlackout: (Boolean) -> Unit,
   val wappState: Resource<WappState>,
   val lights: Resource<List<Light>>,
@@ -654,6 +663,9 @@ data class HomeModel(
     },
     updateMusicMode = action { value ->
       updateConfig { copy(musicMode = value) }
+    },
+    updateShuffle = action { value ->
+      updateConfig { copy(shuffle = value) }
     },
     updateBlackout = action { value ->
       updateConfig { copy(blackout = value) }

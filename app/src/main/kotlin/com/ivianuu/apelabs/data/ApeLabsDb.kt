@@ -12,7 +12,7 @@ import com.ivianuu.injekt.Provide
 @Provide fun apeLabsDb(factory: DbFactory): @Scoped<AppScope> Db = factory(
   name = "ape_labs.db",
   schema = Schema(
-    version = 3,
+    version = 4,
     entities = listOf(
       EntityDescriptor<ApeColor>("colors"),
       EntityDescriptor<ProgramEntity>("programs"),
@@ -26,6 +26,12 @@ import com.ivianuu.injekt.Provide
       Migration(2, 3) { db, _, _ ->
         db.execute(
           "ALTER TABLE 'group_configs' ADD COLUMN 'strobe' INTEGER NOT NULL DEFAULT 0",
+          null
+        )
+      },
+      Migration(3, 4) { db, _, _ ->
+        db.execute(
+          "ALTER TABLE 'group_configs' ADD COLUMN 'shuffle' INTEGER NOT NULL DEFAULT 0",
           null
         )
       }
