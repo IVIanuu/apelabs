@@ -67,21 +67,13 @@ import kotlin.time.Duration.Companion.seconds
           soundSyncRequests.collectLatest { requests ->
             val currentPosition = playbackState.currentPosition()
 
-            val latency = (WappServer.averageWriteDuration * requests) +
-                200.milliseconds // bluetooth
+            val latency = 150.milliseconds + ((WappServer.averageWriteDuration + 100.milliseconds) * requests)
 
             logger.log { "$id current position $currentPosition latency $latency requests $requests" }
 
             fun Duration.toDelay() = this - currentPosition - latency
 
-            val nextTimestamp = audioAnalysis.sections
-              .map { it.start.seconds }
-              .filter { it > currentPosition + latency }
-              .also {
-                logger.log { "target ${currentPosition + latency} sections candidates $it" }
-              }
-              .firstOrNull()
-              ?.takeIf { it.toDelay() < 5.seconds } ?:
+            val nextTimestamp =
             audioAnalysis.bars
               .map { it.start.seconds }
               .firstOrNull { it > currentPosition + latency }

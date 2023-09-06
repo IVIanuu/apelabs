@@ -172,16 +172,18 @@ import kotlin.time.measureTime
     val characteristic = service.getCharacteristic(APE_LABS_WRITE_ID)
       ?: error("${device.debugName()} characteristic not found")
 
+    suspend fun writeImpl(attempt: Int) {
+      logger.log { "${device.debugName()} write -> ${message.contentToString()} attempt $attempt" }
+      characteristic.value = message
+      gatt.writeCharacteristic(characteristic)
+      withTimeoutOrNull(100.milliseconds) {
+        writeResults.first { it.first == characteristic }
+      } ?: run { if (attempt < 5) writeImpl(attempt + 1) }
+    }
+
     writeLock.withLock {
       withContext(NonCancellable) {
-        measureTime {
-          logger.log { "${device.debugName()} write -> ${message.contentToString()}" }
-          characteristic.value = message
-          gatt.writeCharacteristic(characteristic)
-          withTimeoutOrNull(300.milliseconds) {
-            writeResults.first { it.first == characteristic }
-          }
-        }.also { writeDuration ->
+        measureTime { writeImpl(1) }.also { writeDuration ->
           synchronized(writeDurations) {
             writeDurations += writeDuration
             while (writeDurations.size > 100)
