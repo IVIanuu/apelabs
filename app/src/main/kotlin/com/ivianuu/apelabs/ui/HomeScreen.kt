@@ -71,7 +71,6 @@ import com.ivianuu.apelabs.domain.GroupConfigRepository
 import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
-import com.ivianuu.apelabs.domain.UndoManager
 import com.ivianuu.apelabs.domain.WappRepository
 import com.ivianuu.essentials.Resources
 import com.ivianuu.essentials.ScopeManager
@@ -168,13 +167,6 @@ import kotlin.math.roundToInt
                 Text(group.toString())
               }
             }
-          }
-
-          IconButton(
-            enabled = model.canUndoGroupConfigs,
-            onClick = model.undoGroupConfigs
-          ) {
-            Icon(R.drawable.ic_undo)
           }
         }
       }
@@ -581,8 +573,6 @@ data class HomeModel(
   val addScene: () -> Unit,
   val deleteScene: (Scene) -> Unit,
   val saveScene: () -> Unit,
-  val canUndoGroupConfigs: Boolean,
-  val undoGroupConfigs: () -> Unit,
   val openBackupRestore: () -> Unit
 )
 
@@ -595,7 +585,6 @@ data class HomeModel(
   programRepository: ProgramRepository,
   sceneRepository: SceneRepository,
   scopeManager: ScopeManager,
-  undoManager: UndoManager,
   wappRepository: WappRepository,
   pref: DataStore<ApeLabsPrefs>
 ) = Model {
@@ -608,8 +597,6 @@ data class HomeModel(
     .merge()
 
   suspend fun updateConfig(block: GroupConfig.() -> GroupConfig) {
-    undoManager.takeConfigSnapshot()
-
     groupConfigRepository.updateGroupConfigs(
       selectedGroupConfigs
         .map { it.block() },
@@ -751,7 +738,6 @@ data class HomeModel(
     deleteProgram = action { program -> programRepository.deleteProgram(program.id) },
     scenes = sceneRepository.userScenes.collectAsResourceState().value,
     applyScene = action { scene ->
-      undoManager.takeConfigSnapshot()
       groupConfigRepository.updateGroupConfigs(
         scene.groupConfigs
           .filterValues { it != null }
@@ -784,8 +770,6 @@ data class HomeModel(
           contentUsageRepository.contentUsed(id)
         }
     },
-    canUndoGroupConfigs = undoManager.canUndo.collectAsState(false).value,
-    undoGroupConfigs = action { undoManager.undoLast() },
     openBackupRestore = action { navigator.push(BackupAndRestoreScreen()) }
   )
 }
