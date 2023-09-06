@@ -291,7 +291,7 @@ import kotlin.math.roundToInt
             item(key = item, span = {
               GridItemSpan(if (row.size == 1) maxLineSpan else 1)
             }) {
-              fun <T> Any.map(
+              fun <T> Any.fold(
                 color: (ApeColor) -> T,
                 program: (Program) -> T
               ) = when (this) {
@@ -304,7 +304,7 @@ import kotlin.math.roundToInt
                 modifier = Modifier
                   .animateItemPlacement()
                   .clickable {
-                    item.map(
+                    item.fold(
                       color = { model.updateColor(it) },
                       program = { model.updateProgram(it) }
                     )
@@ -313,7 +313,7 @@ import kotlin.math.roundToInt
                 leading = {
                   ColorListIcon(
                     modifier = Modifier.size(40.dp),
-                    colors = item.map(
+                    colors = item.fold(
                       color = { listOf(it) },
                       program = { it.items.map { it.color } }
                     )
@@ -322,13 +322,13 @@ import kotlin.math.roundToInt
                 trailing = if (!item.isCustom()) null else ({
                   PopupMenuButton {
                     PopupMenuItem(onSelected = {
-                      item.map(
+                      item.fold(
                         color = { model.openColor(it) },
                         program = { model.openProgram(it) }
                       )
                     }) { Text("Open") }
                     PopupMenuItem(onSelected = {
-                      item.map(
+                      item.fold(
                         color = { model.deleteColor(it) },
                         program = { model.deleteProgram(it) }
                       )
