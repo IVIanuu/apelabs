@@ -170,14 +170,18 @@ import kotlin.time.Duration.Companion.milliseconds
     val characteristic = service.getCharacteristic(APE_LABS_WRITE_ID)
       ?: error("${device.debugName()} characteristic not found")
 
+    suspend fun writeImpl(attempt: Int) {
+      logger.log { "${device.debugName()} write -> ${message.contentToString()} attempt $attempt" }
+      characteristic.value = message
+      gatt.writeCharacteristic(characteristic)
+      withTimeoutOrNull(100.milliseconds) {
+        writeResults.first { it.first == characteristic }
+      } ?: run { if (attempt < 5) writeImpl(attempt + 1) }
+    }
+
     writeLock.withLock {
       withContext(NonCancellable) {
-        logger.log { "${device.debugName()} write -> ${message.contentToString()}" }
-        characteristic.value = message
-        gatt.writeCharacteristic(characteristic)
-        withTimeoutOrNull(300.milliseconds) {
-          writeResults.first { it.first == characteristic }
-        }
+        writeImpl(1)
       }
     }
   }
