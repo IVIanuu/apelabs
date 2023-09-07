@@ -95,16 +95,15 @@ import kotlin.time.Duration
         get = {
           // erase ids here to make caching work correctly
           // there could be the same program just with different ids
-          if (program == Program.RAINBOW) program
-          else if (mode != GroupConfig.Mode.STROBE) {
+          if (mode != GroupConfig.Mode.STROBE) {
             program.copy(
-              id = "",
+              id = if (program == Program.RAINBOW) program.id else "",
               items = program.items
                 .map { it.copy(color = it.color.copy(id = "")) }
             )
           } else {
             Program(
-              "",
+              id = if (program == Program.RAINBOW) program.id else "",
               items = (0..max(
                 program.items.size,
                 (when {
