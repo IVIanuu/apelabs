@@ -102,6 +102,7 @@ import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.essentials.ui.prefs.SliderListItem
+import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
@@ -149,7 +150,8 @@ import kotlin.random.Random
         FlowRow(
           modifier = Modifier.padding(16.dp),
           mainAxisSpacing = 8.dp,
-          crossAxisSpacing = 8.dp
+          crossAxisSpacing = 8.dp,
+          crossAxisAlignment = FlowCrossAxisAlignment.Center
         ) {
           LongClickChip(
             selected = model.groups.all { it in model.selectedGroups },
@@ -168,6 +170,8 @@ import kotlin.random.Random
               Text(group.toString())
             }
           }
+
+          IconButton(onClick = model.shuffleGroups) { Icon(R.drawable.ic_shuffle) }
         }
       }
     }
@@ -261,6 +265,12 @@ import kotlin.random.Random
                   values = GroupConfig.Mode.entries,
                   onSelectionChanged = model.updateMode,
                   title = "Mode"
+                )
+
+                SwitchListItem(
+                  value = model.groupConfig.blackout,
+                  onValueChange = model.updateBlackout,
+                  title = { Text("Blackout") }
                 )
               }
             }
@@ -501,6 +511,7 @@ data class HomeModel(
   val toggleGroupSelection: (Int, Boolean) -> Unit,
   val toggleAllGroupSelections: () -> Unit,
   val groupConfig: GroupConfig,
+  val shuffleGroups: () -> Unit,
   val updateBrightness: (Float) -> Unit,
   val updateSpeed: (Float) -> Unit,
   val shuffleSpeed: () -> Unit,
@@ -609,6 +620,15 @@ data class UserContent(
       }
     },
     groupConfig = groupConfig,
+    shuffleGroups = action {
+      val shuffledGroupConfigs = selectedGroupConfigs.shuffled()
+      groupConfigRepository.updateGroupConfigs(
+        selectedGroupConfigs.mapIndexed { index, config ->
+          shuffledGroupConfigs[index].copy(id = config.id)
+        },
+        false
+      )
+    },
     updateBrightness = action { value ->
       updateConfig { copy(brightness = value) }
     },
