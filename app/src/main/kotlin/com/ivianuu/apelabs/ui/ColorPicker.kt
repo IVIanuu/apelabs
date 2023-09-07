@@ -24,7 +24,7 @@ import com.ivianuu.essentials.Resources
 import com.ivianuu.essentials.ui.image.toImageBitmap
 import com.ivianuu.injekt.Inject
 
-@Composable fun ImageColorPicker(modifier: Modifier, controller: ColorPickerController) {
+@Composable fun ImageColorPicker(modifier: Modifier, controller: ColorPickerState) {
   Box(
     modifier = modifier
       .onSizeChanged { controller.updateSize(it) }
@@ -57,7 +57,7 @@ import com.ivianuu.injekt.Inject
   }
 }
 
-class ColorPickerController(@Inject private val resources: Resources) {
+class ColorPickerState(@Inject private val resources: Resources) {
   var palette by mutableStateOf(resources<ImageBitmap>(R.drawable.color_picker))
 
   var position by mutableStateOf<Offset?>(null)

@@ -205,7 +205,7 @@ import kotlin.math.roundToInt
           }
 
           item(span = { GridItemSpan(maxLineSpan) }) {
-            val controller = remember { ColorPickerController() }
+            val controller = remember { ColorPickerState() }
 
             ImageColorPicker(
               modifier = Modifier

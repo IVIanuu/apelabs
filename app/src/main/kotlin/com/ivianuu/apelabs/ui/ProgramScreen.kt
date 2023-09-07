@@ -138,7 +138,7 @@ data class ProgramScreen(val id: String) : Screen<Unit>
               if (itemIndex != 0)
                 IconButton(onClick = { model.deleteItem(itemIndex) }) { Icon(Icons.Default.Close) }
               else
-                Spacer(Modifier.size(40.dp))
+                Spacer(Modifier.size(48.dp))
             }
           }
         }
