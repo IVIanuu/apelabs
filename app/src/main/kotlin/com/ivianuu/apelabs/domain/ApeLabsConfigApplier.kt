@@ -103,9 +103,9 @@ import kotlin.time.Duration
             )
           } else {
             Program(
-              id = if (program == Program.RAINBOW) program.id else "",
+              id = "",
               items = (0..max(
-                program.items.size,
+                program.items.lastIndex,
                 (when {
                   speed == 0f -> 0
                   speed <= 0.33f -> 3

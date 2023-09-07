@@ -13,7 +13,9 @@ data class Program(
   val items: List<Item> = listOf(Item())
 ) {
   init {
-    check(items.size in ITEM_RANGE)
+    check(items.size in ITEM_RANGE) {
+      "Items not in range $items"
+    }
   }
 
   data class Item(
