@@ -104,7 +104,15 @@ import kotlin.time.Duration
           } else {
             Program(
               "",
-              items = (0..3).map {
+              items = when (program.items.size) {
+                1 -> 0..(when {
+                  speed == 0f -> 0
+                  speed <= 0.33f -> 3
+                  speed <= 0.66f -> 2
+                  else -> 1
+                })
+                else -> 0..3
+              }.map {
                 Program.Item(
                   color = program.items.getOrNull(it)?.color?.copy(id = "")
                     ?: Color.Transparent.toApeColor(""),
