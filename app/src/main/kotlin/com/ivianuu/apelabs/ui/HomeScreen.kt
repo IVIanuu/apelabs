@@ -100,8 +100,10 @@ import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
+import com.ivianuu.essentials.ui.resource.ResourceBox
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 
@@ -141,361 +143,314 @@ import kotlin.math.roundToInt
           .clickable { },
         elevation = 8.dp
       ) {
-        Row(
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
+        FlowRow(
+          modifier = Modifier.padding(16.dp),
+          mainAxisSpacing = 8.dp,
+          crossAxisSpacing = 8.dp
         ) {
-          FlowRow(
-            modifier = Modifier.weight(1f).padding(16.dp),
-            mainAxisSpacing = 8.dp,
-            crossAxisSpacing = 8.dp
+          LongClickChip(
+            selected = model.groups.all { it in model.selectedGroups },
+            onClick = model.toggleAllGroupSelections,
+            onLongClick = null
           ) {
-            LongClickChip(
-              selected = model.groups.all { it in model.selectedGroups },
-              onClick = model.toggleAllGroupSelections,
-              onLongClick = null
-            ) {
-              Text("ALL")
-            }
+            Text("ALL")
+          }
 
-            model.groups.forEach { group ->
-              LongClickChip(
-                selected = group in model.selectedGroups,
-                onClick = { model.toggleGroupSelection(group, false) },
-                onLongClick = { model.toggleGroupSelection(group, true) }
-              ) {
-                Text(group.toString())
-              }
+          model.groups.forEach { group ->
+            LongClickChip(
+              selected = group in model.selectedGroups,
+              onClick = { model.toggleGroupSelection(group, false) },
+              onLongClick = { model.toggleGroupSelection(group, true) }
+            ) {
+              Text(group.toString())
             }
           }
         }
       }
     }
   ) {
-    LazyVerticalGrid(
-      columns = GridCells.Fixed(2)
-    ) {
-      if (model.selectedGroups.isEmpty()) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-          Text(
-            modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
-            text = "Select a group to edit"
-          )
-        }
-      } else {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-          val programName = when {
-            model.groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
-            model.groupConfig.program.id.isUUID ->
-              model.groupConfig.program.items.singleOrNull()
-                ?.color
-                ?.takeUnless { it.id.isUUID }
-                ?.id
-                ?: "Color"
+    ResourceBox(model.userContent) { userContent ->
+      LazyVerticalGrid(columns = GridCells.Fixed(2)) {
+        if (model.selectedGroups.isEmpty()) {
+          item(span = { GridItemSpan(maxLineSpan) }) {
+            Text(
+              modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
+              text = "Select a group to edit"
+            )
+          }
+        } else {
+          item(span = { GridItemSpan(maxLineSpan) }) {
+            val programName = when {
+              model.groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
+              model.groupConfig.program.id.isUUID ->
+                model.groupConfig.program.items.singleOrNull()
+                  ?.color
+                  ?.takeUnless { it.id.isUUID }
+                  ?.id
+                  ?: "Color"
 
-            else -> model.groupConfig.program.id
+              else -> model.groupConfig.program.id
+            }
+
+            ListItem(
+              leading = {
+                ColorListIcon(
+                  modifier = Modifier.size(40.dp),
+                  program = model.groupConfig.program
+                )
+              },
+              title = { Text("Program") },
+              subtitle = { Text(programName) }
+            )
           }
 
-          ListItem(
-            leading = {
-              ColorListIcon(
-                modifier = Modifier.size(40.dp),
-                program = model.groupConfig.program
-              )
-            },
-            title = { Text("Program") },
-            subtitle = { Text(programName) }
-          )
-        }
+          item(span = { GridItemSpan(maxLineSpan) }) {
+            val controller = remember { ColorPickerController() }
 
-        item(span = { GridItemSpan(maxLineSpan) }) {
-          val controller = remember { ColorPickerController() }
+            ImageColorPicker(
+              modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .padding(horizontal = 16.dp),
+              controller = controller
+            )
 
-          ImageColorPicker(
-            modifier = Modifier
-              .fillMaxWidth()
-              .height(200.dp)
-              .padding(horizontal = 16.dp),
-            controller = controller
-          )
+            LaunchedEffect(controller.selectedColor) {
+              controller.selectedColor?.let {
+                model.updateColorPickerColor(it)
+              }
+            }
 
-          LaunchedEffect(controller.selectedColor) {
-            controller.selectedColor?.let {
-              model.updateColorPickerColor(it)
+            LaunchedEffect(model.groupConfig.program) {
+              if (model.groupConfig.program.id != Program.colorPickerId(model.selectedGroups.toList()))
+                controller.clear()
             }
           }
 
-          LaunchedEffect(model.groupConfig.program) {
-            if (model.groupConfig.program.id != Program.colorPickerId(model.selectedGroups.toList()))
-              controller.clear()
+          item(span = { GridItemSpan(maxLineSpan) }) {
+            SliderListItem(
+              value = model.groupConfig.brightness,
+              onValueChange = model.updateBrightness,
+              stepPolicy = incrementingStepPolicy(0.05f),
+              title = { Text("Brightness") },
+              valueText = { Text("${(it * 100f).roundToInt()}") }
+            )
+          }
+
+          item(span = { GridItemSpan(maxLineSpan) }) {
+            SliderListItem(
+              value = model.groupConfig.speed,
+              onValueChange = model.updateSpeed,
+              stepPolicy = incrementingStepPolicy(0.05f),
+              title = { Text("Speed") },
+              valueText = { Text("${(it * 100f).roundToInt()}") }
+            )
+          }
+
+          item(span = { GridItemSpan(maxLineSpan) }) {
+            SwitchListItem(
+              value = model.groupConfig.musicMode,
+              onValueChange = model.updateMusicMode,
+              title = { Text("Music mode") }
+            )
+          }
+
+          item(span = { GridItemSpan(maxLineSpan) }) {
+            SwitchListItem(
+              value = model.groupConfig.blackout,
+              onValueChange = model.updateBlackout,
+              title = { Text("Blackout") }
+            )
           }
         }
 
         item(span = { GridItemSpan(maxLineSpan) }) {
-          SliderListItem(
-            value = model.groupConfig.brightness,
-            onValueChange = model.updateBrightness,
-            stepPolicy = incrementingStepPolicy(0.05f),
-            title = { Text("Brightness") },
-            valueText = { Text("${(it * 100f).roundToInt()}") }
-          )
+          Subheader { Text("Content") }
         }
 
-        item(span = { GridItemSpan(maxLineSpan) }) {
-          SliderListItem(
-            value = model.groupConfig.speed,
-            onValueChange = model.updateSpeed,
-            stepPolicy = incrementingStepPolicy(0.05f),
-            title = { Text("Speed") },
-            valueText = { Text("${(it * 100f).roundToInt()}") }
-          )
+        fun Any.isCustom() = this in userContent.colors || this in userContent.programs ||
+            this in userContent.scenes
+
+        buildList {
+          addAll(userContent.colors.map { it.id to it })
+          addAll(userContent.programs.map { it.id to it })
+          add(Program.RAINBOW.id to Program.RAINBOW)
+          addAll(model.builtInColors.map { it.id to it })
+          addAll(userContent.scenes.map { it.id to it })
         }
+          .sortedBy { it.first.lowercase() }
+          .sortedByDescending { model.contentUsages[it.first] ?: -1f }
+          .chunked(2)
+          .forEach { row ->
+            row.forEachIndexed { index, (id, item) ->
+              item(key = item, span = {
+                GridItemSpan(if (row.size == 1) maxLineSpan else 1)
+              }) {
+                fun <T> Any.fold(
+                  color: (ApeColor) -> T,
+                  program: (Program) -> T,
+                  scene: (Scene) -> T
+                ) = when (this) {
+                  is ApeColor -> color(this)
+                  is Program -> program(this)
+                  is Scene -> scene(this)
+                  else -> throw AssertionError()
+                }
 
-        item(span = { GridItemSpan(maxLineSpan) }) {
-          SwitchListItem(
-            value = model.groupConfig.musicMode,
-            onValueChange = model.updateMusicMode,
-            title = { Text("Music mode") }
-          )
-        }
-
-        item(span = { GridItemSpan(maxLineSpan) }) {
-          SwitchListItem(
-            value = model.groupConfig.blackout,
-            onValueChange = model.updateBlackout,
-            title = { Text("Blackout") }
-          )
-        }
-      }
-
-      item(span = { GridItemSpan(maxLineSpan) }) {
-        Subheader { Text("Programs / colors") }
-      }
-
-      val userColors = model.userColors.getOrElse { emptyList() }
-      val userPrograms = model.userPrograms.getOrElse { emptyList() }
-
-      fun Any.isCustom() = this in userColors || this in userPrograms
-
-      buildList {
-        addAll(userColors.map { it.id to it })
-        addAll(userPrograms.map { it.id to it })
-        add(Program.RAINBOW.id to Program.RAINBOW)
-        addAll(model.builtInColors.map { it.id to it })
-      }
-        .sortedBy { it.first.lowercase() }
-        .sortedByDescending { model.contentUsages[it.first] ?: -1f }
-        .chunked(2)
-        .forEach { row ->
-          row.forEachIndexed { index, (id, item) ->
-            item(key = item, span = {
-              GridItemSpan(if (row.size == 1) maxLineSpan else 1)
-            }) {
-              fun <T> Any.fold(
-                color: (ApeColor) -> T,
-                program: (Program) -> T
-              ) = when (this) {
-                is ApeColor -> color(this)
-                is Program -> program(this)
-                else -> throw AssertionError()
-              }
-
-              ListItem(
-                modifier = Modifier
-                  .animateItemPlacement()
-                  .clickable {
-                    item.fold(
-                      color = { model.updateColor(it) },
-                      program = { model.updateProgram(it) }
+                ListItem(
+                  modifier = Modifier
+                    .animateItemPlacement()
+                    .clickable {
+                      item.fold(
+                        color = { model.updateColor(it) },
+                        program = { model.updateProgram(it) },
+                        scene = { model.applyScene(it) }
+                      )
+                    },
+                  title = { Text(if (item === Program.RAINBOW) "Rainbow" else id) },
+                  leading = {
+                    ColorListIcon(
+                      modifier = Modifier.size(40.dp),
+                      colors = item.fold(
+                        color = { listOf(it) },
+                        program = { it.items.map { it.color } },
+                        scene = { emptyList() }
+                      )
                     )
                   },
-                title = { Text(if (item === Program.RAINBOW) "Rainbow" else id) },
-                leading = {
-                  ColorListIcon(
-                    modifier = Modifier.size(40.dp),
-                    colors = item.fold(
-                      color = { listOf(it) },
-                      program = { it.items.map { it.color } }
-                    )
-                  )
-                },
-                trailing = if (!item.isCustom()) null else ({
-                  PopupMenuButton {
-                    PopupMenuItem(onSelected = {
-                      item.fold(
-                        color = { model.openColor(it) },
-                        program = { model.openProgram(it) }
-                      )
-                    }) { Text("Open") }
-                    PopupMenuItem(onSelected = {
-                      item.fold(
-                        color = { model.deleteColor(it) },
-                        program = { model.deleteProgram(it) }
-                      )
-                    }) { Text("Delete") }
-                  }
-                }),
-                textPadding = PaddingValues(start = 16.dp),
-                leadingPadding = PaddingValues(start = if (index == 0 || row.size == 1) 16.dp else 8.dp),
-                trailingPadding = PaddingValues(end = if (index == 1 || row.size == 1) 16.dp else 8.dp)
-              )
+                  trailing = if (!item.isCustom()) null else ({
+                    PopupMenuButton {
+                      PopupMenuItem(onSelected = {
+                        item.fold(
+                          color = { model.openColor(it) },
+                          program = { model.openProgram(it) },
+                          scene = { model.openScene(it) }
+                        )
+                      }) { Text("Open") }
+                      PopupMenuItem(onSelected = {
+                        item.fold(
+                          color = { model.deleteColor(it) },
+                          program = { model.deleteProgram(it) },
+                          scene = { model.deleteScene(it) }
+                        )
+                      }) { Text("Delete") }
+                    }
+                  }),
+                  textPadding = PaddingValues(start = 16.dp),
+                  leadingPadding = PaddingValues(start = if (index == 0 || row.size == 1) 16.dp else 8.dp),
+                  trailingPadding = PaddingValues(end = if (index == 1 || row.size == 1) 16.dp else 8.dp)
+                )
+              }
             }
           }
-        }
-
-      item(span = { GridItemSpan(maxLineSpan) }) {
-        Row(
-          modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-          horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-        ) {
-          Button(
-            modifier = Modifier.weight(0.5f),
-            onClick = model.addColor
-          ) { Text("ADD COLOR") }
-
-          Button(
-            modifier = Modifier.weight(0.5f),
-            onClick = model.addProgram
-          ) { Text("ADD PROGRAM") }
-        }
-      }
-
-      item(span = { GridItemSpan(maxLineSpan) }) { Subheader { Text("Scenes") } }
-
-      val scenes = model.scenes.getOrElse { emptyList() }
-      scenes
-        .sortedBy { it.id.lowercase() }
-        .sortedByDescending { model.contentUsages[it.id] ?: -1f }
-        .chunked(2)
-        .forEach { row ->
-          row.forEachIndexed { index, scene ->
-            item(key = scene, span = {
-              GridItemSpan(if (row.size == 1) maxLineSpan else 1)
-            }) {
-              ListItem(
-                modifier = Modifier
-                  .animateItemPlacement()
-                  .clickable { model.applyScene(scene) },
-                title = { Text(scene.id) },
-                trailing = {
-                  PopupMenuButton {
-                    PopupMenuItem(onSelected = { model.openScene(scene) }) { Text("Open") }
-                    PopupMenuItem(onSelected = { model.deleteScene(scene) }) { Text("Delete") }
-                  }
-                },
-                leadingPadding = PaddingValues(start = if (index == 0 || row.size == 1) 16.dp else 8.dp),
-                trailingPadding = PaddingValues(end = if (index == 1 || row.size == 1) 16.dp else 8.dp),
-                textPadding = PaddingValues(start = 16.dp)
-              )
-            }
-          }
-        }
-
-      item(span = { GridItemSpan(maxLineSpan) }) {
-        Button(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-          onClick = model.addScene
-        ) { Text("ADD SCENE") }
-      }
-
-      val wappState = model.wappState.getOrElse { WappState() }
-      val lights = model.lights.getOrElse { emptyList() }
-
-      if (wappState.isConnected || lights.isNotEmpty()) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-          Subheader { Text("Devices ${lights.size}") }
-        }
 
         item(span = { GridItemSpan(maxLineSpan) }) {
           FlowRow(
-            modifier = Modifier
-              .padding(16.dp),
-            mainAxisSpacing = 8.dp,
-            crossAxisSpacing = 8.dp,
-            crossAxisAlignment = FlowCrossAxisAlignment.Center
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+            mainAxisSpacing = 8.dp
           ) {
-            LongClickChip(
-              selected = false,
-              onClick = {},
-              onLongClick = null
+            Button(onClick = model.addColor) { Text("ADD COLOR") }
+            Button(onClick = model.addProgram) { Text("ADD PROGRAM") }
+            Button(onClick = model.addScene) { Text("ADD SCENE") }
+          }
+        }
+
+        val wappState = model.wappState.getOrElse { WappState() }
+        val lights = model.lights.getOrElse { emptyList() }
+
+        if (wappState.isConnected || lights.isNotEmpty()) {
+          item(span = { GridItemSpan(maxLineSpan) }) {
+            Subheader { Text("Devices ${lights.size}") }
+          }
+
+          item(span = { GridItemSpan(maxLineSpan) }) {
+            FlowRow(
+              modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+              mainAxisSpacing = 8.dp,
+              crossAxisSpacing = 8.dp,
+              crossAxisAlignment = FlowCrossAxisAlignment.Center
             ) {
-              Text(
-                buildString {
-                  append("Wapp")
+              LongClickChip(
+                selected = false,
+                onClick = {},
+                onLongClick = null
+              ) {
+                Text(
+                  buildString {
+                    append("Wapp")
 
-                  if (wappState.id != null)
-                    append(" ${wappState.id}")
+                    if (wappState.id != null)
+                      append(" ${wappState.id}")
 
-                  if (wappState.battery != null) {
-                    if (wappState.battery < 0f) {
-                      append(", charging")
-                    } else {
-                      append(", bat ${(wappState.battery * 100).toInt()}%")
+                    if (wappState.battery != null) {
+                      if (wappState.battery < 0f) {
+                        append(", charging")
+                      } else {
+                        append(", bat ${(wappState.battery * 100).toInt()}%")
+                      }
+                    }
+                  }
+                )
+              }
+
+              lights
+                .groupBy { it.group }
+                .mapValues { it.value.sortedBy { it.id } }
+                .toList()
+                .sortedBy { it.first }
+                .forEach { (group, groupLights) ->
+                  Text("#$group")
+                  groupLights.forEach { light ->
+                    LongClickChip(
+                      selected = light.id in model.selectedLights,
+                      onClick = { model.toggleLightSelection(light) },
+                      onLongClick = { model.toggleLightSelection(light) }
+                    ) {
+                      Text(
+                        buildString {
+                          append(
+                            "${
+                              light.type?.name?.toLowerCase()?.capitalize() ?: "Light"
+                            } ${light.id}"
+                          )
+                          if (light.battery != null) {
+                            if (light.battery < 0f) {
+                              append(", charging")
+                            } else {
+                              append(", bat ${(light.battery * 100).toInt()}%")
+                            }
+                          }
+                        }
+                      )
                     }
                   }
                 }
-              )
             }
+          }
 
-            lights
-              .groupBy { it.group }
-              .mapValues { it.value.sortedBy { it.id } }
-              .toList()
-              .sortedBy { it.first }
-              .forEach { (group, groupLights) ->
-                Text("#$group")
-                groupLights.forEach { light ->
-                  LongClickChip(
-                    selected = light.id in model.selectedLights,
-                    onClick = { model.toggleLightSelection(light) },
-                    onLongClick = { model.toggleLightSelection(light) }
-                  ) {
-                    Text(
-                      buildString {
-                        append(
-                          "${
-                            light.type?.name?.toLowerCase()?.capitalize() ?: "Light"
-                          } ${light.id}"
-                        )
-                        if (light.battery != null) {
-                          if (light.battery < 0f) {
-                            append(", charging")
-                          } else {
-                            append(", bat ${(light.battery * 100).toInt()}%")
-                          }
-                        }
-                      }
-                    )
-                  }
-                }
-              }
+          item(span = { GridItemSpan(maxLineSpan) }) {
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+              horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+            ) {
+              Button(
+                modifier = Modifier.weight(1f),
+                onClick = model.refreshLights
+              ) { Text("REFRESH") }
+
+              Button(
+                modifier = Modifier.weight(1f),
+                enabled = model.selectedLights.isNotEmpty(),
+                onClick = model.regroupLights
+              ) { Text("REGROUP") }
+            }
           }
         }
 
-        item(span = { GridItemSpan(maxLineSpan) }) {
-          Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-          ) {
-            Button(
-              modifier = Modifier.weight(1f),
-              onClick = model.refreshLights
-            ) { Text("REFRESH") }
-
-            Button(
-              modifier = Modifier.weight(1f),
-              enabled = model.selectedLights.isNotEmpty(),
-              onClick = model.regroupLights
-            ) { Text("REGROUP") }
-          }
-        }
+        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(56.dp)) }
       }
-
-      item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(56.dp)) }
     }
   }
 }
@@ -553,7 +508,7 @@ data class HomeModel(
   val selectedLights: Set<Int>,
   val toggleLightSelection: (Light) -> Unit,
   val regroupLights: () -> Unit,
-  val userColors: Resource<List<ApeColor>>,
+  val userContent: Resource<UserContent>,
   val updateColor: (ApeColor) -> Unit,
   val openColor: (ApeColor) -> Unit,
   val addColor: () -> Unit,
@@ -562,18 +517,22 @@ data class HomeModel(
   val updateColorPickerColor: (Color) -> Unit,
   val contentUsages: Map<String, Float>,
   val builtInColors: List<ApeColor> = BuiltInColors,
-  val userPrograms: Resource<List<Program>>,
   val updateProgram: (Program) -> Unit,
   val openProgram: (Program) -> Unit,
   val addProgram: () -> Unit,
   val deleteProgram: (Program) -> Unit,
-  val scenes: Resource<List<Scene>>,
   val applyScene: (Scene) -> Unit,
   val openScene: (Scene) -> Unit,
   val addScene: () -> Unit,
   val deleteScene: (Scene) -> Unit,
   val saveScene: () -> Unit,
   val openBackupRestore: () -> Unit
+)
+
+data class UserContent(
+  val colors: List<ApeColor>,
+  val programs: List<Program>,
+  val scenes: List<Scene>
 )
 
 @Provide fun homeModel(
@@ -680,7 +639,13 @@ data class HomeModel(
         }
     },
     contentUsages = contentUsageRepository.contentUsages.collectAsState(emptyMap()).value,
-    userColors = colorRepository.userColors.collectAsResourceState().value,
+    userContent = remember {
+      combine(
+        colorRepository.userColors,
+        programRepository.userPrograms,
+        sceneRepository.userScenes
+      ) { colors, programs, scenes -> UserContent(colors, programs, scenes) }
+    }.collectAsResourceState().value,
     updateColor = action { color ->
       color
         .asProgram(colorPickerId)
@@ -722,7 +687,6 @@ data class HomeModel(
           updateConfig { copy(program = it) }
         }
     },
-    userPrograms = programRepository.userPrograms.collectAsResourceState().value,
     updateProgram = action { program ->
       updateConfig { copy(program = program) }
       contentUsageRepository.contentUsed(program.id)
@@ -736,7 +700,6 @@ data class HomeModel(
         }
     },
     deleteProgram = action { program -> programRepository.deleteProgram(program.id) },
-    scenes = sceneRepository.userScenes.collectAsResourceState().value,
     applyScene = action { scene ->
       groupConfigRepository.updateGroupConfigs(
         scene.groupConfigs
