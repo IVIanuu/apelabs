@@ -83,6 +83,8 @@ import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.collectAsResourceState
 import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.resource.map
+import com.ivianuu.essentials.ui.animation.AnimatedContent
+import com.ivianuu.essentials.ui.animation.crossFade
 import com.ivianuu.essentials.ui.dialog.ListScreen
 import com.ivianuu.essentials.ui.dialog.TextInputScreen
 import com.ivianuu.essentials.ui.material.AppBar
@@ -180,87 +182,84 @@ import kotlin.math.roundToInt
           }
         } else {
           item(span = { GridItemSpan(maxLineSpan) }) {
-            val programName = when {
-              model.groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
-              model.groupConfig.program.id.isUUID ->
-                model.groupConfig.program.items.singleOrNull()
-                  ?.color
-                  ?.takeUnless { it.id.isUUID }
-                  ?.id
-                  ?: "Color"
+            AnimatedContent(
+              model.selectedGroups,
+              transitionSpec = { crossFade() }
+            ) {
+              Column {
+                val programName = when {
+                  model.groupConfig.program.id == Program.RAINBOW.id -> "Rainbow"
+                  model.groupConfig.program.id.isUUID ->
+                    model.groupConfig.program.items.singleOrNull()
+                      ?.color
+                      ?.takeUnless { it.id.isUUID }
+                      ?.id
+                      ?: "Color"
 
-              else -> model.groupConfig.program.id
-            }
+                  else -> model.groupConfig.program.id
+                }
 
-            ListItem(
-              leading = {
-                ColorListIcon(
-                  modifier = Modifier.size(40.dp),
-                  program = model.groupConfig.program
+                ListItem(
+                  leading = {
+                    ColorListIcon(
+                      modifier = Modifier.size(40.dp),
+                      program = model.groupConfig.program
+                    )
+                  },
+                  title = { Text("Program") },
+                  subtitle = { Text(programName) }
                 )
-              },
-              title = { Text("Program") },
-              subtitle = { Text(programName) }
-            )
-          }
 
-          item(span = { GridItemSpan(maxLineSpan) }) {
-            val controller = remember { ColorPickerState() }
+                val controller = remember { ColorPickerState() }
 
-            ImageColorPicker(
-              modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .padding(horizontal = 16.dp),
-              controller = controller
-            )
+                ImageColorPicker(
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .padding(horizontal = 16.dp),
+                  controller = controller
+                )
 
-            LaunchedEffect(controller.selectedColor) {
-              controller.selectedColor?.let {
-                model.updateColorPickerColor(it)
+                LaunchedEffect(controller.selectedColor) {
+                  controller.selectedColor?.let {
+                    model.updateColorPickerColor(it)
+                  }
+                }
+
+                LaunchedEffect(model.groupConfig.program) {
+                  if (model.groupConfig.program.id != Program.colorPickerId(model.selectedGroups.toList()))
+                    controller.clear()
+                }
+
+                SliderListItem(
+                  value = model.groupConfig.brightness,
+                  onValueChange = model.updateBrightness,
+                  stepPolicy = incrementingStepPolicy(0.05f),
+                  title = { Text("Brightness") },
+                  valueText = { Text("${(it * 100f).roundToInt()}") }
+                )
+
+                SliderListItem(
+                  value = model.groupConfig.speed,
+                  onValueChange = model.updateSpeed,
+                  stepPolicy = incrementingStepPolicy(0.05f),
+                  title = { Text("Speed") },
+                  valueText = { Text("${(it * 100f).roundToInt()}") }
+                )
+
+                SwitchListItem(
+                  value = model.groupConfig.musicMode,
+                  onValueChange = model.updateMusicMode,
+                  title = { Text("Music mode") }
+                )
+
+                SwitchListItem(
+                  value = model.groupConfig.blackout,
+                  onValueChange = model.updateBlackout,
+                  title = { Text("Blackout") }
+                )
               }
             }
-
-            LaunchedEffect(model.groupConfig.program) {
-              if (model.groupConfig.program.id != Program.colorPickerId(model.selectedGroups.toList()))
-                controller.clear()
-            }
-          }
-
-          item(span = { GridItemSpan(maxLineSpan) }) {
-            SliderListItem(
-              value = model.groupConfig.brightness,
-              onValueChange = model.updateBrightness,
-              stepPolicy = incrementingStepPolicy(0.05f),
-              title = { Text("Brightness") },
-              valueText = { Text("${(it * 100f).roundToInt()}") }
-            )
-          }
-
-          item(span = { GridItemSpan(maxLineSpan) }) {
-            SliderListItem(
-              value = model.groupConfig.speed,
-              onValueChange = model.updateSpeed,
-              stepPolicy = incrementingStepPolicy(0.05f),
-              title = { Text("Speed") },
-              valueText = { Text("${(it * 100f).roundToInt()}") }
-            )
-          }
-
-          item(span = { GridItemSpan(maxLineSpan) }) {
-            SwitchListItem(
-              value = model.groupConfig.musicMode,
-              onValueChange = model.updateMusicMode,
-              title = { Text("Music mode") }
-            )
-          }
-
-          item(span = { GridItemSpan(maxLineSpan) }) {
-            SwitchListItem(
-              value = model.groupConfig.blackout,
-              onValueChange = model.updateBlackout,
-              title = { Text("Blackout") }
-            )
           }
         }
 

@@ -116,7 +116,10 @@ data class SceneScreen(val id: String) : Screen<Unit>
               }
 
               if (config != null)
-                IconButton(onClick = { model.deleteGroupConfig(group) }) {
+                IconButton(
+                  modifier = Modifier.align(Alignment.Top),
+                  onClick = { model.deleteGroupConfig(group) }
+                ) {
                   Icon(Icons.Default.Close)
                 }
             }
