@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 @Provide fun apeLabsConfigApplier(
   groupConfigRepository: GroupConfigRepository,
@@ -105,12 +104,12 @@ import kotlin.time.Duration.Companion.milliseconds
           } else {
             Program(
               "",
-              items = (0..if (speed == 0f) 0 else 3).map {
+              items = (0..3).map {
                 Program.Item(
-                  color = if (it == 3) program.items.first().color
-                  else Color.Transparent.toApeColor(""),
-                  fadeTime = if (speed == 1f) Duration.ZERO else 250.milliseconds,
-                  holdTime = if (speed == 1f) Duration.ZERO else 250.milliseconds
+                  color = program.items.getOrNull(it)?.color?.copy(id = "")
+                    ?: Color.Transparent.toApeColor(""),
+                  fadeTime = Duration.ZERO,
+                  holdTime = Duration.ZERO
                 )
               }
             )
