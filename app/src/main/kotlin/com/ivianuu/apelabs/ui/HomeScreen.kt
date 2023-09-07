@@ -108,6 +108,7 @@ import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 @Provide class HomeScreen : RootScreen
 
@@ -239,13 +240,21 @@ import kotlin.math.roundToInt
                   valueText = { Text("${(it * 100f).roundToInt()}") }
                 )
 
-                SliderListItem(
-                  value = model.groupConfig.speed,
-                  onValueChange = model.updateSpeed,
-                  stepPolicy = incrementingStepPolicy(0.05f),
-                  title = { Text("Speed") },
-                  valueText = { Text("${(it * 100f).roundToInt()}") }
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  SliderListItem(
+                    modifier = Modifier.weight(1f),
+                    value = model.groupConfig.speed,
+                    onValueChange = model.updateSpeed,
+                    stepPolicy = incrementingStepPolicy(0.05f),
+                    title = { Text("Speed") },
+                    valueText = { Text("${(it * 100f).roundToInt()}") }
+                  )
+
+                  IconButton(
+                    modifier = Modifier.padding(end = 16.dp),
+                    onClick = model.shuffleSpeed
+                  ) { Icon(R.drawable.ic_shuffle) }
+                }
 
                 ToggleButtonGroup(
                   selected = model.groupConfig.mode,
@@ -494,6 +503,7 @@ data class HomeModel(
   val groupConfig: GroupConfig,
   val updateBrightness: (Float) -> Unit,
   val updateSpeed: (Float) -> Unit,
+  val shuffleSpeed: () -> Unit,
   val updateMode: (GroupConfig.Mode) -> Unit,
   val updateBlackout: (Boolean) -> Unit,
   val wappState: Resource<WappState>,
@@ -604,6 +614,17 @@ data class UserContent(
     },
     updateSpeed = action { value ->
       updateConfig { copy(speed = value) }
+    },
+    shuffleSpeed = action {
+      selectedGroupConfigs.forEach {
+        groupConfigRepository.updateGroupConfig(
+          it.copy(
+            speed = Random(System.currentTimeMillis())
+              .nextInt(0, 100) / 100f
+          ),
+          false
+        )
+      }
     },
     updateMode = action { value ->
       updateConfig { copy(mode = value) }
