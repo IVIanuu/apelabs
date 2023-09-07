@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.R
+import com.ivianuu.apelabs.ToggleButtonGroup
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.BuiltInColors
@@ -101,7 +102,6 @@ import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.popup.PopupMenuItem
 import com.ivianuu.essentials.ui.prefs.SliderListItem
-import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
@@ -247,16 +247,11 @@ import kotlin.math.roundToInt
                   valueText = { Text("${(it * 100f).roundToInt()}") }
                 )
 
-                SwitchListItem(
-                  value = model.groupConfig.musicMode,
-                  onValueChange = model.updateMusicMode,
-                  title = { Text("Music mode") }
-                )
-
-                SwitchListItem(
-                  value = model.groupConfig.blackout,
-                  onValueChange = model.updateBlackout,
-                  title = { Text("Blackout") }
+                ToggleButtonGroup(
+                  selected = model.groupConfig.mode,
+                  values = GroupConfig.Mode.entries,
+                  onSelectionChanged = model.updateMode,
+                  title = "Mode"
                 )
               }
             }
@@ -499,7 +494,7 @@ data class HomeModel(
   val groupConfig: GroupConfig,
   val updateBrightness: (Float) -> Unit,
   val updateSpeed: (Float) -> Unit,
-  val updateMusicMode: (Boolean) -> Unit,
+  val updateMode: (GroupConfig.Mode) -> Unit,
   val updateBlackout: (Boolean) -> Unit,
   val wappState: Resource<WappState>,
   val lights: Resource<List<Light>>,
@@ -610,8 +605,8 @@ data class UserContent(
     updateSpeed = action { value ->
       updateConfig { copy(speed = value) }
     },
-    updateMusicMode = action { value ->
-      updateConfig { copy(musicMode = value) }
+    updateMode = action { value ->
+      updateConfig { copy(mode = value) }
     },
     updateBlackout = action { value ->
       updateConfig { copy(blackout = value) }

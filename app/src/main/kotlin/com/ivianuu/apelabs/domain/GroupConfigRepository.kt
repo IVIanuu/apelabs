@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
 
 @Provide class GroupConfigRepository(
-  private val pref: DataStore<ApeLabsPrefs>,
+  pref: DataStore<ApeLabsPrefs>,
   private val db: Db,
   private val programRepository: ProgramRepository
 ) {
@@ -77,7 +77,15 @@ import kotlinx.coroutines.flow.onStart
   }
 
   private fun GroupConfig.toEntity() =
-    GroupConfigEntity(id, program.id, brightness, speed, musicMode, blackout)
+    GroupConfigEntity(
+      id,
+      program.id,
+      brightness,
+      speed,
+      mode == GroupConfig.Mode.MUSIC,
+      mode == GroupConfig.Mode.STROBE,
+      blackout
+    )
 
   private suspend fun GroupConfigEntity.toGroupConfig() = GroupConfig(
     id,
@@ -85,7 +93,11 @@ import kotlinx.coroutines.flow.onStart
       ?: Program(items = listOf(Program.Item(ApeColor(white = 1f)))),
     brightness,
     speed,
-    musicMode,
+    when {
+      musicMode -> GroupConfig.Mode.MUSIC
+      strobe -> GroupConfig.Mode.STROBE
+      else -> GroupConfig.Mode.FADE
+    },
     blackout
   )
 }

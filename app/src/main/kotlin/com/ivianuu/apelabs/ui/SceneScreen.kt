@@ -21,6 +21,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.ivianuu.apelabs.ToggleButtonGroup
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
@@ -105,10 +106,11 @@ data class SceneScreen(val id: String) : Screen<Unit>
                     valueText = { Text("${(it * 100f).roundToInt()}") }
                   )
 
-                  SwitchListItem(
-                    value = config.musicMode,
-                    onValueChange = { model.updateMusicMode(group, it) },
-                    title = { Text("Music mode") }
+                  ToggleButtonGroup(
+                    selected = config.mode,
+                    values = GroupConfig.Mode.entries,
+                    onSelectionChanged = { model.updateMode(group, it) },
+                    title = "Mode"
                   )
                 } else {
                   Text("unchanged")
@@ -144,7 +146,7 @@ data class SceneModel(
   val updateProgram: (Int, GroupConfig?) -> Unit,
   val updateBrightness: (Int, Float) -> Unit,
   val updateSpeed: (Int, Float) -> Unit,
-  val updateMusicMode: (Int, Boolean) -> Unit,
+  val updateMode: (Int, GroupConfig.Mode) -> Unit,
   val deleteGroupConfig: (Int) -> Unit,
   val previewsEnabled: Boolean,
   val updatePreviewsEnabled: (Boolean) -> Unit
@@ -219,7 +221,6 @@ data class SceneModel(
                 config?.program?.items?.singleOrNull()?.color?.copy(id = randomId()) ?: ApeColor()
               )
             )?.asProgram() ?: return@let
-
             "Rainbow" -> Program.RAINBOW
             else -> program!!
           }
@@ -233,8 +234,8 @@ data class SceneModel(
     updateSpeed = action { group, speed ->
       updateGroupConfig(group) { copy(speed = speed) }
     },
-    updateMusicMode = action { group, musicMode ->
-      updateGroupConfig(group) { copy(musicMode = musicMode) }
+    updateMode = action { group, mode ->
+      updateGroupConfig(group) { copy(mode = mode) }
     },
     deleteGroupConfig = action { group ->
       updateScene {

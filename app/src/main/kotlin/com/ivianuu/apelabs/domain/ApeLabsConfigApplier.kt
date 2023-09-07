@@ -8,9 +8,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
+import com.ivianuu.apelabs.data.toApeColor
 import com.ivianuu.essentials.app.AppVisibleScope
 import com.ivianuu.essentials.app.ScopeComposition
 import com.ivianuu.essentials.lerp
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 @Provide fun apeLabsConfigApplier(
   groupConfigRepository: GroupConfigRepository,
@@ -93,18 +96,31 @@ import kotlin.time.Duration
           // erase ids here to make caching work correctly
           // there could be the same program just with different ids
           if (program == Program.RAINBOW) program
-          else program.copy(
-            id = "",
-            items = program.items
-              .map { it.copy(color = it.color.copy(id = "")) }
-          )
+          else if (mode != GroupConfig.Mode.STROBE) {
+            program.copy(
+              id = "",
+              items = program.items
+                .map { it.copy(color = it.color.copy(id = "")) }
+            )
+          } else {
+            Program(
+              "",
+              items = (0..if (speed == 0f) 0 else 3).map {
+                Program.Item(
+                  color = if (it == 3) program.items.first().color
+                  else Color.Transparent.toApeColor(""),
+                  fadeTime = if (speed == 1f) Duration.ZERO else 250.milliseconds,
+                  holdTime = if (speed == 1f) Duration.ZERO else 250.milliseconds
+                )
+              }
+            )
+          }
         }
       ) { value, groups ->
         when {
           value.id == Program.RAINBOW.id -> {
             write(byteArrayOf(68, 68, groups.toGroupByte(), 4, 29, 0, 0, 0, 0))
           }
-
           value.items.size == 1 -> {
             val color = value.items.single().color
             write(
@@ -121,7 +137,6 @@ import kotlin.time.Duration
               )
             )
           }
-
           else -> {
             value.items.forEachIndexed { index, item ->
               write(
@@ -157,7 +172,7 @@ import kotlin.time.Duration
         )
       }
 
-      LightConfiguration(tag = "music mode", get = { musicMode }) { value, groups ->
+      LightConfiguration(tag = "music mode", get = { mode == GroupConfig.Mode.MUSIC }) { value, groups ->
         write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (value) 1 else 0, 0))
       }
 

@@ -9,9 +9,11 @@ data class GroupConfig(
   val program: Program = Program.RAINBOW,
   val brightness: Float = 1f,
   val speed: Float = 0f,
-  val musicMode: Boolean = false,
-  val blackout: Boolean = false
-)
+  val mode: Mode = Mode.FADE,
+  val blackout: Boolean = false,
+) {
+  enum class Mode { FADE, MUSIC, STROBE }
+}
 
 @Serializable @Entity data class GroupConfigEntity(
   @PrimaryKey val id: String,
@@ -19,6 +21,7 @@ data class GroupConfig(
   val brightness: Float,
   val speed: Float,
   val musicMode: Boolean,
+  val strobe: Boolean,
   val blackout: Boolean
 )
 
@@ -32,7 +35,7 @@ fun Collection<GroupConfig>.merge(): GroupConfig = when {
     },
     brightness = map { it.brightness }.average().toFloat(),
     speed = map { it.speed }.average().toFloat(),
-    musicMode = all { it.musicMode },
+    mode = if (map { it.mode }.distinct().size == 1) first().mode else GroupConfig.Mode.FADE,
     blackout = all { it.blackout }
   )
 }
