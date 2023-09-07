@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
+import kotlin.math.max
 import kotlin.time.Duration
 
 @Provide fun apeLabsConfigApplier(
@@ -104,15 +105,15 @@ import kotlin.time.Duration
           } else {
             Program(
               "",
-              items = when (program.items.size) {
-                1 -> 0..(when {
+              items = (0..max(
+                program.items.size,
+                (when {
                   speed == 0f -> 0
                   speed <= 0.33f -> 3
                   speed <= 0.66f -> 2
                   else -> 1
                 })
-                else -> 0..3
-              }.map {
+              )).map {
                 Program.Item(
                   color = program.items.getOrNull(it)?.color?.copy(id = "")
                     ?: Color.Transparent.toApeColor(""),
