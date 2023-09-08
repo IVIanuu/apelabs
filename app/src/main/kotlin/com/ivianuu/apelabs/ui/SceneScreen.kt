@@ -203,11 +203,11 @@ data class SceneModel(
     updateProgram = action { group, config ->
       navigator.push(
         ListScreen<Pair<String, Program?>>(
-          buildList<Pair<String, Program?>> {
+          buildList {
             add("Color" to null)
             addAll(
               programRepository.userPrograms.first()
-                .sortedBy { it.id.toLowerCase() }
+                .sortedBy { it.id.lowercase() }
                 .map { it.id to it }
             )
             add("Rainbow" to null)
