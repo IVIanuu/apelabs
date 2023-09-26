@@ -110,7 +110,7 @@ data class SceneScreen(val id: String) : Screen<Unit>
                     selected = config.mode,
                     values = GroupConfig.Mode.entries,
                     onSelectionChanged = { model.updateMode(group, it) },
-                    title = "Mode"
+                    title = { Text("Mode") }
                   )
                 } else {
                   Text("unchanged")

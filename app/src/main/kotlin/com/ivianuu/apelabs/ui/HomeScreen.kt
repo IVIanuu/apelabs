@@ -264,7 +264,7 @@ import kotlin.random.Random
                   selected = model.groupConfig.mode,
                   values = GroupConfig.Mode.entries,
                   onSelectionChanged = model.updateMode,
-                  title = "Mode"
+                  title = { Text("Mode") }
                 )
 
                 SwitchListItem(

@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.ContentAlpha
 import androidx.compose.material.LocalContentColor
+import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,11 +26,11 @@ import com.ivianuu.essentials.ui.material.guessingContentColorFor
 import com.ivianuu.injekt.Inject
 
 @Composable fun <T> ToggleButtonGroup(
-  selected: T,
   values: List<T>,
+  selected: T,
   onSelectionChanged: (T) -> Unit,
-  title: String,
-  @Inject renderer: UiRenderer<T>
+  @Inject renderer: UiRenderer<T>,
+  title: @Composable () -> Unit,
 ) {
   Column(
     modifier = Modifier
@@ -36,9 +38,9 @@ import com.ivianuu.injekt.Inject
       .padding(horizontal = 16.dp),
     verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
   ) {
-    Text(
-      text = title,
-      style = MaterialTheme.typography.subtitle1
+    CompositionLocalProvider(
+      LocalTextStyle provides MaterialTheme.typography.subtitle1,
+      content = title
     )
 
     Row(

@@ -7,8 +7,8 @@
 object Build {
   const val applicationId = "com.ivianuu.apelabs"
   const val compileSdk = 34
-  const val minSdk = 32
-  const val targetSdk = 31
+  const val minSdk = 33
+  const val targetSdk = 33
   const val versionCode = 1
   const val versionName = "0.0.1"
 }
