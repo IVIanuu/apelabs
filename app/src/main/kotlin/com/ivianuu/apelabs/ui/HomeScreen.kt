@@ -51,7 +51,6 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
 import com.ivianuu.apelabs.R
-import com.ivianuu.apelabs.ToggleButtonGroup
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.BuiltInColors
@@ -101,6 +100,7 @@ import com.ivianuu.essentials.ui.navigation.Ui
 import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.essentials.ui.popup.PopupMenuButton
 import com.ivianuu.essentials.ui.popup.PopupMenuItem
+import com.ivianuu.essentials.ui.prefs.SingleChoiceToggleButtonGroupListItem
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
@@ -260,7 +260,7 @@ import kotlin.random.Random
                   ) { Icon(R.drawable.ic_shuffle) }
                 }
 
-                ToggleButtonGroup(
+                SingleChoiceToggleButtonGroupListItem(
                   selected = model.groupConfig.mode,
                   values = GroupConfig.Mode.entries,
                   onSelectionChanged = model.updateMode,

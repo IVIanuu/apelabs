@@ -21,7 +21,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.ivianuu.apelabs.ToggleButtonGroup
 import com.ivianuu.apelabs.data.ApeColor
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
@@ -47,6 +46,7 @@ import com.ivianuu.essentials.ui.navigation.Navigator
 import com.ivianuu.essentials.ui.navigation.Screen
 import com.ivianuu.essentials.ui.navigation.Ui
 import com.ivianuu.essentials.ui.navigation.push
+import com.ivianuu.essentials.ui.prefs.SingleChoiceToggleButtonGroupListItem
 import com.ivianuu.essentials.ui.prefs.SliderListItem
 import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
@@ -106,7 +106,7 @@ data class SceneScreen(val id: String) : Screen<Unit>
                     valueText = { Text("${(it * 100f).roundToInt()}") }
                   )
 
-                  ToggleButtonGroup(
+                  SingleChoiceToggleButtonGroupListItem(
                     selected = config.mode,
                     values = GroupConfig.Mode.entries,
                     onSelectionChanged = { model.updateMode(group, it) },
