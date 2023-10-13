@@ -85,7 +85,7 @@ import kotlin.time.Duration.Companion.seconds
             message.getOrNull(1)?.toInt() != -112
           ) {
             val id = byteArrayOf(message[2], message[3], message[4], 0).toInt()
-            val type = Light.Type.values().firstOrNull { it.id == message[1].toInt() }
+            val type = Light.Type.entries.firstOrNull { it.id == message[1].toInt() }
             val light = Light(
               id = id,
               group = message.getOrNull(10)?.toInt()?.inc() ?: 1,
