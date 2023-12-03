@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -77,7 +78,11 @@ import kotlinx.coroutines.flow.map
       }
 
       logger.log { "start scan" }
-      bluetoothManager.adapter.bluetoothLeScanner.startScan(callback)
+      bluetoothManager.adapter.bluetoothLeScanner.startScan(
+        emptyList(),
+        ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(),
+        callback
+      )
       onDispose {
         logger.log { "stop scan" }
         bluetoothManager.adapter.bluetoothLeScanner.stopScan(callback)
