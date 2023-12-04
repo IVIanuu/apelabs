@@ -25,7 +25,6 @@ import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.essentials.unsafeCast
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
@@ -77,8 +76,7 @@ import kotlin.time.Duration.Companion.milliseconds
 ) {
   val isConnected = MutableSharedFlow<Boolean>(
     replay = 1,
-    extraBufferCapacity = Int.MAX_VALUE,
-    onBufferOverflow = BufferOverflow.SUSPEND
+    extraBufferCapacity = Int.MAX_VALUE
   )
 
   val device: BluetoothDevice = bluetoothManager.adapter.getRemoteDevice(address)
