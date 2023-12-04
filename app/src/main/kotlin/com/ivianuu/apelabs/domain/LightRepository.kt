@@ -32,7 +32,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @Provide @Scoped<UiScope> class LightRepository(
@@ -114,7 +113,7 @@ import kotlin.time.Duration.Companion.seconds
           lightRemovalJobs.remove(light.id)?.cancel()
 
           lightRemovalJobs[light.id] = launch {
-            delay(if (fromCache) 17.seconds else 1.minutes)
+            delay(if (fromCache) 17.seconds else 35.seconds)
             logger.log { "${light.id} remove light" }
             lights = lights
               .filter { it.id != light.id }
