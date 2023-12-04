@@ -22,6 +22,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
@@ -31,7 +32,9 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @Provide @Scoped<UiScope> class LightRepository(
@@ -127,7 +130,7 @@ import kotlin.time.Duration.Companion.seconds
     lights
       .sortedBy { it.id }
   }
-    .shareIn(scope, SharingStarted.WhileSubscribed(2000), 1)
+    .shareIn(scope, SharingStarted.WhileSubscribed(5.minutes, Duration.ZERO), 1)
 
   private val _groupLightsChangedEvents = EventFlow<GroupLightsChangedEvent>()
   val groupLightsChangedEvents get() = _groupLightsChangedEvents
