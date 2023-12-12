@@ -53,10 +53,13 @@ import kotlin.time.Duration.Companion.minutes
 
   suspend fun <R> withWapp(
     address: String,
+    connectTimeout: Duration = Duration.INFINITE,
     block: suspend WappServer.() -> R,
   ): R? = withContext(coroutineContexts.io) {
     servers.use(address) { server ->
-      server.isConnected.first { it }
+      withTimeoutOrNull(connectTimeout) { server.isConnected.first { it } }
+        ?: return@use null
+
       race(
         { block(server) },
         {

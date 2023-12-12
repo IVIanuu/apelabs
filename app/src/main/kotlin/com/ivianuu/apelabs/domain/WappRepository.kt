@@ -24,18 +24,20 @@ import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.SystemService
 import com.ivianuu.essentials.compose.compositionStateFlow
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
-import com.ivianuu.essentials.coroutines.onCancel
+import com.ivianuu.essentials.coroutines.guarantee
 import com.ivianuu.essentials.coroutines.parForEach
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.permission.PermissionManager
 import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlin.time.Duration.Companion.seconds
 
 @Provide @Scoped<UiScope> class WappRepository(
   private val bluetoothManager: @SystemService BluetoothManager,
@@ -54,12 +56,17 @@ import kotlinx.coroutines.flow.map
     wapps.forEach { wapp ->
       key(wapp.address) {
         LaunchedEffect(true) {
-          wappRemote.withWapp<Unit>(wapp.address) {
-            onCancel {
+          guarantee(
+            block = {
+              wappRemote.withWapp<Unit>(wapp.address, connectTimeout = 30.seconds) {
+                awaitCancellation()
+              } ?: run { knownWapps -= wapp }
+            },
+            finalizer = {
               logger.log { "${wapp.debugName()} remove wapp" }
               wapps = wapps - wapp
             }
-          }
+          )
         }
       }
     }
@@ -67,13 +74,16 @@ import kotlinx.coroutines.flow.map
     DisposableEffect(true) {
       wapps = wapps + bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)
         .filter { it.isWapp() }
-        .map { it.toWapp() }
+        .map { it.toWapp() } + knownWapps
 
       val callback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
           super.onScanResult(callbackType, result)
-          if (result.device.isWapp())
-            wapps = wapps + result.device.toWapp()
+          if (result.device.isWapp()) {
+            val wapp = result.device.toWapp()
+            wapps = wapps + wapp
+            knownWapps += wapp
+          }
         }
       }
 
@@ -126,5 +136,9 @@ import kotlinx.coroutines.flow.map
         }
         .collect { value = it }
     }.value
+  }
+
+  companion object {
+    private val knownWapps = mutableSetOf<Wapp>()
   }
 }
