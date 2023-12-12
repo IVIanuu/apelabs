@@ -10,6 +10,7 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.essentials.AppContext
+import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.SystemService
 import com.ivianuu.essentials.coroutines.CoroutineContexts
@@ -39,11 +40,11 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
-@Provide @Scoped<UiScope> class WappRemote(
+@Provide @Scoped<AppScope> class WappRemote(
   private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
   private val serverFactory: (String) -> WappServer,
-  scope: ScopedCoroutineScope<UiScope>
+  scope: ScopedCoroutineScope<AppScope>
 ) {
   private val servers = scope.sharedResource<String, WappServer>(
     sharingStarted = SharingStarted.WhileSubscribed(5.minutes, Duration.ZERO),

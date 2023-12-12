@@ -64,7 +64,7 @@ import kotlin.time.Duration.Companion.seconds
             },
             finalizer = {
               logger.log { "${wapp.debugName()} remove wapp" }
-              wapps = wapps - wapp
+              wapps -= wapp
             }
           )
         }
@@ -72,16 +72,17 @@ import kotlin.time.Duration.Companion.seconds
     }
 
     DisposableEffect(true) {
-      wapps = wapps + bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)
+      wapps += bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)
         .filter { it.isWapp() }
-        .map { it.toWapp() } + knownWapps
+        .map { it.toWapp() } +
+          knownWapps
 
       val callback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
           super.onScanResult(callbackType, result)
           if (result.device.isWapp()) {
             val wapp = result.device.toWapp()
-            wapps = wapps + wapp
+            wapps += wapp
             knownWapps += wapp
           }
         }
