@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.math.max
 import kotlin.time.Duration
 
@@ -77,6 +79,7 @@ import kotlin.time.Duration
           }
         }
 
+        val writeLock = remember { Mutex() }
         if (dirtyGroups.isNotEmpty())
           LaunchedEffect(dirtyGroups) {
             dirtyGroups
@@ -84,7 +87,9 @@ import kotlin.time.Duration
               .forEach { (value, groups) ->
                 logger.log { "apply $tag $value for $groups" }
                 wappRemote.withWapp(wapp.address) {
-                  apply(this, value, groups.map { it.first })
+                  writeLock.withLock {
+                    apply(this, value, groups.map { it.first })
+                  }
                 }
               }
           }
