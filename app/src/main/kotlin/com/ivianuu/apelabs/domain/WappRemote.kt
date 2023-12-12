@@ -114,9 +114,17 @@ import kotlin.time.Duration.Companion.minutes
             gatt.setCharacteristicNotification(readCharacteristic, true)
 
             val cccDescriptor = readCharacteristic.getDescriptor(CCCD_ID)
-            cccDescriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            gatt.writeDescriptor(cccDescriptor)
-            writeResults.first { it.first == cccDescriptor }
+
+            suspend fun setReadNotification(attempt: Int) {
+              logger.log { "try set read notification -> $attempt" }
+              cccDescriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+              gatt.writeDescriptor(cccDescriptor)
+              withTimeoutOrNull(300.milliseconds) {
+                writeResults.first { it.first == cccDescriptor }
+              } ?: run { if (attempt < 5) setReadNotification(attempt + 1) }
+            }
+
+            setReadNotification(1)
 
             isConnected.emit(true)
           }
