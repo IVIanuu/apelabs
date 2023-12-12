@@ -185,7 +185,8 @@ import kotlin.time.Duration
 
       LightConfiguration(
         tag = "brightness",
-        get = { if (blackout) 0f else brightness }) { value, groups ->
+        get = { if (blackout) 0f else brightness }
+      ) { value, groups ->
         write(
           byteArrayOf(
             68,
