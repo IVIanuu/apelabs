@@ -25,7 +25,6 @@ import com.ivianuu.essentials.result.catch
 import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.essentials.unsafeCast
 import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
@@ -128,7 +127,7 @@ import kotlin.time.Duration.Companion.minutes
               } ?: run { if (attempt < 5) setReadNotification(attempt + 1) }
             }
 
-            setReadNotification(1)
+            writeLock.withLock { setReadNotification(1) }
 
             isConnected.emit(true)
           }
@@ -187,15 +186,13 @@ import kotlin.time.Duration.Companion.minutes
       logger.log { "${device.debugName()} write -> ${message.contentToString()} attempt $attempt" }
       characteristic.value = message
       gatt.writeCharacteristic(characteristic)
-      withTimeoutOrNull(300.milliseconds) {
+      withTimeoutOrNull(200.milliseconds) {
         writeResults.first { it.first == characteristic }
       } ?: run { if (attempt < 5) writeImpl(attempt + 1) }
     }
 
     writeLock.withLock {
-      withContext(NonCancellable) {
-        writeImpl(1)
-      }
+      writeImpl(1)
     }
   }
 

@@ -13,11 +13,11 @@ import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.toApeColor
-import com.ivianuu.essentials.app.AppVisibleScope
 import com.ivianuu.essentials.app.ScopeComposition
 import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
+import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -33,7 +33,7 @@ import kotlin.time.Duration
   previewRepository: PreviewRepository,
   wappRemote: WappRemote,
   wappRepository: WappRepository
-) = ScopeComposition<AppVisibleScope> {
+) = ScopeComposition<UiScope> {
   val groupLightsState by produceState(GROUPS.associateWith { 0 }) {
     lightRepository.groupLightsChangedEvents
       .map { it.group }
