@@ -45,8 +45,13 @@ import com.ivianuu.injekt.Inject
         drawContent()
         if (controller.position != null) {
           drawCircle(
+            color = Color.Black.copy(alpha = 0.66f),
+            radius = 13.dp.toPx(),
+            center = controller.position!!
+          )
+          drawCircle(
             color = Color.White,
-            radius = 8.dp.toPx(),
+            radius = 12.dp.toPx(),
             center = controller.position!!
           )
         }

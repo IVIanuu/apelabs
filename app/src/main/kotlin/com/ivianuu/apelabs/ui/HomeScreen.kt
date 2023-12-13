@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
+import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.ContentAlpha
 import androidx.compose.material.ExperimentalMaterialApi
@@ -235,13 +236,14 @@ import kotlin.random.Random
 
                 val controller = remember { ColorPickerState() }
 
-                ImageColorPicker(
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .padding(horizontal = 16.dp),
-                  controller = controller
-                )
+                Card(modifier = Modifier.padding(horizontal = 16.dp)) {
+                  ImageColorPicker(
+                    modifier = Modifier
+                      .fillMaxWidth()
+                      .height(200.dp),
+                    controller = controller
+                  )
+                }
 
                 LaunchedEffect(controller.selectedColor) {
                   controller.selectedColor?.let {
