@@ -7,6 +7,7 @@
 package com.ivianuu.apelabs.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -27,6 +28,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.ContentAlpha
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
@@ -46,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
@@ -59,6 +62,7 @@ import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.Scene
+import com.ivianuu.apelabs.data.Wapp
 import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.asProgram
 import com.ivianuu.apelabs.data.isUUID
@@ -121,11 +125,25 @@ import kotlin.random.Random
           title = { Text("Ape labs") },
           actions = {
             IconButton(onClick = {}) {
+              CircularProgressIndicator(
+                color = LocalContentColor.current.copy(alpha = ContentAlpha.medium),
+                modifier = Modifier
+                  .alpha(
+                    animateFloatAsState(
+                      if (model.wapps.map { it.isNotEmpty() }.getOrElse { false } &&
+                        !model.wappState.map { it.isConnected }.getOrElse { false }) 1f
+                      else 0f
+                    ).value
+                  )
+              )
+
               Icon(
                 painterResId = R.drawable.ic_bluetooth,
                 tint = animateColorAsState(
-                  if (model.wappState.map { it.isConnected }.getOrElse { false }) Color(0xFF0082FC)
-                  else LocalContentColor.current.copy(alpha = ContentAlpha.disabled)
+                  when {
+                    model.wappState.map { it.isConnected }.getOrElse { false } -> Color(0xFF0082FC)
+                    else -> LocalContentColor.current.copy(alpha = ContentAlpha.disabled)
+                  }
                 ).value
               )
             }
@@ -517,6 +535,7 @@ data class HomeModel(
   val shuffleSpeed: () -> Unit,
   val updateMode: (GroupConfig.Mode) -> Unit,
   val updateBlackout: (Boolean) -> Unit,
+  val wapps: Resource<List<Wapp>>,
   val wappState: Resource<WappState>,
   val lights: Resource<List<Light>>,
   val refreshLights: () -> Unit,
@@ -655,6 +674,7 @@ data class UserContent(
     wappState = remember {
       scopeManager.flowInScope<AppVisibleScope, _>(wappRepository.wappState)
     }.collectAsResourceState().value,
+    wapps = wappRepository.wapps.collectAsResourceState().value,
     lights = lights,
     refreshLights = action { lightRepository.refreshLights() },
     selectedLights = selectedLights,
