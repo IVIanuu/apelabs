@@ -113,10 +113,21 @@ import kotlin.time.Duration.Companion.minutes
           scope.launch {
             val readCharacteristic = gatt
               .getService(APE_LABS_SERVICE_ID)
-              .getCharacteristic(APE_LABS_READ_ID)
+              ?.getCharacteristic(APE_LABS_READ_ID)
+
+            if (readCharacteristic == null) {
+              gatt.discoverServices()
+              return@launch
+            }
+
             gatt.setCharacteristicNotification(readCharacteristic, true)
 
             val cccDescriptor = readCharacteristic.getDescriptor(CCCD_ID)
+
+            if (cccDescriptor == null) {
+              gatt.discoverServices()
+              return@launch
+            }
 
             suspend fun setReadNotification(attempt: Int) {
               logger.log { "try set read notification -> $attempt" }
