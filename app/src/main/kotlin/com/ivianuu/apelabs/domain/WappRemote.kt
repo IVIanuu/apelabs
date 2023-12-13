@@ -22,7 +22,6 @@ import com.ivianuu.essentials.coroutines.use
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.result.catch
-import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.essentials.unsafeCast
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -78,7 +77,7 @@ import kotlin.time.Duration.Companion.minutes
   bluetoothManager: @SystemService BluetoothManager,
   private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
-  private val scope: ScopedCoroutineScope<UiScope>,
+  private val scope: ScopedCoroutineScope<AppScope>,
 ) {
   val isConnected = MutableSharedFlow<Boolean>(
     replay = 1,
