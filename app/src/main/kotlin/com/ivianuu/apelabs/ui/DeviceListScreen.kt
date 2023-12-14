@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Button
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.LocalContentColor
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
@@ -101,7 +102,7 @@ import kotlinx.coroutines.flow.Flow
         .sortedBy { it.first }
         .forEach { (group, groupLights) ->
           item {
-            Subheader { Text("#$group") }
+            Subheader { Text("Group $group") }
           }
 
           groupLights.forEach { light ->
@@ -110,7 +111,7 @@ import kotlinx.coroutines.flow.Flow
                 modifier = Modifier
                   .background(
                     animateColorAsState(
-                      if (light.id in model.selectedLights) MaterialTheme.colors.secondary
+                      if (light.id in model.selectedLights) LocalContentColor.current.copy(alpha = 0.12f)
                       else MaterialTheme.colors.surface
                     ).value
                   )
