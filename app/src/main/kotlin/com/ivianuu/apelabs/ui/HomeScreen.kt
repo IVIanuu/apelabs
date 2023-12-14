@@ -61,6 +61,7 @@ import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.BuiltInColors
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
+import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.Scene
 import com.ivianuu.apelabs.data.Wapp
@@ -73,6 +74,7 @@ import com.ivianuu.apelabs.data.toApeColor
 import com.ivianuu.apelabs.domain.ColorRepository
 import com.ivianuu.apelabs.domain.ContentUsageRepository
 import com.ivianuu.apelabs.domain.GroupConfigRepository
+import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
 import com.ivianuu.apelabs.domain.WappRepository
@@ -88,6 +90,7 @@ import com.ivianuu.essentials.flowInScope
 import com.ivianuu.essentials.resource.Resource
 import com.ivianuu.essentials.resource.collectAsResourceState
 import com.ivianuu.essentials.resource.getOrElse
+import com.ivianuu.essentials.resource.getOrNull
 import com.ivianuu.essentials.resource.map
 import com.ivianuu.essentials.ui.animation.AnimatedContent
 import com.ivianuu.essentials.ui.animation.crossFade
@@ -189,6 +192,7 @@ import kotlin.random.Random
           ) {
             LongClickChip(
               selected = model.groups.all { it in model.selectedGroups },
+              enabled = true,
               onClick = model.toggleAllGroupSelections,
               onLongClick = null
             ) {
@@ -198,6 +202,7 @@ import kotlin.random.Random
             model.groups.forEach { group ->
               LongClickChip(
                 selected = group in model.selectedGroups,
+                enabled = model.lights.getOrNull()?.any { it.group == group } == true,
                 onClick = { model.toggleGroupSelection(group, false) },
                 onLongClick = { model.toggleGroupSelection(group, true) }
               ) {
@@ -425,6 +430,7 @@ import kotlin.random.Random
 
 @Composable fun LongClickChip(
   selected: Boolean,
+  enabled: Boolean,
   onClick: () -> Unit,
   onLongClick: (() -> Unit)?,
   content: @Composable () -> Unit
@@ -436,7 +442,8 @@ import kotlin.random.Random
   Surface(
     modifier = Modifier
       .height(32.dp)
-      .defaultMinSize(minWidth = 56.dp),
+      .defaultMinSize(minWidth = 56.dp)
+      .alpha(animateFloatAsState(if (enabled) 1f else ContentAlpha.disabled).value),
     shape = RoundedCornerShape(50),
     color = backgroundColor,
     contentColor = contentColor
@@ -474,6 +481,7 @@ data class HomeModel(
   val updateBlackout: (Boolean) -> Unit,
   val wapps: Resource<List<Wapp>>,
   val wappState: Resource<WappState>,
+  val lights: Resource<List<Light>>,
   val userContent: Resource<UserContent>,
   val updateColor: (ApeColor) -> Unit,
   val openColor: (ApeColor) -> Unit,
@@ -505,6 +513,7 @@ data class UserContent(
   colorRepository: ColorRepository,
   contentUsageRepository: ContentUsageRepository,
   groupConfigRepository: GroupConfigRepository,
+  lightRepository: LightRepository,
   navigator: Navigator,
   programRepository: ProgramRepository,
   sceneRepository: SceneRepository,
@@ -597,6 +606,7 @@ data class UserContent(
       scopeManager.flowInScope<AppVisibleScope, _>(wappRepository.wappState)
     }.collectAsResourceState().value,
     wapps = wappRepository.wapps.collectAsResourceState().value,
+    lights = lightRepository.lights.collectAsResourceState().value,
     contentUsages = contentUsageRepository.contentUsages.collectAsState(emptyMap()).value,
     userContent = remember {
       combine(

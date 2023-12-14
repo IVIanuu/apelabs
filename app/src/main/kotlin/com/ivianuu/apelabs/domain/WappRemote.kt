@@ -25,8 +25,6 @@ import com.ivianuu.essentials.result.catch
 import com.ivianuu.essentials.unsafeCast
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -36,7 +34,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 
 @Provide @Scoped<AppScope> class WappRemote(
   private val coroutineContexts: CoroutineContexts,
@@ -45,7 +42,6 @@ import kotlin.time.Duration.Companion.minutes
   scope: ScopedCoroutineScope<AppScope>
 ) {
   private val servers = scope.sharedResource<String, WappServer>(
-    sharingStarted = SharingStarted.WhileSubscribed(5.minutes, Duration.ZERO),
     create = { serverFactory(it) },
     release = { _, server -> server.close() }
   )
