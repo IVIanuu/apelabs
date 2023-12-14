@@ -10,7 +10,6 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.essentials.AppContext
-import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.SystemService
 import com.ivianuu.essentials.coroutines.CoroutineContexts
@@ -22,6 +21,7 @@ import com.ivianuu.essentials.coroutines.use
 import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.result.catch
+import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.essentials.unsafeCast
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -35,11 +35,11 @@ import java.util.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-@Provide @Scoped<AppScope> class WappRemote(
+@Provide @Scoped<UiScope> class WappRemote(
   private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
   private val serverFactory: (String) -> WappServer,
-  scope: ScopedCoroutineScope<AppScope>
+  scope: ScopedCoroutineScope<UiScope>
 ) {
   private val servers = scope.sharedResource<String, WappServer>(
     create = { serverFactory(it) },
@@ -73,7 +73,7 @@ import kotlin.time.Duration.Companion.milliseconds
   bluetoothManager: @SystemService BluetoothManager,
   private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
-  private val scope: ScopedCoroutineScope<AppScope>,
+  private val scope: ScopedCoroutineScope<UiScope>,
 ) {
   val isConnected = MutableSharedFlow<Boolean>(
     replay = 1,
