@@ -20,7 +20,7 @@ import com.ivianuu.apelabs.data.WappState
 import com.ivianuu.apelabs.data.debugName
 import com.ivianuu.apelabs.data.isWapp
 import com.ivianuu.apelabs.data.toWapp
-import com.ivianuu.essentials.Scoped
+import com.ivianuu.essentials.Eager
 import com.ivianuu.essentials.SystemService
 import com.ivianuu.essentials.compose.compositionStateFlow
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
@@ -39,7 +39,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration.Companion.seconds
 
-@Provide @Scoped<UiScope> class WappRepository(
+@Provide @Eager<UiScope> class WappRepository(
   private val bluetoothManager: @SystemService BluetoothManager,
   private val logger: Logger,
   permissionManager: PermissionManager,

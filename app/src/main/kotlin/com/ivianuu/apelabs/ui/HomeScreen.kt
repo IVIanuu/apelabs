@@ -12,7 +12,6 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.Card
@@ -39,18 +39,19 @@ import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
@@ -60,7 +61,6 @@ import com.ivianuu.apelabs.data.ApeLabsPrefs
 import com.ivianuu.apelabs.data.BuiltInColors
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
-import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.Program
 import com.ivianuu.apelabs.data.Scene
 import com.ivianuu.apelabs.data.Wapp
@@ -73,12 +73,13 @@ import com.ivianuu.apelabs.data.toApeColor
 import com.ivianuu.apelabs.domain.ColorRepository
 import com.ivianuu.apelabs.domain.ContentUsageRepository
 import com.ivianuu.apelabs.domain.GroupConfigRepository
-import com.ivianuu.apelabs.domain.LightRepository
 import com.ivianuu.apelabs.domain.ProgramRepository
 import com.ivianuu.apelabs.domain.SceneRepository
 import com.ivianuu.apelabs.domain.WappRepository
+import com.ivianuu.essentials.AppScope
 import com.ivianuu.essentials.Resources
 import com.ivianuu.essentials.ScopeManager
+import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.app.AppVisibleScope
 import com.ivianuu.essentials.backup.BackupAndRestoreScreen
 import com.ivianuu.essentials.compose.action
@@ -90,8 +91,9 @@ import com.ivianuu.essentials.resource.getOrElse
 import com.ivianuu.essentials.resource.map
 import com.ivianuu.essentials.ui.animation.AnimatedContent
 import com.ivianuu.essentials.ui.animation.crossFade
-import com.ivianuu.essentials.ui.dialog.ListScreen
 import com.ivianuu.essentials.ui.dialog.TextInputScreen
+import com.ivianuu.essentials.ui.insets.LocalInsets
+import com.ivianuu.essentials.ui.insets.localVerticalInsetsPadding
 import com.ivianuu.essentials.ui.material.AppBar
 import com.ivianuu.essentials.ui.material.ListItem
 import com.ivianuu.essentials.ui.material.Scaffold
@@ -111,92 +113,121 @@ import com.ivianuu.essentials.ui.prefs.SwitchListItem
 import com.ivianuu.essentials.ui.resource.ResourceBox
 import com.ivianuu.injekt.Inject
 import com.ivianuu.injekt.Provide
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
-@Provide class HomeScreen : RootScreen
+@Provide @Scoped<AppScope> class HomeScreen : RootScreen, NavigationBarScreen {
+  override val title: String
+    get() = "Home"
+  override val icon: @Composable () -> Unit
+    get() = { Icon(Icons.Default.Home) }
+  override val index: Int
+    get() = 0
 
-@Provide fun homeUi(@Inject resources: Resources) = Ui<HomeScreen, HomeModel> { model ->
+}
+
+@Provide fun homeUi(
+  navigationBarEvents: Flow<NavigationBarEvent>,
+  @Inject resources: Resources
+) = Ui<HomeScreen, HomeModel> { model ->
   Scaffold(
     topBar = {
-      Column {
-        AppBar(
-          title = { Text("Ape labs") },
-          actions = {
-            IconButton(onClick = {}) {
-              CircularProgressIndicator(
-                color = LocalContentColor.current.copy(alpha = ContentAlpha.medium),
-                modifier = Modifier
-                  .alpha(
-                    animateFloatAsState(
-                      if (model.wapps.map { it.isNotEmpty() }.getOrElse { false } &&
-                        !model.wappState.map { it.isConnected }.getOrElse { false }) 1f
-                      else 0f
-                    ).value
-                  )
-              )
+      AppBar(
+        title = { Text("Home") },
+        leading = null,
+        actions = {
+          IconButton(onClick = {}) {
+            CircularProgressIndicator(
+              color = LocalContentColor.current.copy(alpha = ContentAlpha.medium),
+              modifier = Modifier
+                .alpha(
+                  animateFloatAsState(
+                    if (model.wapps.map { it.isNotEmpty() }.getOrElse { false } &&
+                      !model.wappState.map { it.isConnected }.getOrElse { false }) 1f
+                    else 0f
+                  ).value
+                )
+            )
 
-              Icon(
-                painterResId = R.drawable.ic_bluetooth,
-                tint = animateColorAsState(
-                  when {
-                    model.wappState.map { it.isConnected }.getOrElse { false } -> Color(0xFF0082FC)
-                    else -> LocalContentColor.current.copy(alpha = ContentAlpha.disabled)
-                  }
-                ).value
-              )
-            }
-
-            PopupMenuButton {
-              PopupMenuItem(onSelected = model.saveColor) { Text("Save color") }
-              PopupMenuItem(onSelected = model.saveScene) { Text("Save scene") }
-              PopupMenuItem(onSelected = model.openBackupRestore) { Text("Backup and restore") }
-            }
+            Icon(
+              painterResId = R.drawable.ic_bluetooth,
+              tint = animateColorAsState(
+                when {
+                  model.wappState.map { it.isConnected }.getOrElse { false } -> Color(0xFF0082FC)
+                  else -> LocalContentColor.current.copy(alpha = ContentAlpha.disabled)
+                }
+              ).value
+            )
           }
-        )
-      }
+
+          PopupMenuButton {
+            PopupMenuItem(onSelected = model.saveColor) { Text("Save color") }
+            PopupMenuItem(onSelected = model.saveScene) { Text("Save scene") }
+            PopupMenuItem(onSelected = model.openBackupRestore) { Text("Backup and restore") }
+          }
+        }
+      )
     },
     bottomBar = {
-      Surface(
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(56.dp)
-          .clickable { },
-        elevation = 8.dp
+      Card(
+        modifier = Modifier.clickable {},
+        shape = RectangleShape,
+        elevation = 6.dp
       ) {
-        FlowRow(
-          modifier = Modifier.padding(16.dp),
-          mainAxisSpacing = 8.dp,
-          crossAxisSpacing = 8.dp,
-          crossAxisAlignment = FlowCrossAxisAlignment.Center
-        ) {
-          LongClickChip(
-            selected = model.groups.all { it in model.selectedGroups },
-            onClick = model.toggleAllGroupSelections,
-            onLongClick = null
+        Column {
+          FlowRow(
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(56.dp)
+              .padding(16.dp),
+            mainAxisSpacing = 8.dp,
+            crossAxisSpacing = 8.dp,
+            crossAxisAlignment = FlowCrossAxisAlignment.Center
           ) {
-            Text("ALL")
-          }
-
-          model.groups.forEach { group ->
             LongClickChip(
-              selected = group in model.selectedGroups,
-              onClick = { model.toggleGroupSelection(group, false) },
-              onLongClick = { model.toggleGroupSelection(group, true) }
+              selected = model.groups.all { it in model.selectedGroups },
+              onClick = model.toggleAllGroupSelections,
+              onLongClick = null
             ) {
-              Text(group.toString())
+              Text("ALL")
             }
+
+            model.groups.forEach { group ->
+              LongClickChip(
+                selected = group in model.selectedGroups,
+                onClick = { model.toggleGroupSelection(group, false) },
+                onLongClick = { model.toggleGroupSelection(group, true) }
+              ) {
+                Text(group.toString())
+              }
+            }
+
+            IconButton(onClick = model.shuffleGroups) { Icon(R.drawable.ic_shuffle) }
           }
 
-          IconButton(onClick = model.shuffleGroups) { Icon(R.drawable.ic_shuffle) }
+          Spacer(Modifier.height(LocalInsets.current.bottom))
         }
       }
     }
   ) {
     ResourceBox(model.userContent) { userContent ->
-      LazyVerticalGrid(columns = GridCells.Fixed(2)) {
+      val lazyGridState = rememberLazyGridState()
+
+      LaunchedEffect(true) {
+        navigationBarEvents.collect {
+          if (it is NavigationBarEvent.Reselected && it.index == 0)
+            lazyGridState.animateScrollToItem(0)
+        }
+      }
+
+      LazyVerticalGrid(
+        state = lazyGridState,
+        columns = GridCells.Fixed(2),
+        contentPadding = localVerticalInsetsPadding()
+      ) {
         if (model.selectedGroups.isEmpty()) {
           item(span = { GridItemSpan(maxLineSpan) }) {
             Text(
@@ -387,108 +418,12 @@ import kotlin.random.Random
             Button(onClick = model.addScene) { Text("ADD SCENE") }
           }
         }
-
-        val wappState = model.wappState.getOrElse { WappState() }
-        val lights = model.lights.getOrElse { emptyList() }
-
-        if (wappState.isConnected || lights.isNotEmpty()) {
-          item(span = { GridItemSpan(maxLineSpan) }) {
-            Subheader { Text("Devices ${lights.size}") }
-          }
-
-          item(span = { GridItemSpan(maxLineSpan) }) {
-            FlowRow(
-              modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-              mainAxisSpacing = 8.dp,
-              crossAxisSpacing = 8.dp,
-              crossAxisAlignment = FlowCrossAxisAlignment.Center
-            ) {
-              LongClickChip(
-                selected = false,
-                onClick = {},
-                onLongClick = null
-              ) {
-                Text(
-                  buildString {
-                    append("Wapp")
-
-                    if (wappState.id != null)
-                      append(" ${wappState.id}")
-
-                    if (wappState.battery != null) {
-                      if (wappState.battery < 0f) {
-                        append(", charging")
-                      } else {
-                        append(", bat ${(wappState.battery * 100).toInt()}%")
-                      }
-                    }
-                  }
-                )
-              }
-
-              lights
-                .groupBy { it.group }
-                .mapValues { it.value.sortedBy { it.id } }
-                .toList()
-                .sortedBy { it.first }
-                .forEach { (group, groupLights) ->
-                  Text("#$group")
-                  groupLights.forEach { light ->
-                    LongClickChip(
-                      selected = light.id in model.selectedLights,
-                      onClick = { model.toggleLightSelection(light) },
-                      onLongClick = { model.toggleLightSelection(light) }
-                    ) {
-                      Text(
-                        buildString {
-                          append(
-                            "${
-                              light.type?.name?.toLowerCase()?.capitalize() ?: "Light"
-                            } ${light.id}"
-                          )
-                          if (light.battery != null) {
-                            if (light.battery < 0f) {
-                              append(", charging")
-                            } else {
-                              append(", bat ${(light.battery * 100).toInt()}%")
-                            }
-                          }
-                        }
-                      )
-                    }
-                  }
-                }
-            }
-          }
-
-          item(span = { GridItemSpan(maxLineSpan) }) {
-            Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-              horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-            ) {
-              Button(
-                modifier = Modifier.weight(1f),
-                onClick = model.refreshLights
-              ) { Text("REFRESH") }
-
-              Button(
-                modifier = Modifier.weight(1f),
-                enabled = model.selectedLights.isNotEmpty(),
-                onClick = model.regroupLights
-              ) { Text("REGROUP") }
-            }
-          }
-        }
-
-        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(56.dp)) }
       }
     }
   }
 }
 
-@Composable private fun LongClickChip(
+@Composable fun LongClickChip(
   selected: Boolean,
   onClick: () -> Unit,
   onLongClick: (() -> Unit)?,
@@ -539,11 +474,6 @@ data class HomeModel(
   val updateBlackout: (Boolean) -> Unit,
   val wapps: Resource<List<Wapp>>,
   val wappState: Resource<WappState>,
-  val lights: Resource<List<Light>>,
-  val refreshLights: () -> Unit,
-  val selectedLights: Set<Int>,
-  val toggleLightSelection: (Light) -> Unit,
-  val regroupLights: () -> Unit,
   val userContent: Resource<UserContent>,
   val updateColor: (ApeColor) -> Unit,
   val openColor: (ApeColor) -> Unit,
@@ -575,7 +505,6 @@ data class UserContent(
   colorRepository: ColorRepository,
   contentUsageRepository: ContentUsageRepository,
   groupConfigRepository: GroupConfigRepository,
-  lightRepository: LightRepository,
   navigator: Navigator,
   programRepository: ProgramRepository,
   sceneRepository: SceneRepository,
@@ -597,15 +526,6 @@ data class UserContent(
         .map { it.block() },
       false
     )
-  }
-
-  val lights by remember {
-    scopeManager.flowInScope<AppVisibleScope, _>(lightRepository.lights)
-  }.collectAsResourceState()
-  var selectedLights by remember { mutableStateOf(emptySet<Int>()) }
-
-  LaunchedEffect(selectedLights) {
-    lightRepository.flashLights(selectedLights.toList())
   }
 
   val colorPickerId = Program.colorPickerId(prefs.selectedGroups.toList())
@@ -677,24 +597,6 @@ data class UserContent(
       scopeManager.flowInScope<AppVisibleScope, _>(wappRepository.wappState)
     }.collectAsResourceState().value,
     wapps = wappRepository.wapps.collectAsResourceState().value,
-    lights = lights,
-    refreshLights = action { lightRepository.refreshLights() },
-    selectedLights = selectedLights,
-    toggleLightSelection = action { light ->
-      selectedLights = selectedLights.toMutableSet().apply {
-        if (light.id in this) remove(light.id)
-        else add(light.id)
-      }
-    },
-    regroupLights = action {
-      navigator.push(ListScreen(items = GROUPS) { it.toString() })
-        ?.let { group ->
-          lightRepository.regroupLights(
-            selectedLights.toList()
-              .also { selectedLights = emptySet() }, group
-          )
-        }
-    },
     contentUsages = contentUsageRepository.contentUsages.collectAsState(emptyMap()).value,
     userContent = remember {
       combine(

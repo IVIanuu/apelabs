@@ -6,8 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.ivianuu.apelabs.data.Light
-import com.ivianuu.essentials.Scoped
-import com.ivianuu.essentials.compose.compositionFlow
+import com.ivianuu.essentials.Eager
+import com.ivianuu.essentials.compose.compositionStateFlow
 import com.ivianuu.essentials.coroutines.CoroutineContexts
 import com.ivianuu.essentials.coroutines.EventFlow
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
@@ -16,40 +16,30 @@ import com.ivianuu.essentials.logging.Logger
 import com.ivianuu.essentials.logging.log
 import com.ivianuu.essentials.ui.UiScope
 import com.ivianuu.injekt.Provide
-import com.ivianuu.injekt.inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.WhileSubscribed
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-@Provide @Scoped<UiScope> class LightRepository(
+@Provide @Eager<UiScope> class LightRepository(
   private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
   scope: ScopedCoroutineScope<UiScope>,
   private val wappRemote: WappRemote,
   private val wappRepository: WappRepository,
 ) {
-  val lights: SharedFlow<List<Light>> = compositionFlow {
-    var lights by remember {
-      mutableStateOf(
-        inject<LightRepository>().lights.replayCache.firstOrNull() ?: emptyList()
-      )
-    }
+  val lights: Flow<List<Light>> = scope.compositionStateFlow {
+    var lights by remember { mutableStateOf(emptyList<Light>()) }
     val lightRemovalJobs = remember { mutableMapOf<Int, Job>() }
 
     LaunchedEffect(true) {
@@ -130,7 +120,6 @@ import kotlin.time.Duration.Companion.seconds
     lights
       .sortedBy { it.id }
   }
-    .shareIn(scope, SharingStarted.WhileSubscribed(5.minutes, Duration.ZERO), 1)
 
   private val _groupLightsChangedEvents = EventFlow<GroupLightsChangedEvent>()
   val groupLightsChangedEvents get() = _groupLightsChangedEvents
