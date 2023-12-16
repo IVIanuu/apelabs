@@ -82,16 +82,16 @@ import kotlin.time.Duration
         val writeLock = remember { Mutex() }
         if (dirtyGroups.isNotEmpty())
           LaunchedEffect(dirtyGroups) {
-            dirtyGroups
-              .groupBy { it.second }
-              .forEach { (value, groups) ->
-                logger.log { "apply $tag $value for $groups" }
-                wappRemote.withWapp(wapp.address) {
+            wappRemote.withWapp(wapp.address) {
+              dirtyGroups
+                .groupBy { it.second }
+                .forEach { (value, groups) ->
+                  logger.log { "apply $tag $value for $groups" }
                   writeLock.withLock {
                     apply(this, value, groups.map { it.first })
                   }
                 }
-              }
+            }
           }
       }
 
