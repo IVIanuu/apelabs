@@ -1,5 +1,6 @@
 package com.ivianuu.apelabs.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -7,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.Badge
+import androidx.compose.material.BadgedBox
 import androidx.compose.material.Button
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -14,10 +17,10 @@ import androidx.compose.material.LocalContentColor
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.ivianuu.apelabs.R
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.Light
 import com.ivianuu.apelabs.data.Wapp
@@ -47,12 +51,35 @@ import com.ivianuu.essentials.ui.navigation.Ui
 import com.ivianuu.essentials.ui.navigation.push
 import com.ivianuu.injekt.Provide
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
-@Provide class DeviceListScreen : NavigationBarScreen {
+@Provide class DeviceListScreen(private val lightRepository: LightRepository) : NavigationBarScreen {
   override val title: String
     get() = "Devices"
+
   override val icon: @Composable () -> Unit
-    get() = { Icon(Icons.Default.List) }
+    get() = {
+      val deviceCount by remember {
+        lightRepository.lights
+          .map { it.size }
+      }.collectAsState(0)
+
+      BadgedBox(
+        badge = {
+          AnimatedVisibility(visible = deviceCount > 0) {
+            Badge(backgroundColor = MaterialTheme.colors.secondary) {
+              Text(deviceCount.toString())
+            }
+          }
+        }
+      ) {
+        Icon(
+          R.drawable.ic_settings_remote,
+          modifier = Modifier.align(Alignment.Center)
+        )
+      }
+    }
+
   override val index: Int
     get() = 1
 }
