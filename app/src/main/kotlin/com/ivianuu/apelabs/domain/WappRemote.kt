@@ -14,6 +14,7 @@ import com.ivianuu.essentials.Scoped
 import com.ivianuu.essentials.SystemService
 import com.ivianuu.essentials.coroutines.CoroutineContexts
 import com.ivianuu.essentials.coroutines.EventFlow
+import com.ivianuu.essentials.coroutines.RateLimiter
 import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
 import com.ivianuu.essentials.coroutines.race
 import com.ivianuu.essentials.coroutines.sharedResource
@@ -172,6 +173,7 @@ import kotlin.time.Duration.Companion.milliseconds
     )
 
   private val writeLock = Mutex()
+  private val writeLimiter = RateLimiter(1, 200.milliseconds)
 
   init {
     logger.log { "${device.debugName()} init" }
@@ -198,6 +200,7 @@ import kotlin.time.Duration.Companion.milliseconds
     }
 
     writeLock.withLock {
+      writeLimiter.acquire()
       writeImpl(1)
     }
   }
