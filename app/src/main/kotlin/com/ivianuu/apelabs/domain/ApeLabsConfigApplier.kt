@@ -8,11 +8,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
 import com.ivianuu.apelabs.data.GROUPS
 import com.ivianuu.apelabs.data.GroupConfig
 import com.ivianuu.apelabs.data.Program
-import com.ivianuu.apelabs.data.toApeColor
 import com.ivianuu.essentials.app.ScopeComposition
 import com.ivianuu.essentials.lerp
 import com.ivianuu.essentials.logging.Logger
@@ -25,7 +23,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.math.max
 import kotlin.time.Duration
 
 @Provide fun apeLabsConfigApplier(
@@ -100,33 +97,11 @@ import kotlin.time.Duration
         get = {
           // erase ids here to make caching work correctly
           // there could be the same program just with different ids
-          if (mode != GroupConfig.Mode.STROBE) {
-            program.copy(
-              id = if (program == Program.RAINBOW) program.id else "",
-              items = program.items
-                .map { it.copy(color = it.color.copy(id = "")) }
-            )
-          } else {
-            Program(
-              id = "",
-              items = (0..max(
-                program.items.lastIndex,
-                (when {
-                  speed == 0f -> 0
-                  speed <= 0.33f -> 3
-                  speed <= 0.66f -> 2
-                  else -> 1
-                })
-              )).map {
-                Program.Item(
-                  color = program.items.getOrNull(it)?.color?.copy(id = "")
-                    ?: Color.Transparent.toApeColor(""),
-                  fadeTime = Duration.ZERO,
-                  holdTime = Duration.ZERO
-                )
-              }
-            )
-          }
+          program.copy(
+            id = if (program == Program.RAINBOW) program.id else "",
+            items = program.items
+              .map { it.copy(color = it.color.copy(id = "")) }
+          )
         }
       ) { value, groups ->
         when {
@@ -186,6 +161,12 @@ import kotlin.time.Duration
 
       LightConfiguration(tag = "music mode", get = { mode == GroupConfig.Mode.MUSIC }) { value, groups ->
         write(byteArrayOf(68, 68, groups.toGroupByte(), 3, if (value) 1 else 0, 0))
+      }
+
+      LightConfiguration(tag = "strobe", get = {
+        !blackout && mode == GroupConfig.Mode.STROBE
+      }) { value, groups ->
+        write(byteArrayOf(68, 68, groups.toGroupByte(), 5, if (value) 1 else 0, 0))
       }
 
       LightConfiguration(
