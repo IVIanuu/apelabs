@@ -192,8 +192,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
     suspend fun writeImpl(attempt: Int) {
       logger.log { "${device.debugName()} write -> ${message.contentToString()} attempt $attempt" }
-      characteristic.value = message
-      gatt.writeCharacteristic(characteristic)
+      gatt.writeCharacteristic(characteristic, message, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
       withTimeoutOrNull(200.milliseconds) {
         writeResults.first { it.first == characteristic }
       } ?: run { if (attempt < 5) writeImpl(attempt + 1) }
