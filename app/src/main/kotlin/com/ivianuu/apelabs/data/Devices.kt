@@ -1,7 +1,7 @@
 package com.ivianuu.apelabs.data
 
-import android.bluetooth.BluetoothDevice
-import kotlinx.serialization.Serializable
+import android.bluetooth.*
+import kotlinx.serialization.*
 
 @Serializable data class Wapp(
   val id: Int,

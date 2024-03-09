@@ -1,11 +1,10 @@
 package com.ivianuu.apelabs.data
 
-import androidx.compose.ui.graphics.Color
-import com.ivianuu.apelabs.domain.toGroupByte
-import com.ivianuu.essentials.db.Entity
-import com.ivianuu.essentials.db.PrimaryKey
-import kotlinx.serialization.Serializable
-import kotlin.time.Duration
+import androidx.compose.ui.graphics.*
+import com.ivianuu.apelabs.domain.*
+import com.ivianuu.essentials.db.*
+import kotlinx.serialization.*
+import kotlin.time.*
 import kotlin.time.Duration.Companion.seconds
 
 data class Program(

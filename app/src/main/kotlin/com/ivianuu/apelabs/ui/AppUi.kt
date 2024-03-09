@@ -1,44 +1,31 @@
 package com.ivianuu.apelabs.ui
 
-import androidx.activity.ComponentActivity
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
-import com.ivianuu.essentials.Scoped
-import com.ivianuu.essentials.compose.action
-import com.ivianuu.essentials.coroutines.EventFlow
-import com.ivianuu.essentials.ui.UiScope
-import com.ivianuu.essentials.ui.animation.crossFade
-import com.ivianuu.essentials.ui.app.AppUi
-import com.ivianuu.essentials.ui.material.NavigationBar
-import com.ivianuu.essentials.ui.material.NavigationBarItem
-import com.ivianuu.essentials.ui.material.Scaffold
-import com.ivianuu.essentials.ui.navigation.Navigator
-import com.ivianuu.essentials.ui.navigation.NavigatorContent
-import com.ivianuu.essentials.ui.navigation.Screen
-import com.ivianuu.essentials.ui.navigation.ScreenConfig
-import com.ivianuu.injekt.Inject
-import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.flow.MutableSharedFlow
+import androidx.activity.*
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import com.ivianuu.essentials.*
+import com.ivianuu.essentials.compose.*
+import com.ivianuu.essentials.coroutines.*
+import com.ivianuu.essentials.ui.*
+import com.ivianuu.essentials.ui.animation.*
+import com.ivianuu.essentials.ui.app.*
+import com.ivianuu.essentials.ui.material.*
+import com.ivianuu.essentials.ui.navigation.*
+import com.ivianuu.injekt.*
+import kotlinx.coroutines.flow.*
 
 @Provide fun appUi(
   activity: ComponentActivity,
   events: MutableSharedFlow<NavigationBarEvent>,
   navigationBarScreens: List<NavigationBarScreen>,
-  @Inject navigator: Navigator
+  @Provide navigator: Navigator
 ) = AppUi {
   val sortedNavigationBarScreens = navigationBarScreens.sortedBy { it.index }
 
-  val currentNavigationBarScreen by rememberUpdatedState(
-    navigator.backStack.collectAsState()
-      .value
-      .last { it is NavigationBarScreen }
-  )
+  val currentNavigationBarScreen = navigator.backStack
+    .last { it is NavigationBarScreen }
 
-  Scaffold(
+  ScreenScaffold(
     bottomBar = {
       NavigationBar(backgroundColor = MaterialTheme.colors.primary) {
         sortedNavigationBarScreens.forEach { navigationBarScreen ->
@@ -46,11 +33,11 @@ import kotlinx.coroutines.flow.MutableSharedFlow
             selected = navigationBarScreen::class == currentNavigationBarScreen::class,
             onClick = action {
               if (currentNavigationBarScreen::class == navigationBarScreen::class &&
-                navigator.backStack.value.last()::class == navigationBarScreen::class)
+                navigator.backStack.last()::class == navigationBarScreen::class)
                 events.emit(NavigationBarEvent.Reselected(navigationBarScreen.index))
               else
                 navigator.setBackStack(
-                  navigator.backStack.value.toMutableList().apply {
+                  navigator.backStack.toMutableList().apply {
                     removeAll { it::class == navigationBarScreen::class }
                     add(navigationBarScreen)
                   }

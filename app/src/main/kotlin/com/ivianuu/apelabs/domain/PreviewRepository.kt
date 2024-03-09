@@ -1,74 +1,32 @@
 package com.ivianuu.apelabs.domain
 
-import com.ivianuu.apelabs.data.ApeLabsPrefs
-import com.ivianuu.apelabs.data.GroupConfig
-import com.ivianuu.essentials.Scoped
-import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
-import com.ivianuu.essentials.coroutines.bracket
-import com.ivianuu.essentials.coroutines.infiniteEmptyFlow
-import com.ivianuu.essentials.data.DataStore
-import com.ivianuu.essentials.ui.UiScope
-import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.flow.transformLatest
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import androidx.compose.runtime.*
+import com.ivianuu.apelabs.data.*
+import com.ivianuu.essentials.*
+import com.ivianuu.essentials.compose.*
+import com.ivianuu.essentials.data.*
+import com.ivianuu.essentials.ui.*
+import com.ivianuu.injekt.*
+import kotlinx.coroutines.flow.*
 
-@Provide @Scoped<UiScope> class PreviewRepository(
-  private val pref: DataStore<ApeLabsPrefs>,
-  scope: ScopedCoroutineScope<UiScope>
-) {
-  private val _previewProviders =
-    MutableStateFlow(emptyList<(List<Int>) -> Flow<List<GroupConfig>>>())
-  private val lock = Mutex()
+@Provide @Scoped<UiScope> class PreviewRepository(private val pref: DataStore<ApeLabsPrefs>) {
+  private val previewProviders = mutableStateListOf<@Composable (List<Int>) -> List<GroupConfig>>()
 
-  private val _previewsEnabled = MutableStateFlow(false)
-  val previewsEnabled: StateFlow<Boolean> by this::_previewsEnabled
+  var previewsEnabled by mutableStateOf(false)
 
-  val previewGroupConfigs: Flow<List<GroupConfig>> = _previewsEnabled
-    .flatMapLatest {
-      if (it) _previewProviders
-      else flowOf(emptyList())
-    }
-    .map { it.lastOrNull() }
-    .flatMapLatest { provider ->
+  @Composable fun previewGroupConfigs(): List<GroupConfig> = if (!previewsEnabled) emptyList()
+  else previewProviders.lastOrNull()
+    ?.invoke(
       pref.data
         .map { it.selectedGroups }
-        .distinctUntilChanged()
-        .map { it.toList() to provider }
-    }
-    .flatMapLatest { (groups, provider) ->
-      provider?.invoke(groups) ?: flowOf(emptyList())
-    }
-    .shareIn(scope, SharingStarted.WhileSubscribed(), 1)
-    .distinctUntilChanged()
+        .state(emptySet())
+        .toList()
+    ) ?: emptyList()
 
-  suspend fun updatePreviewsEnabled(value: Boolean) {
-    _previewsEnabled.value = value
+  @Composable fun Previews(vararg keys: Any?, block: @Composable (List<Int>) -> List<GroupConfig>) {
+    DisposableEffect(keys) {
+      previewProviders += block
+      onDispose { previewProviders -= block }
+    }
   }
-
-  suspend fun providePreviews(
-    block: (List<Int>) -> Flow<List<GroupConfig>>
-  ): Nothing = bracket(
-    acquire = {
-      lock.withLock {
-        _previewProviders.value = _previewProviders.value + block
-      }
-    },
-    use = { awaitCancellation() },
-    release = { _, _ ->
-      lock.withLock {
-        _previewProviders.value = _previewProviders.value - block
-      }
-    }
-  )
 }

@@ -1,14 +1,11 @@
 package com.ivianuu.apelabs.ui
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.unit.dp
-import com.ivianuu.apelabs.data.ApeColor
-import com.ivianuu.apelabs.data.Program
-import com.ivianuu.apelabs.data.toComposeColor
+import androidx.compose.foundation.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
+import androidx.compose.ui.geometry.*
+import androidx.compose.ui.unit.*
+import com.ivianuu.apelabs.data.*
 
 @Composable fun ColorListIcon(modifier: Modifier, colors: List<ApeColor>) {
   val composeColors = colors.map { it.toComposeColor() }

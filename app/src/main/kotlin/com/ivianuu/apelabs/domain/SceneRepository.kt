@@ -1,19 +1,10 @@
 package com.ivianuu.apelabs.domain
 
-import com.ivianuu.apelabs.data.Scene
-import com.ivianuu.apelabs.data.SceneEntity
-import com.ivianuu.apelabs.data.isUUID
-import com.ivianuu.essentials.coroutines.parForEach
-import com.ivianuu.essentials.db.Db
-import com.ivianuu.essentials.db.InsertConflictStrategy
-import com.ivianuu.essentials.db.deleteById
-import com.ivianuu.essentials.db.insert
-import com.ivianuu.essentials.db.selectAllTransform
-import com.ivianuu.essentials.db.selectById
-import com.ivianuu.essentials.db.selectTransform
-import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
+import arrow.fx.coroutines.*
+import com.ivianuu.apelabs.data.*
+import com.ivianuu.essentials.db.*
+import com.ivianuu.injekt.*
+import kotlinx.coroutines.flow.*
 
 @Provide class SceneRepository(
   private val groupConfigRepository: GroupConfigRepository,
@@ -43,7 +34,7 @@ import kotlinx.coroutines.flow.first
     scene.groupConfigs
       .values
       .filterNotNull()
-      .parForEach { groupConfigRepository.updateGroupConfig(it, true) }
+      .parMap { groupConfigRepository.updateGroupConfig(it, true) }
 
     db.insert(scene.toEntity(), InsertConflictStrategy.REPLACE)
   }

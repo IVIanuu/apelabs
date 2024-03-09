@@ -1,9 +1,9 @@
 package com.ivianuu.apelabs.data
 
-import com.ivianuu.essentials.data.DataStoreModule
-import com.ivianuu.injekt.Provide
-import kotlinx.serialization.Serializable
-import kotlin.time.Duration
+import com.ivianuu.essentials.data.*
+import com.ivianuu.injekt.*
+import kotlinx.serialization.*
+import kotlin.time.*
 
 @Serializable data class ApeLabsPrefs(
   val selectedGroups: Set<Int> = emptySet(),

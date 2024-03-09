@@ -4,9 +4,9 @@
 
 package com.ivianuu.apelabs.ui
 
-import androidx.compose.ui.graphics.Color
-import com.ivianuu.essentials.ui.AppColors
-import com.ivianuu.injekt.Provide
+import androidx.compose.ui.graphics.*
+import com.ivianuu.essentials.ui.app.*
+import com.ivianuu.injekt.*
 
 @Provide val apeLabsAppColors = AppColors(
   primary = Color(0xFFEF5777),

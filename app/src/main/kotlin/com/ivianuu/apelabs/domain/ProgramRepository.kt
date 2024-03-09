@@ -1,21 +1,10 @@
 package com.ivianuu.apelabs.domain
 
-import com.ivianuu.apelabs.data.ApeColor
-import com.ivianuu.apelabs.data.Program
-import com.ivianuu.apelabs.data.ProgramEntity
-import com.ivianuu.apelabs.data.isUUID
-import com.ivianuu.essentials.coroutines.parForEach
-import com.ivianuu.essentials.db.Db
-import com.ivianuu.essentials.db.InsertConflictStrategy
-import com.ivianuu.essentials.db.deleteById
-import com.ivianuu.essentials.db.insert
-import com.ivianuu.essentials.db.selectAllTransform
-import com.ivianuu.essentials.db.selectById
-import com.ivianuu.essentials.db.selectTransform
-import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
+import arrow.fx.coroutines.*
+import com.ivianuu.apelabs.data.*
+import com.ivianuu.essentials.db.*
+import com.ivianuu.injekt.*
+import kotlinx.coroutines.flow.*
 
 @Provide class ProgramRepository(
   private val colorRepository: ColorRepository,
@@ -43,12 +32,12 @@ import kotlinx.coroutines.flow.flowOf
       ?.items
       ?.map { it.color }
       ?.filter { it.isUUID && it !in program.items.map { it.color.id } }
-      ?.parForEach { colorRepository.deleteColor(it) }
+      ?.parMap { colorRepository.deleteColor(it) }
 
     program.items
       .map { it.color }
       .filter { it.id.isUUID }
-      .parForEach { colorRepository.updateColor(it) }
+      .parMap { colorRepository.updateColor(it) }
 
     insert(program.toEntity(), InsertConflictStrategy.REPLACE)
   }
@@ -58,7 +47,7 @@ import kotlinx.coroutines.flow.flowOf
       ?.items
       ?.map { it.color }
       ?.filter { it.isUUID }
-      ?.parForEach { colorRepository.deleteColor(it) }
+      ?.parMap { colorRepository.deleteColor(it) }
 
     deleteById<ProgramEntity>(id)
   }

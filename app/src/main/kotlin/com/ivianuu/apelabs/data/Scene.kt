@@ -1,8 +1,7 @@
 package com.ivianuu.apelabs.data
 
-import com.ivianuu.essentials.db.Entity
-import com.ivianuu.essentials.db.PrimaryKey
-import kotlinx.serialization.Serializable
+import com.ivianuu.essentials.db.*
+import kotlinx.serialization.*
 
 data class Scene(
   val id: String,

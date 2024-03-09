@@ -1,29 +1,16 @@
 package com.ivianuu.apelabs.domain
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.currentComposer
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import com.ivianuu.apelabs.data.GROUPS
-import com.ivianuu.apelabs.data.GroupConfig
-import com.ivianuu.apelabs.data.Program
-import com.ivianuu.essentials.app.ScopeComposition
-import com.ivianuu.essentials.lerp
-import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.log
-import com.ivianuu.essentials.ui.UiScope
-import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlin.time.Duration
+import androidx.compose.runtime.*
+import com.ivianuu.apelabs.data.*
+import com.ivianuu.essentials.*
+import com.ivianuu.essentials.app.*
+import com.ivianuu.essentials.compose.*
+import com.ivianuu.essentials.logging.*
+import com.ivianuu.essentials.ui.*
+import com.ivianuu.injekt.*
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.*
+import kotlin.time.*
 
 @Provide fun apeLabsConfigApplier(
   groupConfigRepository: GroupConfigRepository,
@@ -33,7 +20,7 @@ import kotlin.time.Duration
   wappRemote: WappRemote,
   wappRepository: WappRepository
 ) = ScopeComposition<UiScope> {
-  val groupLightsState by produceState(GROUPS.associateWith { 0 }) {
+  val groupLightsVersion = state(GROUPS.associateWith { 0 }) {
     lightRepository.groupLightsChangedEvents
       .map { it.group }
       .collect { changedGroup ->
@@ -41,23 +28,15 @@ import kotlin.time.Duration
       }
   }
 
-  val configs = remember {
-    combine(
-      groupConfigRepository.groupConfigs,
-      previewRepository.previewGroupConfigs
-    ) { groupConfigs, previewGroupConfigs ->
-      GROUPS
-        .associateWith { group ->
-          previewGroupConfigs.singleOrNull { it.id == group.toString() }
-            ?: groupConfigs.singleOrNull { it.id == group.toString() }
-            ?: return@combine null
-        }
+  val repositoryConfigs = groupConfigRepository.groupConfigs.state(emptyList())
+  val previewsConfigs = previewRepository.previewGroupConfigs()
+  val configs = GROUPS
+    .associateWith { group ->
+      previewsConfigs.singleOrNull { it.id == group.toString() }
+        ?: repositoryConfigs.singleOrNull { it.id == group.toString() }
     }
-      .filterNotNull()
-      .distinctUntilChanged()
-  }.collectAsState(null).value ?: return@ScopeComposition
 
-  wappRepository.wapps.collectAsState(null).value?.forEach { wapp ->
+  wappRepository.wapps.state(null).forEach { wapp ->
     key(wapp) {
       @Composable fun <T> LightConfiguration(
         tag: String,
@@ -70,7 +49,7 @@ import kotlin.time.Duration
           key(group) {
             val value = valueByGroup[group]!!
             if (!currentComposer.changed(value) and
-              !currentComposer.changed(groupLightsState[group])
+              !currentComposer.changed(groupLightsVersion[group])
             ) null
             else group to value
           }
@@ -83,7 +62,7 @@ import kotlin.time.Duration
               dirtyGroups
                 .groupBy { it.second }
                 .forEach { (value, groups) ->
-                  logger.log { "apply $tag $value for $groups" }
+                  logger.d { "apply $tag $value for $groups" }
                   writeLock.withLock {
                     apply(this, value, groups.map { it.first })
                   }
