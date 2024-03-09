@@ -1,51 +1,29 @@
 package com.ivianuu.apelabs.domain
 
-import android.annotation.SuppressLint
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCallback
-import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.BluetoothGattDescriptor
-import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothProfile
-import com.ivianuu.apelabs.data.debugName
-import com.ivianuu.essentials.AppContext
-import com.ivianuu.essentials.AppScope
-import com.ivianuu.essentials.Scoped
-import com.ivianuu.essentials.SystemService
-import com.ivianuu.essentials.coroutines.CoroutineContexts
-import com.ivianuu.essentials.coroutines.EventFlow
-import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
-import com.ivianuu.essentials.coroutines.race
-import com.ivianuu.essentials.coroutines.sharedResource
-import com.ivianuu.essentials.coroutines.use
-import com.ivianuu.essentials.logging.Logger
-import com.ivianuu.essentials.logging.log
-import com.ivianuu.essentials.result.catch
-import com.ivianuu.essentials.unsafeCast
-import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.WhileSubscribed
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
+import android.annotation.*
+import android.bluetooth.*
+import arrow.core.*
+import arrow.fx.coroutines.*
+import com.ivianuu.apelabs.data.*
+import com.ivianuu.essentials.*
+import com.ivianuu.essentials.coroutines.*
+import com.ivianuu.essentials.logging.*
+import com.ivianuu.essentials.ui.*
+import com.ivianuu.injekt.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.*
 import java.util.*
-import kotlin.time.Duration
+import kotlin.time.*
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 
-@Provide @Scoped<AppScope> class WappRemote(
+@Provide @Scoped<UiScope> class WappRemote(
   private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
   private val serverFactory: (String) -> WappServer,
-  scope: ScopedCoroutineScope<AppScope>
+  scope: ScopedCoroutineScope<UiScope>
 ) {
   private val servers = scope.sharedResource<String, WappServer>(
-    sharingStarted = SharingStarted.WhileSubscribed(5.minutes, Duration.ZERO),
     create = { serverFactory(it) },
     release = { _, server -> server.close() }
   )
@@ -59,13 +37,13 @@ import kotlin.time.Duration.Companion.minutes
       withTimeoutOrNull(connectTimeout) { server.isConnected.first { it } }
         ?: return@use null
 
-      race(
+      raceN(
         { block(server) },
         {
           server.isConnected.first { !it }
-          logger.log { "${server.device.debugName()} cancel with wapp" }
+          logger.d { "${server.device.debugName()} cancel with wapp" }
         }
-      ).unsafeCast()
+      ).leftOrNull()
     }
   }
 }
@@ -77,7 +55,7 @@ import kotlin.time.Duration.Companion.minutes
   bluetoothManager: @SystemService BluetoothManager,
   private val coroutineContexts: CoroutineContexts,
   private val logger: Logger,
-  private val scope: ScopedCoroutineScope<AppScope>,
+  private val scope: ScopedCoroutineScope<UiScope>,
 ) {
   val isConnected = MutableSharedFlow<Boolean>(
     replay = 1,
@@ -98,7 +76,7 @@ import kotlin.time.Duration.Companion.minutes
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
           super.onConnectionStateChange(gatt, status, newState)
           val isConnected = newState == BluetoothProfile.STATE_CONNECTED
-          logger.log { "${device.debugName()} connection state changed $newState" }
+          logger.d { "${device.debugName()} connection state changed $newState" }
           if (isConnected)
             gatt.discoverServices()
           else
@@ -107,7 +85,7 @@ import kotlin.time.Duration.Companion.minutes
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
           super.onServicesDiscovered(gatt, status)
-          logger.log { "${device.debugName()} services discovered" }
+          logger.d { "${device.debugName()} services discovered" }
 
           scope.launch {
             val readCharacteristic = gatt
@@ -129,9 +107,8 @@ import kotlin.time.Duration.Companion.minutes
             }
 
             suspend fun setReadNotification(attempt: Int) {
-              logger.log { "try set read notification -> $attempt" }
-              cccDescriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-              gatt.writeDescriptor(cccDescriptor)
+              logger.d { "try set read notification -> $attempt" }
+              gatt.writeDescriptor(cccDescriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
               withTimeoutOrNull(300.milliseconds) {
                 writeResults.first { it.first == cccDescriptor }
               } ?: run { if (attempt < 5) setReadNotification(attempt + 1) }
@@ -146,12 +123,10 @@ import kotlin.time.Duration.Companion.minutes
         override fun onCharacteristicChanged(
           gatt: BluetoothGatt,
           characteristic: BluetoothGattCharacteristic,
+          value: ByteArray
         ) {
-          super.onCharacteristicChanged(gatt, characteristic)
-
-          val message = characteristic.value ?: return
-
-          messages.tryEmit(message)
+          super.onCharacteristicChanged(gatt, characteristic, value)
+          messages.tryEmit(value)
         }
 
         override fun onDescriptorWrite(
@@ -176,9 +151,10 @@ import kotlin.time.Duration.Companion.minutes
     )
 
   private val writeLock = Mutex()
+  private val writeLimiter = RateLimiter(1, 200.milliseconds)
 
   init {
-    logger.log { "${device.debugName()} init" }
+    logger.d { "${device.debugName()} init" }
   }
 
   suspend fun write(message: ByteArray) = withContext(coroutineContexts.io) {
@@ -193,23 +169,23 @@ import kotlin.time.Duration.Companion.minutes
       ?: error("${device.debugName()} characteristic not found")
 
     suspend fun writeImpl(attempt: Int) {
-      logger.log { "${device.debugName()} write -> ${message.contentToString()} attempt $attempt" }
-      characteristic.value = message
-      gatt.writeCharacteristic(characteristic)
+      logger.d { "${device.debugName()} write -> ${message.contentToString()} attempt $attempt" }
+      gatt.writeCharacteristic(characteristic, message, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
       withTimeoutOrNull(200.milliseconds) {
         writeResults.first { it.first == characteristic }
       } ?: run { if (attempt < 5) writeImpl(attempt + 1) }
     }
 
     writeLock.withLock {
+      writeLimiter.acquire()
       writeImpl(1)
     }
   }
 
-  suspend fun close() = withContext(coroutineContexts.io) {
-    logger.log { "${device.debugName()} close" }
-    catch { gatt.disconnect() }
-    catch { gatt.close() }
+  suspend fun close(): Unit = withContext(coroutineContexts.io) {
+    logger.d { "${device.debugName()} close" }
+    Either.catch { gatt.disconnect() }
+    Either.catch { gatt.close() }
   }
 }
 

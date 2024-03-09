@@ -1,9 +1,8 @@
 package com.ivianuu.apelabs.data
 
-import androidx.compose.ui.graphics.Color
-import com.ivianuu.essentials.db.Entity
-import com.ivianuu.essentials.db.PrimaryKey
-import kotlinx.serialization.Serializable
+import androidx.compose.ui.graphics.*
+import com.ivianuu.essentials.db.*
+import kotlinx.serialization.*
 
 @Serializable @Entity data class ApeColor(
   @PrimaryKey val id: String = randomId(),

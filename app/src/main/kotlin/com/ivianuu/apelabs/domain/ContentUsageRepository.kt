@@ -1,18 +1,15 @@
 package com.ivianuu.apelabs.domain
 
-import android.view.animation.AccelerateInterpolator
-import com.ivianuu.apelabs.data.ApeLabsPrefs
-import com.ivianuu.essentials.AppScope
-import com.ivianuu.essentials.coroutines.ScopedCoroutineScope
-import com.ivianuu.essentials.data.DataStore
-import com.ivianuu.essentials.time.Clock
-import com.ivianuu.essentials.unlerp
-import com.ivianuu.injekt.Provide
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
-import kotlin.time.Duration
+import android.view.animation.*
+import com.ivianuu.apelabs.data.*
+import com.ivianuu.essentials.*
+import com.ivianuu.essentials.coroutines.*
+import com.ivianuu.essentials.data.*
+import com.ivianuu.essentials.time.*
+import com.ivianuu.injekt.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import kotlin.time.*
 import kotlin.time.Duration.Companion.days
 
 @Provide class ContentUsageRepository(
@@ -33,11 +30,11 @@ import kotlin.time.Duration.Companion.days
       copy(
         programUsages = mutableMapOf<String, List<Duration>>().apply {
           programUsages.keys.forEach { id ->
-            val usages = programUsages[id]?.filter { it > clock() - 28.days }
+            val usages = programUsages[id]?.filter { it > clock.now() - 28.days }
             if (usages?.isNotEmpty() == true) put(id, usages)
           }
 
-          put(id, (programUsages[id] ?: emptyList()) + listOf(clock()))
+          put(id, (programUsages[id] ?: emptyList()) + listOf(clock.now()))
         }
       )
     }
@@ -53,7 +50,7 @@ import kotlin.time.Duration.Companion.days
 
   private fun Map<String, List<Duration>>.trim(since: Duration): Map<String, List<Duration>> =
     mutableMapOf<String, List<Duration>>().apply {
-      val now = clock()
+      val now = clock.now()
       this@trim.keys.forEach { id ->
         val usages = this@trim[id]?.filter { it > now - since }
         if (usages?.isNotEmpty() == true) put(id, usages)
@@ -63,7 +60,7 @@ import kotlin.time.Duration.Companion.days
   private val usageInterpolator = AccelerateInterpolator(2f)
 
   private fun Map<String, List<Duration>>.mapToUsageScores(): Map<String, Float> {
-    val now = clock()
+    val now = clock.now()
     val firstUsage = (values
       .flatten()
       .minOrNull() ?: Duration.ZERO)

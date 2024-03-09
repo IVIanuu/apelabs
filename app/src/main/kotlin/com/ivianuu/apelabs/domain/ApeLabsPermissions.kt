@@ -4,13 +4,10 @@
 
 package com.ivianuu.apelabs.domain
 
-import android.Manifest
-import com.ivianuu.essentials.app.AppVisibleScope
-import com.ivianuu.essentials.app.ScopeWorker
-import com.ivianuu.essentials.permission.PermissionManager
-import com.ivianuu.essentials.permission.runtime.RuntimePermission
-import com.ivianuu.injekt.Provide
-import com.ivianuu.injekt.common.typeKeyOf
+import android.*
+import com.ivianuu.essentials.app.*
+import com.ivianuu.essentials.permission.*
+import com.ivianuu.injekt.*
 
 @Provide class ApeLabsBluetoothConnectPermission : RuntimePermission(
   permissionName = Manifest.permission.BLUETOOTH_CONNECT,
@@ -28,9 +25,9 @@ import com.ivianuu.injekt.common.typeKeyOf
 )
 
 val apeLabsPermissionKeys = listOf(
-  typeKeyOf<ApeLabsBluetoothConnectPermission>(),
-  typeKeyOf<ApeLabsBluetoothScanPermission>(),
-  typeKeyOf<ApeLabsLocationPermission>()
+  ApeLabsBluetoothConnectPermission::class,
+  ApeLabsBluetoothScanPermission::class,
+  ApeLabsLocationPermission::class
 )
 
 // always request permissions when launching the ui

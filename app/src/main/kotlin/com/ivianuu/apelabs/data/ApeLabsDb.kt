@@ -1,15 +1,10 @@
 package com.ivianuu.apelabs.data
 
-import com.ivianuu.essentials.AppScope
-import com.ivianuu.essentials.Scoped
-import com.ivianuu.essentials.db.Db
-import com.ivianuu.essentials.db.DbFactory
-import com.ivianuu.essentials.db.EntityDescriptor
-import com.ivianuu.essentials.db.Migration
-import com.ivianuu.essentials.db.Schema
-import com.ivianuu.injekt.Provide
+import com.ivianuu.essentials.*
+import com.ivianuu.essentials.db.*
+import com.ivianuu.injekt.*
 
-@Provide fun apeLabsDb(factory: DbFactory): @Scoped<AppScope> Db = factory(
+@Provide fun apeLabsDb(factory: DbFactory): @Scoped<AppScope> Db = factory.createDb(
   name = "ape_labs.db",
   schema = Schema(
     version = 3,
