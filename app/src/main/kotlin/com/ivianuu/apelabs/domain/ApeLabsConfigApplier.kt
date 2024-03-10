@@ -28,12 +28,12 @@ import kotlin.time.*
       }
   }
 
-  val repositoryConfigs = groupConfigRepository.groupConfigs.state(emptyList())
+  val repositoryConfigs = groupConfigRepository.groupConfigs.state(null) ?: return@ScopeComposition
   val previewsConfigs = previewRepository.previewGroupConfigs()
   val configs = GROUPS
     .associateWith { group ->
       previewsConfigs.singleOrNull { it.id == group.toString() }
-        ?: repositoryConfigs.singleOrNull { it.id == group.toString() }
+        ?: repositoryConfigs.single { it.id == group.toString() }
     }
 
   wappRepository.wapps.state(null).forEach { wapp ->
